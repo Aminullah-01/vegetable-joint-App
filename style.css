@@ -50,5 +50,9 @@
       background-color: #ffffff;
       transition: 0.3s;
       border: 2px solid #0ace38;
+      
+    }
+    .btn-two:hover a{
       color: #0ace38;
+      transition: 0.3s;
     }
