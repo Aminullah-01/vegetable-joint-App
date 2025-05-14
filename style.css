@@ -46,3 +46,8 @@
       font-weight: 600;
       font-family: Arial,sans-serif;
     }
+    .btn-two:hover{
+      background-color: #ffffff;
+      transition: 0.3s;
+      border: 2px solid #0ace38;
+    }
