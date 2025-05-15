@@ -27,7 +27,7 @@
       border: 2px solid rgb(228, 228, 228);
        box-shadow: 0 0 5px 5px rgb(211, 210, 210);
     }
-    #see-more{
+    .btn-two{
       
       width: 150px;
       font-size: 1.1em;
@@ -44,7 +44,7 @@
       font-family: Arial,sans-serif;
      
     }
-    #see-more:hover{
+    .btn-two:hover{
       background-color: #ffffff;
       transition: 0.3s;
       border: 2px solid #0ace38;
