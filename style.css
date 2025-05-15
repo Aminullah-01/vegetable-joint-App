@@ -38,13 +38,11 @@
       background-color: #188131;
       padding: 10px 0 10px 0;
       margin: 50px 0 0 900px;
-     
-    }
-    a{
       color: white;
       text-decoration: none;
       font-weight: 400;
       font-family: Arial,sans-serif;
+     
     }
     .btn-two:hover{
       background-color: #ffffff;
