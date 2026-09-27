@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { STRINGS } from '../../constants';
+import { formatCurrency } from '../../utils';
 
 export function Cart() {
   return (
@@ -12,7 +14,7 @@ export function Cart() {
       }}
     >
       <h1 style={{ fontSize: '1.75rem', color: '#15803d', margin: 0 }}>
-        Your Shopping Cart (CART-01)
+        {STRINGS.CART.TITLE} (CART-01)
       </h1>
 
       <div
@@ -41,13 +43,13 @@ export function Cart() {
                   Fresh Ugwu (Fluted Pumpkin)
                 </h3>
                 <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                  Qty: 2 bunches
+                  {STRINGS.CART.QUANTITY}: 2 bunches
                 </span>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <span style={{ fontWeight: '700', color: '#15803d' }}>
-                ₦2,400
+                {formatCurrency(2400)}
               </span>
             </div>
           </div>
@@ -61,7 +63,7 @@ export function Cart() {
             }}
           >
             <span style={{ fontSize: '1.1rem', fontWeight: '700' }}>
-              Subtotal:
+              {STRINGS.CART.SUBTOTAL}:
             </span>
             <span
               style={{
@@ -70,7 +72,7 @@ export function Cart() {
                 color: '#15803d',
               }}
             >
-              ₦2,400
+              {formatCurrency(2400)}
             </span>
           </div>
 
@@ -91,7 +93,7 @@ export function Cart() {
                 fontSize: '0.9rem',
               }}
             >
-              Continue Shopping
+              {STRINGS.CART.CONTINUE_SHOPPING}
             </Link>
             <Link
               to="/checkout"
@@ -105,7 +107,7 @@ export function Cart() {
                 fontSize: '0.9rem',
               }}
             >
-              Proceed to Checkout →
+              {STRINGS.CART.PROCEED_TO_CHECKOUT}
             </Link>
           </div>
         </div>

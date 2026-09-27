@@ -48,83 +48,85 @@ export function SellerProducts() {
           overflow: 'hidden',
         }}
       >
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            textAlign: 'left',
-            fontSize: '0.9rem',
-          }}
-        >
-          <thead>
-            <tr
-              style={{
-                backgroundColor: '#f8fafc',
-                borderBottom: '1px solid #e2e8f0',
-              }}
-            >
-              <th style={{ padding: '0.75rem 1rem' }}>Product</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Price</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Stock</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-              <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              {
-                id: 1,
-                name: 'Fresh Ugwu',
-                price: '₦1,200',
-                stock: '45 bunches',
-                status: 'Available',
-              },
-              {
-                id: 2,
-                name: 'Roma Tomatoes',
-                price: '₦8,500',
-                stock: '12 baskets',
-                status: 'Available',
-              },
-            ].map((prod) => (
-              <tr key={prod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>
-                  {prod.name}
-                </td>
-                <td style={{ padding: '0.75rem 1rem' }}>{prod.price}</td>
-                <td style={{ padding: '0.75rem 1rem' }}>{prod.stock}</td>
-                <td style={{ padding: '0.75rem 1rem' }}>
-                  <span
-                    style={{
-                      backgroundColor: '#dcfce7',
-                      color: '#15803d',
-                      fontSize: '0.75rem',
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '9999px',
-                    }}
-                  >
-                    {prod.status}
-                  </span>
-                </td>
-                <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                  <Link
-                    to={`/seller/products/${prod.id}/edit`}
-                    style={{
-                      color: '#15803d',
-                      textDecoration: 'none',
-                      fontWeight: '500',
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    Edit
-                  </Link>
-                </td>
+        <div className="table-responsive">
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              textAlign: 'left',
+              fontSize: '0.9rem',
+            }}
+          >
+            <thead>
+              <tr
+                style={{
+                  backgroundColor: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                }}
+              >
+                <th style={{ padding: '0.75rem 1rem' }}>Product</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Price</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Stock</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Status</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {[
+                {
+                  id: 1,
+                  name: 'Fresh Ugwu',
+                  price: '₦1,200',
+                  stock: '45 bunches',
+                  status: 'Available',
+                },
+                {
+                  id: 2,
+                  name: 'Roma Tomatoes',
+                  price: '₦8,500',
+                  stock: '12 baskets',
+                  status: 'Available',
+                },
+              ].map((prod) => (
+                <tr key={prod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>
+                    {prod.name}
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem' }}>{prod.price}</td>
+                  <td style={{ padding: '0.75rem 1rem' }}>{prod.stock}</td>
+                  <td style={{ padding: '0.75rem 1rem' }}>
+                    <span
+                      style={{
+                        backgroundColor: '#dcfce7',
+                        color: '#15803d',
+                        fontSize: '0.75rem',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '9999px',
+                      }}
+                    >
+                      {prod.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                    <Link
+                      to={`/seller/products/${prod.id}/edit`}
+                      style={{
+                        color: '#15803d',
+                        textDecoration: 'none',
+                        fontWeight: '500',
+                        fontSize: '0.85rem',
+                      }}
+                    >
+                      Edit
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

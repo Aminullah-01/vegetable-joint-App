@@ -1,7 +1,18 @@
+import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { env } from '../../utils';
 
 export function DashboardLayout({ title, role, navItems }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prev) => !prev);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
   return (
     <div
       style={{
@@ -9,6 +20,9 @@ export function DashboardLayout({ title, role, navItems }) {
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: '#f8fafc',
+        width: '100%',
+        maxWidth: '100vw',
+        overflowX: 'hidden',
       }}
     >
       {/* Dashboard Top Header */}
@@ -16,28 +30,56 @@ export function DashboardLayout({ title, role, navItems }) {
         style={{
           backgroundColor: '#ffffff',
           borderBottom: '1px solid #e2e8f0',
-          padding: '0.75rem 1.5rem',
+          padding: '0.75rem 1rem',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+          gap: '0.5rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* Mobile/Tablet Sidebar Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            style={{
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+              backgroundColor: isSidebarOpen ? '#f0fdf4' : '#ffffff',
+              color: isSidebarOpen ? '#15803d' : '#1e293b',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+            }}
+            className="show-mobile"
+            aria-label="Toggle dashboard navigation"
+          >
+            {isSidebarOpen ? '✕' : '☰'}
+          </button>
+
           <Link
             to="/"
             style={{
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.4rem',
               color: '#15803d',
               fontWeight: '700',
-              fontSize: '1.1rem',
+              fontSize: '1.05rem',
             }}
           >
             <span>🥦</span>
-            <span>{env.appName}</span>
+            <span className="hide-mobile">{env.appName}</span>
           </Link>
+
           <span
             style={{
               backgroundColor: role === 'admin' ? '#fef3c7' : '#e0f2fe',
@@ -53,7 +95,7 @@ export function DashboardLayout({ title, role, navItems }) {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Link
             to="/account/profile"
             style={{
@@ -62,7 +104,7 @@ export function DashboardLayout({ title, role, navItems }) {
               fontSize: '0.85rem',
             }}
           >
-            My Profile
+            Profile
           </Link>
           <Link
             to="/"
@@ -73,24 +115,44 @@ export function DashboardLayout({ title, role, navItems }) {
               fontWeight: '500',
             }}
           >
-            ← View Marketplace
+            ← Marketplace
           </Link>
         </div>
       </header>
 
-      {/* Dashboard Body (Sidebar + Content) */}
-      <div style={{ display: 'flex', flex: 1 }}>
-        {/* Sidebar */}
+      {/* Dashboard Body */}
+      <div style={{ display: 'flex', flex: 1, position: 'relative' }}>
+        {/* Mobile Backdrop Overlay */}
+        {isSidebarOpen && (
+          <div
+            onClick={closeSidebar}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.4)',
+              zIndex: 45,
+            }}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Sidebar (Responsive: drawer on mobile, persistent on desktop) */}
         <aside
           style={{
-            width: '240px',
+            width: '250px',
             backgroundColor: '#ffffff',
             borderRight: '1px solid #e2e8f0',
             padding: '1.5rem 1rem',
             display: 'flex',
             flexDirection: 'column',
             gap: '0.5rem',
+            zIndex: 48,
+            transition: 'transform 0.25s ease-in-out',
           }}
+          className={isSidebarOpen ? 'show-sidebar-mobile' : 'hide-mobile'}
         >
           <div
             style={{
@@ -110,32 +172,36 @@ export function DashboardLayout({ title, role, navItems }) {
               key={item.path}
               to={item.path}
               end={item.end}
+              onClick={closeSidebar}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.65rem',
-                padding: '0.6rem 0.8rem',
+                padding: '0.65rem 0.8rem',
                 borderRadius: '6px',
                 color: isActive ? '#15803d' : '#334155',
                 backgroundColor: isActive ? '#f0fdf4' : 'transparent',
                 fontWeight: isActive ? '600' : '500',
                 fontSize: '0.9rem',
                 textDecoration: 'none',
-                transition: 'background-color 0.15s ease',
+                minHeight: '44px',
               })}
             >
-              <span>{item.icon}</span>
+              <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
               <span>{item.label}</span>
             </NavLink>
           ))}
         </aside>
 
-        {/* Dashboard Main Area */}
+        {/* Dashboard Main Content Area */}
         <main
           style={{
             flex: 1,
-            padding: '2rem',
+            padding: '1.5rem 1rem',
             overflowY: 'auto',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
           }}
         >
           <Outlet />

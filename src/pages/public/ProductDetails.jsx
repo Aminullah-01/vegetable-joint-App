@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { formatPrice } from '../../utils';
 
 export function ProductDetails() {
   const { id } = useParams();
@@ -72,16 +73,7 @@ export function ProductDetails() {
               margin: 0,
             }}
           >
-            ₦1,500{' '}
-            <span
-              style={{
-                fontSize: '0.9rem',
-                color: '#64748b',
-                fontWeight: 'normal',
-              }}
-            >
-              per bundle
-            </span>
+            {formatPrice(1500, 'bundle')}
           </p>
           <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.5 }}>
             Naturally harvested, pesticide-free fresh greens. Sourced directly

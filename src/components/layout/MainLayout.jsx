@@ -1,15 +1,44 @@
+import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { env } from '../../utils';
 
 export function MainLayout() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => !prev);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   const navLinkStyle = ({ isActive }) => ({
     color: isActive ? '#15803d' : '#475569',
-    fontWeight: isActive ? '600' : '400',
+    fontWeight: isActive ? '600' : '500',
     textDecoration: 'none',
     padding: '0.5rem 0.75rem',
     borderRadius: '6px',
     backgroundColor: isActive ? '#f0fdf4' : 'transparent',
     transition: 'all 0.15s ease-in-out',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+  });
+
+  const mobileNavLinkStyle = ({ isActive }) => ({
+    color: isActive ? '#15803d' : '#1e293b',
+    fontWeight: isActive ? '700' : '500',
+    textDecoration: 'none',
+    padding: '0.85rem 1rem',
+    borderRadius: '8px',
+    backgroundColor: isActive ? '#f0fdf4' : 'transparent',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: '1rem',
+    borderBottom: '1px solid #f1f5f9',
+    minHeight: '44px',
   });
 
   return (
@@ -19,6 +48,9 @@ export function MainLayout() {
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: '#f8fafc',
+        width: '100%',
+        maxWidth: '100vw',
+        overflowX: 'hidden',
       }}
     >
       {/* Top Header */}
@@ -28,29 +60,31 @@ export function MainLayout() {
           borderBottom: '1px solid #e2e8f0',
           position: 'sticky',
           top: 0,
-          zIndex: 40,
+          zIndex: 50,
+          width: '100%',
         }}
       >
         <div
           style={{
-            maxWidth: '1200px',
+            maxWidth: '1280px',
             margin: '0 auto',
-            padding: '0.75rem 1.5rem',
+            padding: '0.75rem 1rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '1rem',
+            gap: '0.75rem',
           }}
         >
-          {/* Logo & App Title */}
+          {/* Logo & Brand */}
           <Link
             to="/"
+            onClick={closeMobileMenu}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.75rem',
+              gap: '0.5rem',
               textDecoration: 'none',
+              flexShrink: 0,
             }}
           >
             <div
@@ -64,6 +98,7 @@ export function MainLayout() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.25rem',
+                flexShrink: 0,
               }}
             >
               🥦
@@ -71,7 +106,7 @@ export function MainLayout() {
             <div>
               <span
                 style={{
-                  fontSize: '1.2rem',
+                  fontSize: '1.1rem',
                   fontWeight: '700',
                   color: '#15803d',
                   display: 'block',
@@ -82,23 +117,23 @@ export function MainLayout() {
               </span>
               <span
                 style={{
-                  fontSize: '0.7rem',
+                  fontSize: '0.65rem',
                   color: '#64748b',
                   display: 'block',
                 }}
               >
-                Digital Vegetable Marketplace
+                Digital Marketplace
               </span>
             </div>
           </Link>
 
-          {/* Navigation Links */}
+          {/* Desktop Navigation Links (> 768px) */}
           <nav
+            className="hide-mobile"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              flexWrap: 'wrap',
+              gap: '0.25rem',
             }}
           >
             <NavLink to="/" style={navLinkStyle}>
@@ -121,9 +156,10 @@ export function MainLayout() {
             </NavLink>
           </nav>
 
-          {/* Auth Controls */}
+          {/* Desktop Auth Controls (> 768px) */}
           <div
-            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
+            className="hide-mobile"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             <NavLink
               to="/login"
@@ -131,7 +167,8 @@ export function MainLayout() {
                 color: '#15803d',
                 textDecoration: 'none',
                 fontWeight: '500',
-                padding: '0.4rem 0.8rem',
+                padding: '0.4rem 0.75rem',
+                fontSize: '0.9rem',
               }}
             >
               Sign In
@@ -143,41 +180,222 @@ export function MainLayout() {
                 color: '#ffffff',
                 textDecoration: 'none',
                 fontWeight: '500',
-                padding: '0.4rem 0.9rem',
+                padding: '0.45rem 0.9rem',
                 borderRadius: '6px',
+                fontSize: '0.9rem',
               }}
             >
               Register
             </NavLink>
           </div>
+
+          {/* Mobile Right Controls (≤ 768px) */}
+          <div
+            className="show-mobile"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <Link
+              to="/cart"
+              onClick={closeMobileMenu}
+              style={{
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px',
+                backgroundColor: '#f1f5f9',
+                color: '#1e293b',
+                textDecoration: 'none',
+                fontSize: '1.2rem',
+              }}
+              aria-label="View Cart"
+            >
+              🛒
+            </Link>
+
+            <button
+              type="button"
+              onClick={toggleMobileMenu}
+              style={{
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: isMobileMenuOpen ? '#f0fdf4' : '#ffffff',
+                color: isMobileMenuOpen ? '#15803d' : '#1e293b',
+                fontSize: '1.4rem',
+                cursor: 'pointer',
+              }}
+              aria-label="Toggle navigation menu"
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? '✕' : '☰'}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Navigation Drawer Dropdown */}
+        {isMobileMenuOpen && (
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderTop: '1px solid #e2e8f0',
+              padding: '1rem',
+              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+                marginBottom: '1rem',
+              }}
+            >
+              <NavLink
+                to="/"
+                onClick={closeMobileMenu}
+                style={mobileNavLinkStyle}
+              >
+                <span>🏠 Home</span>
+                <span>→</span>
+              </NavLink>
+              <NavLink
+                to="/products"
+                onClick={closeMobileMenu}
+                style={mobileNavLinkStyle}
+              >
+                <span>🥦 Browse Vegetables</span>
+                <span>→</span>
+              </NavLink>
+              <NavLink
+                to="/cart"
+                onClick={closeMobileMenu}
+                style={mobileNavLinkStyle}
+              >
+                <span>🛒 Shopping Cart</span>
+                <span>→</span>
+              </NavLink>
+              <NavLink
+                to="/account/orders"
+                onClick={closeMobileMenu}
+                style={mobileNavLinkStyle}
+              >
+                <span>📦 My Orders</span>
+                <span>→</span>
+              </NavLink>
+              <NavLink
+                to="/account/profile"
+                onClick={closeMobileMenu}
+                style={mobileNavLinkStyle}
+              >
+                <span>👤 Profile</span>
+                <span>→</span>
+              </NavLink>
+              <NavLink
+                to="/seller"
+                onClick={closeMobileMenu}
+                style={mobileNavLinkStyle}
+              >
+                <span>🌾 Seller Portal</span>
+                <span>→</span>
+              </NavLink>
+              <NavLink
+                to="/admin"
+                onClick={closeMobileMenu}
+                style={mobileNavLinkStyle}
+              >
+                <span>🛡️ Admin Portal</span>
+                <span>→</span>
+              </NavLink>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.75rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid #e2e8f0',
+              }}
+            >
+              <Link
+                to="/login"
+                onClick={closeMobileMenu}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '44px',
+                  borderRadius: '6px',
+                  border: '1px solid #15803d',
+                  color: '#15803d',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  fontSize: '0.9rem',
+                }}
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                onClick={closeMobileMenu}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '44px',
+                  borderRadius: '6px',
+                  backgroundColor: '#15803d',
+                  color: '#ffffff',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  fontSize: '0.9rem',
+                }}
+              >
+                Register
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Main Outlet */}
+      {/* Main Content Shell */}
       <main
         style={{
           flex: 1,
-          maxWidth: '1200px',
+          maxWidth: '1280px',
           width: '100%',
           margin: '0 auto',
-          padding: '2rem 1.5rem',
+          padding: '1.5rem 1rem',
+          boxSizing: 'border-box',
         }}
       >
         <Outlet />
       </main>
 
-      {/* Footer */}
+      {/* Footer Shell */}
       <footer
         style={{
           backgroundColor: '#ffffff',
           borderTop: '1px solid #e2e8f0',
-          padding: '1.5rem',
+          padding: '1.5rem 1rem',
           textAlign: 'center',
           color: '#64748b',
           fontSize: '0.85rem',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
           <p style={{ margin: '0 0 0.5rem 0' }}>
             Vegetable Joint — Direct Farm-to-Buyer Marketplace (Nigeria)
           </p>
@@ -185,7 +403,8 @@ export function MainLayout() {
             style={{
               display: 'flex',
               justifyContent: 'center',
-              gap: '1.5rem',
+              flexWrap: 'wrap',
+              gap: '1rem',
               fontSize: '0.8rem',
             }}
           >

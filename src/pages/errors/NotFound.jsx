@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { STRINGS } from '../../constants';
 
 export function NotFound() {
   return (
@@ -18,7 +19,7 @@ export function NotFound() {
       <h1
         style={{ fontSize: '2rem', color: '#1e293b', marginBottom: '0.5rem' }}
       >
-        404 — Page Not Found
+        {STRINGS.ERRORS.NOT_FOUND_404_TITLE}
       </h1>
       <p
         style={{
@@ -28,8 +29,7 @@ export function NotFound() {
           lineHeight: 1.5,
         }}
       >
-        The vegetable listing or page you were looking for doesn&apos;t exist or
-        may have been moved (ERR-04).
+        {STRINGS.ERRORS.NOT_FOUND_404_MESSAGE}
       </p>
       <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
         <Link
@@ -43,7 +43,7 @@ export function NotFound() {
             fontWeight: '500',
           }}
         >
-          Back to Home
+          {STRINGS.NAV.HOME}
         </Link>
         <Link
           to="/products"
@@ -56,7 +56,7 @@ export function NotFound() {
             fontWeight: '500',
           }}
         >
-          Browse All Vegetables
+          {STRINGS.NAV.BROWSE_VEGETABLES}
         </Link>
       </div>
     </div>

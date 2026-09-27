@@ -319,3 +319,77 @@ textarea {
 .btn-outline:hover {
   background-color: var(--color-primary-50);
 }
+
+/* ==============================================================================
+   Responsive Layout Shell & Horizontal Scroll Safeguards (NFR-COMP-02, UI-04)
+   Adapts smoothly from 360px up to 1920px with zero horizontal scroll.
+   ============================================================================== */
+html,
+body,
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Responsive Table Container (scrolls internally without page overflow) */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Media Query Visibility Helpers */
+.show-mobile {
+  display: none !important;
+}
+
+.hide-mobile {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .show-mobile {
+    display: flex !important;
+  }
+
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-sidebar-mobile {
+    display: flex !important;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    max-width: 85vw;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-lg);
+    z-index: 50;
+    overflow-y: auto;
+  }
+
+  .container {
+    padding: 0 var(--space-3);
+  }
+}
+
+@media (max-width: 1024px) {
+  .hide-tablet {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1025px) {
+  .show-tablet-only {
+    display: none !important;
+  }
+}
+
+/* Max Container for Ultrawide 1920px boundary */
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1440px;
+  }
+}

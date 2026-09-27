@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { formatPrice } from '../../utils';
 
 export function Products() {
   return (
@@ -27,7 +28,14 @@ export function Products() {
             MKT-02, SRCH-01)
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '0.5rem',
+            width: '100%',
+            maxWidth: '340px',
+          }}
+        >
           <input
             type="text"
             placeholder="Search spinach, tomatoes, onions..."
@@ -35,7 +43,8 @@ export function Products() {
               padding: '0.5rem 1rem',
               borderRadius: '6px',
               border: '1px solid #cbd5e1',
-              minWidth: '260px',
+              width: '100%',
+              boxSizing: 'border-box',
             }}
             readOnly
           />
@@ -54,29 +63,29 @@ export function Products() {
           {
             id: 1,
             name: 'Fresh Ugwu (Fluted Pumpkin)',
-            price: '₦1,200',
-            unit: 'per bunch',
+            price: 1200,
+            unit: 'bunch',
             seller: 'Ibrahim Farm',
           },
           {
             id: 2,
             name: 'Roma Tomatoes (Basket)',
-            price: '₦8,500',
-            unit: 'per basket',
+            price: 8500,
+            unit: 'basket',
             seller: 'Kano Fresh Produce',
           },
           {
             id: 3,
             name: 'Red Onions (5kg bag)',
-            price: '₦4,000',
-            unit: 'per 5kg',
+            price: 4000,
+            unit: '5kg bag',
             seller: 'Alhaji Musa Farms',
           },
           {
             id: 4,
             name: 'Green Bell Peppers (Tatase)',
-            price: '₦2,500',
-            unit: 'per kg',
+            price: 2500,
+            unit: 'kg',
             seller: 'Plateau Greens',
           },
         ].map((item) => (
@@ -124,16 +133,7 @@ export function Products() {
                   margin: 0,
                 }}
               >
-                {item.price}{' '}
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#64748b',
-                    fontWeight: 'normal',
-                  }}
-                >
-                  {item.unit}
-                </span>
+                {formatPrice(item.price, item.unit)}
               </p>
               <p
                 style={{

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { env } from '../../utils';
+import { env, formatPrice, formatDateTime, formatStock } from '../../utils';
 
 export function Home() {
   return (
@@ -676,6 +676,49 @@ export function Home() {
               </div>
               <div>
                 <code>2xl: 1920px</code> — Maximum responsive boundary
+              </div>
+            </div>
+          </div>
+
+          {/* Formatting Utilities (FE-007, NFR-USAB-04, NFR-LOC-02) */}
+          <div
+            style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '1.25rem',
+              backgroundColor: '#fafafa',
+            }}
+          >
+            <h4
+              style={{
+                fontSize: '0.95rem',
+                color: '#166534',
+                marginBottom: '0.5rem',
+              }}
+            >
+              🇳🇬 Formatting Utilities (FE-007)
+            </h4>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.4rem',
+                fontSize: '0.8rem',
+                color: '#475569',
+              }}
+            >
+              <div>
+                <strong>Naira Price:</strong> {formatPrice(2500, 'basket')}
+              </div>
+              <div>
+                <strong>Unit Price:</strong> {formatPrice(1200, 'bunch')}
+              </div>
+              <div>
+                <strong>Lagos Timestamp (WAT):</strong>{' '}
+                {formatDateTime('2026-09-27T11:00:00Z')}
+              </div>
+              <div>
+                <strong>Stock Formatter:</strong> {formatStock(45, 'bunches')}
               </div>
             </div>
           </div>

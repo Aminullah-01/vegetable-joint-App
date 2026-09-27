@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { STRINGS } from '../../constants';
 
 export function Forbidden() {
   return (
@@ -18,7 +19,7 @@ export function Forbidden() {
       <h1
         style={{ fontSize: '2rem', color: '#b45309', marginBottom: '0.5rem' }}
       >
-        403 — Forbidden
+        {STRINGS.ERRORS.FORBIDDEN_403_TITLE}
       </h1>
       <p
         style={{
@@ -28,8 +29,7 @@ export function Forbidden() {
           lineHeight: 1.5,
         }}
       >
-        You do not have permission to access this page or administrative area
-        (ERR-04).
+        {STRINGS.ERRORS.FORBIDDEN_403_MESSAGE}
       </p>
       <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
         <Link
@@ -43,7 +43,7 @@ export function Forbidden() {
             fontWeight: '500',
           }}
         >
-          Return to Marketplace
+          {STRINGS.NAV.VIEW_MARKETPLACE}
         </Link>
         <Link
           to="/login"
@@ -56,7 +56,7 @@ export function Forbidden() {
             fontWeight: '500',
           }}
         >
-          Switch Account
+          {STRINGS.NAV.SIGN_IN}
         </Link>
       </div>
     </div>
