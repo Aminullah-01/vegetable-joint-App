@@ -1,0 +1,5 @@
+dist/
+node_modules/
+Vegetable-joint-all-document/
+package-lock.json
+.husky/

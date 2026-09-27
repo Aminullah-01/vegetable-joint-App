@@ -1,2 +1,2 @@
-// Application routing definitions and route guards
-export {};
+export * from './routeConfig';
+export * from './AppRoutes';
