@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { env } from '../../utils';
+import { useAuth, useCart } from '../../hooks';
 
 export function MainLayout() {
+  const { user, role, isAuthenticated, logout } = useAuth();
+  const { itemCount } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -143,7 +146,22 @@ export function MainLayout() {
               Browse Vegetables
             </NavLink>
             <NavLink to="/cart" style={navLinkStyle}>
-              Cart 🛒
+              <span>Cart 🛒</span>
+              {itemCount > 0 && (
+                <span
+                  style={{
+                    backgroundColor: '#15803d',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    padding: '0.1rem 0.45rem',
+                    borderRadius: '999px',
+                    marginLeft: '0.2rem',
+                  }}
+                >
+                  {itemCount}
+                </span>
+              )}
             </NavLink>
             <NavLink to="/account/orders" style={navLinkStyle}>
               My Orders
@@ -161,32 +179,86 @@ export function MainLayout() {
             className="hide-mobile"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            <NavLink
-              to="/login"
-              style={{
-                color: '#15803d',
-                textDecoration: 'none',
-                fontWeight: '500',
-                padding: '0.4rem 0.75rem',
-                fontSize: '0.9rem',
-              }}
-            >
-              Sign In
-            </NavLink>
-            <NavLink
-              to="/register"
-              style={{
-                backgroundColor: '#15803d',
-                color: '#ffffff',
-                textDecoration: 'none',
-                fontWeight: '500',
-                padding: '0.45rem 0.9rem',
-                borderRadius: '6px',
-                fontSize: '0.9rem',
-              }}
-            >
-              Register
-            </NavLink>
+            {isAuthenticated ? (
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+              >
+                <Link
+                  to="/account/profile"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    color: '#1e293b',
+                    textDecoration: 'none',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                  }}
+                >
+                  <span>👤</span>
+                  <span>{user?.name || 'My Account'}</span>
+                  {role && (
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: '4px',
+                        backgroundColor: '#dcfce7',
+                        color: '#166534',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {role}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  type="button"
+                  onClick={logout}
+                  style={{
+                    backgroundColor: '#f1f5f9',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.85rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <>
+                <NavLink
+                  to="/login"
+                  style={{
+                    color: '#15803d',
+                    textDecoration: 'none',
+                    fontWeight: '500',
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  Sign In
+                </NavLink>
+                <NavLink
+                  to="/register"
+                  style={{
+                    backgroundColor: '#15803d',
+                    color: '#ffffff',
+                    textDecoration: 'none',
+                    fontWeight: '500',
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  Register
+                </NavLink>
+              </>
+            )}
           </div>
 
           {/* Mobile Right Controls (≤ 768px) */}
@@ -212,10 +284,33 @@ export function MainLayout() {
                 color: '#1e293b',
                 textDecoration: 'none',
                 fontSize: '1.2rem',
+                position: 'relative',
               }}
               aria-label="View Cart"
             >
-              🛒
+              <span>🛒</span>
+              {itemCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    backgroundColor: '#15803d',
+                    color: '#ffffff',
+                    fontSize: '0.7rem',
+                    fontWeight: '700',
+                    minWidth: '18px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 3px',
+                  }}
+                >
+                  {itemCount}
+                </span>
+              )}
             </Link>
 
             <button
@@ -281,7 +376,29 @@ export function MainLayout() {
                 onClick={closeMobileMenu}
                 style={mobileNavLinkStyle}
               >
-                <span>🛒 Shopping Cart</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <span>🛒 Shopping Cart</span>
+                  {itemCount > 0 && (
+                    <span
+                      style={{
+                        backgroundColor: '#15803d',
+                        color: '#ffffff',
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        padding: '0.1rem 0.45rem',
+                        borderRadius: '999px',
+                      }}
+                    >
+                      {itemCount}
+                    </span>
+                  )}
+                </div>
                 <span>→</span>
               </NavLink>
               <NavLink
@@ -318,52 +435,115 @@ export function MainLayout() {
               </NavLink>
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.75rem',
-                paddingTop: '0.75rem',
-                borderTop: '1px solid #e2e8f0',
-              }}
-            >
-              <Link
-                to="/login"
-                onClick={closeMobileMenu}
+            {isAuthenticated ? (
+              <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '44px',
-                  borderRadius: '6px',
-                  border: '1px solid #15803d',
-                  color: '#15803d',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  fontSize: '0.9rem',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid #e2e8f0',
                 }}
               >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                onClick={closeMobileMenu}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '0.9rem',
+                    color: '#1e293b',
+                  }}
+                >
+                  <span>
+                    Signed in as <strong>{user?.name}</strong>
+                  </span>
+                  {role && (
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '4px',
+                        backgroundColor: '#dcfce7',
+                        color: '#166534',
+                        textTransform: 'capitalize',
+                        fontWeight: '600',
+                      }}
+                    >
+                      {role}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeMobileMenu();
+                    logout();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '44px',
+                    borderRadius: '6px',
+                    border: '1px solid #ef4444',
+                    color: '#ef4444',
+                    backgroundColor: '#fef2f2',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '44px',
-                  borderRadius: '6px',
-                  backgroundColor: '#15803d',
-                  color: '#ffffff',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  fontSize: '0.9rem',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.75rem',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid #e2e8f0',
                 }}
               >
-                Register
-              </Link>
-            </div>
+                <Link
+                  to="/login"
+                  onClick={closeMobileMenu}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '44px',
+                    borderRadius: '6px',
+                    border: '1px solid #15803d',
+                    color: '#15803d',
+                    textDecoration: 'none',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={closeMobileMenu}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '44px',
+                    borderRadius: '6px',
+                    backgroundColor: '#15803d',
+                    color: '#ffffff',
+                    textDecoration: 'none',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  Register
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </header>

@@ -1,7 +1,10 @@
-// Service layer abstractions for API / Mock data access (CON-02, IF-01 to IF-06)
+// Service layer abstractions for API / Mock data access (CON-02, IF-01 to IF-06, NFR-MAIN-02)
 export * from './apiErrors.js';
 export * from './apiClient.js';
 export { default as apiClient } from './apiClient.js';
+
+export * from './mockSwitch.js';
+export { default as mockSwitch } from './mockSwitch.js';
 
 export * from './authService.js';
 export { default as authService } from './authService.js';

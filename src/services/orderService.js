@@ -1,8 +1,10 @@
 import { apiClient } from './apiClient.js';
+import { isMockMode } from './mockSwitch.js';
+import { mockStore } from '../data/mockStore.js';
 
 /**
  * Order Management & Checkout Service
- * Conforms to SRS 4.4, CHK-01 to CHK-10, ORD-01 to ORD-07, and SEL-10 to SEL-11.
+ * Conforms to SRS 4.4, CHK-01 to CHK-10, ORD-01 to ORD-07, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const orderService = {
   /**
@@ -10,15 +12,13 @@ export const orderService = {
    * Endpoint: POST /orders
    *
    * @param {Object} payload
-   * @param {Array<{ product_id: number, quantity: number, price: number }>} payload.items
-   * @param {string} payload.delivery_name - Contact name for delivery.
-   * @param {string} payload.delivery_phone - Contact phone number.
-   * @param {string} payload.delivery_address - Street address.
-   * @param {string} [payload.notes] - Special delivery instructions.
-   * @param {string} [payload.payment_method='cash_on_delivery']
    * @returns {Promise<{ checkout_ref: string, orders: Array }>}
    */
   async createOrder(payload) {
+    if (isMockMode()) {
+      return mockStore.createOrder(payload);
+    }
+
     const response = await apiClient.post('/orders', payload);
     return response.data;
   },
@@ -28,13 +28,13 @@ export const orderService = {
    * Endpoint: GET /orders
    *
    * @param {Object} [params={}]
-   * @param {'pending'|'confirmed'|'processing'|'ready_for_pickup'|'out_for_delivery'|'completed'|'cancelled'} [params.status]
-   * @param {string} [params.search] - Search by order number or checkout reference.
-   * @param {number} [params.page=1]
-   * @param {number} [params.per_page=20]
    * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
    */
   async getOrders(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getOrders(params);
+    }
+
     const response = await apiClient.get('/orders', { params });
     return {
       data: response.data || [],
@@ -51,17 +51,16 @@ export const orderService = {
    * @returns {Promise<Object>}
    */
   async getOrderById(id) {
+    if (isMockMode()) {
+      return mockStore.getOrderById(id);
+    }
+
     const response = await apiClient.get(`/orders/${id}`);
     return response.data;
   },
 
   /**
    * Transition order status per the allowed lifecycle (Seller or Admin).
-   * Valid transitions:
-   *   Pending -> Confirmed or Cancelled
-   *   Confirmed -> Processing or Cancelled
-   *   Processing -> Ready for Pickup / Out for Delivery
-   *   Ready / Out -> Completed
    * Endpoint: PATCH /orders/{id}/status
    *
    * @param {string|number} id
@@ -70,6 +69,10 @@ export const orderService = {
    * @returns {Promise<Object>}
    */
   async updateOrderStatus(id, status, note = '') {
+    if (isMockMode()) {
+      return mockStore.updateOrderStatus(id, status, note);
+    }
+
     const response = await apiClient.patch(`/orders/${id}/status`, {
       status,
       note,
@@ -87,6 +90,10 @@ export const orderService = {
    * @returns {Promise<Object>}
    */
   async cancelOrder(id, reason) {
+    if (isMockMode()) {
+      return mockStore.cancelOrder(id, reason);
+    }
+
     const response = await apiClient.post(`/orders/${id}/cancel`, { reason });
     return response.data;
   },

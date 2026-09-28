@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { env } from '../../utils';
+import { useAuth } from '../../hooks';
 
 export function DashboardLayout({ title, role, navItems }) {
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
@@ -96,6 +98,20 @@ export function DashboardLayout({ title, role, navItems }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {user && (
+            <span
+              style={{
+                fontSize: '0.85rem',
+                color: '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+              }}
+            >
+              <span>👤</span>
+              <strong>{user.name}</strong>
+            </span>
+          )}
           <Link
             to="/account/profile"
             style={{
@@ -117,6 +133,22 @@ export function DashboardLayout({ title, role, navItems }) {
           >
             ← Marketplace
           </Link>
+          <button
+            type="button"
+            onClick={logout}
+            style={{
+              backgroundColor: '#f1f5f9',
+              color: '#dc2626',
+              border: '1px solid #fca5a5',
+              borderRadius: '6px',
+              padding: '0.3rem 0.65rem',
+              fontSize: '0.8rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+            }}
+          >
+            Sign Out
+          </button>
         </div>
       </header>
 

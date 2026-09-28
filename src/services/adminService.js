@@ -1,8 +1,10 @@
 import { apiClient } from './apiClient.js';
+import { isMockMode } from './mockSwitch.js';
+import { mockStore } from '../data/mockStore.js';
 
 /**
  * Administrator Operations & Governance Service
- * Conforms to SRS 4.4, ADM-01 through ADM-13, and AUTH-03, AUTH-12.
+ * Conforms to SRS 4.4, ADM-01 through ADM-13, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const adminService = {
   /**
@@ -10,14 +12,13 @@ export const adminService = {
    * Endpoint: GET /admin/users
    *
    * @param {Object} [params={}]
-   * @param {'buyer'|'seller'|'admin'} [params.role]
-   * @param {'active'|'suspended'} [params.status]
-   * @param {string} [params.search]
-   * @param {number} [params.page=1]
-   * @param {number} [params.per_page=20]
    * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
    */
   async getUsers(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getUsers(params);
+    }
+
     const response = await apiClient.get('/admin/users', { params });
     return {
       data: response.data || [],
@@ -35,6 +36,10 @@ export const adminService = {
    * @returns {Promise<Object>}
    */
   async updateUserStatus(id, status) {
+    if (isMockMode()) {
+      return mockStore.updateUserStatus(id, status);
+    }
+
     const response = await apiClient.patch(`/admin/users/${id}/status`, {
       status,
     });
@@ -46,13 +51,13 @@ export const adminService = {
    * Endpoint: GET /admin/sellers
    *
    * @param {Object} [params={}]
-   * @param {'pending'|'approved'|'rejected'|'suspended'} [params.approval_status]
-   * @param {string} [params.search]
-   * @param {number} [params.page=1]
-   * @param {number} [params.per_page=20]
    * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
    */
   async getSellers(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getAdminSellers(params);
+    }
+
     const response = await apiClient.get('/admin/sellers', { params });
     return {
       data: response.data || [],
@@ -71,6 +76,10 @@ export const adminService = {
    * @returns {Promise<Object>}
    */
   async updateSellerStatus(id, approvalStatus, rejectionReason = '') {
+    if (isMockMode()) {
+      return mockStore.updateSellerStatus(id, approvalStatus, rejectionReason);
+    }
+
     const response = await apiClient.patch(`/admin/sellers/${id}/status`, {
       approval_status: approvalStatus,
       rejection_reason: rejectionReason,
@@ -85,6 +94,10 @@ export const adminService = {
    * @returns {Promise<Record<string, any>>}
    */
   async getSettings() {
+    if (isMockMode()) {
+      return mockStore.getSettings();
+    }
+
     const response = await apiClient.get('/admin/settings');
     return response.data;
   },
@@ -97,6 +110,10 @@ export const adminService = {
    * @returns {Promise<Record<string, any>>}
    */
   async updateSettings(settings) {
+    if (isMockMode()) {
+      return mockStore.updateSettings(settings);
+    }
+
     const response = await apiClient.put('/admin/settings', settings);
     return response.data;
   },
@@ -106,14 +123,13 @@ export const adminService = {
    * Endpoint: GET /admin/audit-logs
    *
    * @param {Object} [params={}]
-   * @param {string|number} [params.user_id]
-   * @param {string} [params.action]
-   * @param {string} [params.entity_type]
-   * @param {number} [params.page=1]
-   * @param {number} [params.per_page=20]
    * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
    */
   async getAuditLogs(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getAuditLogs(params);
+    }
+
     const response = await apiClient.get('/admin/audit-logs', { params });
     return {
       data: response.data || [],
@@ -136,6 +152,10 @@ export const adminService = {
    * }>}
    */
   async getStats() {
+    if (isMockMode()) {
+      return mockStore.getAdminStats();
+    }
+
     const response = await apiClient.get('/admin/stats');
     return response.data;
   },

@@ -1,8 +1,10 @@
 import { apiClient } from './apiClient.js';
+import { isMockMode } from './mockSwitch.js';
+import { mockStore } from '../data/mockStore.js';
 
 /**
  * Category Management Service
- * Conforms to SRS 4.4, ADM-05, and BR-09.
+ * Conforms to SRS 4.4, ADM-05, BR-09, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const categoryService = {
   /**
@@ -10,10 +12,13 @@ export const categoryService = {
    * Endpoint: GET /categories
    *
    * @param {Object} [params={}]
-   * @param {boolean} [params.all=false] - Whether to include inactive categories (Admin).
    * @returns {Promise<Array>}
    */
   async getCategories(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getCategories(params);
+    }
+
     const response = await apiClient.get('/categories', { params });
     return response.data || [];
   },
@@ -26,6 +31,10 @@ export const categoryService = {
    * @returns {Promise<Object>}
    */
   async getCategoryById(id) {
+    if (isMockMode()) {
+      return mockStore.getCategoryById(id);
+    }
+
     const response = await apiClient.get(`/categories/${id}`);
     return response.data;
   },
@@ -35,12 +44,13 @@ export const categoryService = {
    * Endpoint: POST /categories
    *
    * @param {Object} categoryData
-   * @param {string} categoryData.name
-   * @param {string} [categoryData.description]
-   * @param {boolean} [categoryData.is_active=true]
    * @returns {Promise<Object>}
    */
   async createCategory(categoryData) {
+    if (isMockMode()) {
+      return mockStore.createCategory(categoryData);
+    }
+
     const response = await apiClient.post('/categories', categoryData);
     return response.data;
   },
@@ -54,6 +64,10 @@ export const categoryService = {
    * @returns {Promise<Object>}
    */
   async updateCategory(id, categoryData) {
+    if (isMockMode()) {
+      return mockStore.updateCategory(id, categoryData);
+    }
+
     const response = await apiClient.put(`/categories/${id}`, categoryData);
     return response.data;
   },
@@ -67,6 +81,10 @@ export const categoryService = {
    * @returns {Promise<void>}
    */
   async deleteCategory(id) {
+    if (isMockMode()) {
+      return mockStore.deleteCategory(id);
+    }
+
     const response = await apiClient.delete(`/categories/${id}`);
     return response.data;
   },

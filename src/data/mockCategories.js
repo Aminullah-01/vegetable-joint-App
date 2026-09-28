@@ -1,0 +1,111 @@
+/**
+ * Mock Categories conforming to `categories` table in vegetable_joint_schema.sql
+ * Seed data matches SRS Section 5.5 and §10.
+ */
+export const mockCategories = [
+  {
+    id: 1,
+    name: 'Tomato',
+    slug: 'tomato',
+    description: 'Fresh farm tomatoes, plum, cherry, and paste varieties.',
+    is_active: true,
+    products_count: 3,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 2,
+    name: 'Pepper',
+    slug: 'pepper',
+    description:
+      'Peppers including habanero (ata rodo), tatashe, chilli, and bell peppers.',
+    is_active: true,
+    products_count: 3,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 3,
+    name: 'Onion',
+    slug: 'onion',
+    description: 'Dry red onions, white onions, and spring onions.',
+    is_active: true,
+    products_count: 2,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 4,
+    name: 'Carrot',
+    slug: 'carrot',
+    description: 'Sweet, crunchy farm carrots fresh from the Jos plateau.',
+    is_active: true,
+    products_count: 2,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 5,
+    name: 'Cabbage',
+    slug: 'cabbage',
+    description: 'Crisp green and purple head cabbage.',
+    is_active: true,
+    products_count: 1,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 6,
+    name: 'Spinach',
+    slug: 'spinach',
+    description:
+      'Leafy greens: Efo Shoko, Alayyaho, and traditional vegetable leaves.',
+    is_active: true,
+    products_count: 3,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 7,
+    name: 'Lettuce',
+    slug: 'lettuce',
+    description: 'Crisp iceberg, romaine, and leaf lettuce for salads.',
+    is_active: true,
+    products_count: 1,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 8,
+    name: 'Cucumber',
+    slug: 'cucumber',
+    description: 'Fresh, juicy cucumbers suitable for snacking and salads.',
+    is_active: true,
+    products_count: 2,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 9,
+    name: 'Potato',
+    slug: 'potato',
+    description: 'Irish potatoes from Plateau State and sweet potatoes.',
+    is_active: true,
+    products_count: 2,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 10,
+    name: 'Other vegetables',
+    slug: 'other-vegetables',
+    description:
+      'Fluted pumpkin (Ugwu), bitter leaf, scent leaf, okra, and green beans.',
+    is_active: true,
+    products_count: 3,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+];
+
+export default mockCategories;

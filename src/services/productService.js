@@ -1,8 +1,11 @@
 import { apiClient } from './apiClient.js';
+import { isMockMode } from './mockSwitch.js';
+import { mockStore } from '../data/mockStore.js';
 
 /**
  * Product & Catalog Service
- * Conforms to SRS 4.4, MKT-01 to MKT-06, SRCH-01 to SRCH-08, SEL-02 to SEL-07, and CART-08.
+ * Conforms to SRS 4.4, MKT-01 to MKT-06, SRCH-01 to SRCH-08, SEL-02 to SEL-07,
+ * and NFR-MAIN-02 (Mock/API Switch).
  */
 export const productService = {
   /**
@@ -10,19 +13,13 @@ export const productService = {
    * Endpoint: GET /products
    *
    * @param {Object} [params={}]
-   * @param {string} [params.q] - Search query.
-   * @param {string|number} [params.category] - Category slug or ID.
-   * @param {number} [params.min_price] - Minimum price in Naira.
-   * @param {number} [params.max_price] - Maximum price in Naira.
-   * @param {'in_stock'|'low_stock'|'out_of_stock'} [params.availability] - Stock availability.
-   * @param {string|number} [params.seller] - Seller ID or slug.
-   * @param {string} [params.location] - Geographical location/State.
-   * @param {'price_asc'|'price_desc'|'newest'|'rating'} [params.sort] - Sorting rule.
-   * @param {number} [params.page=1] - Current page number.
-   * @param {number} [params.per_page=20] - Number of items per page (capped at 50 per IF-04).
    * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
    */
   async getProducts(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getProducts(params);
+    }
+
     const response = await apiClient.get('/products', { params });
     return {
       data: response.data || [],
@@ -39,6 +36,10 @@ export const productService = {
    * @returns {Promise<Object>}
    */
   async getProductById(id) {
+    if (isMockMode()) {
+      return mockStore.getProductById(id);
+    }
+
     const response = await apiClient.get(`/products/${id}`);
     return response.data;
   },
@@ -52,6 +53,10 @@ export const productService = {
    * @returns {Promise<Object>}
    */
   async createProduct(productData) {
+    if (isMockMode()) {
+      return mockStore.createProduct(productData);
+    }
+
     let response;
     if (typeof FormData !== 'undefined' && productData instanceof FormData) {
       response = await apiClient.upload('/products', productData);
@@ -71,9 +76,12 @@ export const productService = {
    * @returns {Promise<Object>}
    */
   async updateProduct(id, productData) {
+    if (isMockMode()) {
+      return mockStore.updateProduct(id, productData);
+    }
+
     let response;
     if (typeof FormData !== 'undefined' && productData instanceof FormData) {
-      // In Laravel, PUT with multipart sometimes uses POST with _method=PUT or POST /products/{id}
       response = await apiClient.upload(`/products/${id}`, productData, {
         method: 'POST',
       });
@@ -91,6 +99,10 @@ export const productService = {
    * @returns {Promise<void>}
    */
   async deleteProduct(id) {
+    if (isMockMode()) {
+      return mockStore.deleteProduct(id);
+    }
+
     const response = await apiClient.delete(`/products/${id}`);
     return response.data;
   },
@@ -103,6 +115,10 @@ export const productService = {
    * @returns {Promise<{ is_valid: boolean, items: Array, has_price_changes: boolean, has_stock_issues: boolean }>}
    */
   async validateCart(items) {
+    if (isMockMode()) {
+      return mockStore.validateCart(items);
+    }
+
     const response = await apiClient.post('/cart/validate', { items });
     return response.data;
   },

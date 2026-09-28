@@ -1,8 +1,10 @@
 import { apiClient } from './apiClient.js';
+import { isMockMode } from './mockSwitch.js';
+import { mockStore } from '../data/mockStore.js';
 
 /**
  * Seller Management & Portal Service
- * Conforms to SRS 4.4, SEL-01 through SEL-14, and BR-08, BR-11, BR-12.
+ * Conforms to SRS 4.4, SEL-01 through SEL-14, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const sellerService = {
   /**
@@ -10,13 +12,13 @@ export const sellerService = {
    * Endpoint: GET /sellers
    *
    * @param {Object} [params={}]
-   * @param {string} [params.location] - Filter by state/location.
-   * @param {string} [params.search] - Search by business name.
-   * @param {number} [params.page=1]
-   * @param {number} [params.per_page=20]
    * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
    */
   async getPublicSellers(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getPublicSellers(params);
+    }
+
     const response = await apiClient.get('/sellers', { params });
     return {
       data: response.data || [],
@@ -33,6 +35,10 @@ export const sellerService = {
    * @returns {Promise<Object>}
    */
   async getPublicSellerById(id) {
+    if (isMockMode()) {
+      return mockStore.getPublicSellerById(id);
+    }
+
     const response = await apiClient.get(`/sellers/${id}`);
     return response.data;
   },
@@ -42,13 +48,14 @@ export const sellerService = {
    * Endpoint: GET /seller/products
    *
    * @param {Object} [params={}]
-   * @param {'in_stock'|'low_stock'|'out_of_stock'} [params.availability]
-   * @param {string} [params.search]
-   * @param {number} [params.page=1]
-   * @param {number} [params.per_page=20]
    * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
    */
   async getSellerProducts(params = {}) {
+    if (isMockMode()) {
+      const sellerId = mockStore.sellers[0]?.id || 1;
+      return mockStore.getProducts({ ...params, seller: sellerId });
+    }
+
     const response = await apiClient.get('/seller/products', { params });
     return {
       data: response.data || [],
@@ -63,12 +70,13 @@ export const sellerService = {
    *
    * @param {string|number} id - Product ID.
    * @param {Object} stockData
-   * @param {number} stockData.quantity - Updated stock count.
-   * @param {'in_stock'|'low_stock'|'out_of_stock'} [stockData.availability]
-   * @param {number} [stockData.low_stock_threshold]
    * @returns {Promise<Object>}
    */
   async updateProductStock(id, stockData) {
+    if (isMockMode()) {
+      return mockStore.updateProduct(id, stockData);
+    }
+
     const response = await apiClient.patch(`/products/${id}/stock`, stockData);
     return response.data;
   },
@@ -86,6 +94,10 @@ export const sellerService = {
    * }>}
    */
   async getSellerDashboard() {
+    if (isMockMode()) {
+      return mockStore.getSellerDashboard();
+    }
+
     const response = await apiClient.get('/seller/dashboard');
     return response.data;
   },

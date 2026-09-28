@@ -1,8 +1,10 @@
 import { apiClient } from './apiClient.js';
+import { isMockMode } from './mockSwitch.js';
+import { mockStore } from '../data/mockStore.js';
 
 /**
  * Authentication & Profile Service
- * Conforms to SRS 4.4, AUTH-01 through AUTH-13, and CON-02.
+ * Conforms to SRS 4.4, AUTH-01 through AUTH-13, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const authService = {
   /**
@@ -10,17 +12,17 @@ export const authService = {
    * Endpoint: POST /auth/register
    *
    * @param {Object} payload
-   * @param {string} payload.name - Full name.
-   * @param {string} payload.email - Email address.
-   * @param {string} payload.password - Password.
-   * @param {string} [payload.password_confirmation] - Password confirmation.
-   * @param {'buyer'|'seller'} payload.role - Desired user role.
-   * @param {string} [payload.phone] - Phone number.
-   * @param {string} [payload.business_name] - Business name (if seller).
-   * @param {string} [payload.location] - Location/State (if seller).
    * @returns {Promise<{ user: Object, token?: string }>}
    */
   async register(payload) {
+    if (isMockMode()) {
+      const result = mockStore.registerUser(payload);
+      if (result?.token) {
+        apiClient.setToken(result.token);
+      }
+      return result;
+    }
+
     const response = await apiClient.post('/auth/register', payload, {
       skipAuth: true,
     });
@@ -35,11 +37,17 @@ export const authService = {
    * Endpoint: POST /auth/login
    *
    * @param {Object} credentials
-   * @param {string} credentials.email
-   * @param {string} credentials.password
    * @returns {Promise<{ user: Object, token: string }>}
    */
   async login(credentials) {
+    if (isMockMode()) {
+      const result = mockStore.loginUser(credentials);
+      if (result?.token) {
+        apiClient.setToken(result.token);
+      }
+      return result;
+    }
+
     const response = await apiClient.post('/auth/login', credentials, {
       skipAuth: true,
     });
@@ -56,6 +64,12 @@ export const authService = {
    * @returns {Promise<void>}
    */
   async logout() {
+    if (isMockMode()) {
+      mockStore.logoutUser();
+      apiClient.clearToken();
+      return;
+    }
+
     try {
       await apiClient.post('/auth/logout', {});
     } finally {
@@ -68,10 +82,13 @@ export const authService = {
    * Endpoint: POST /auth/forgot-password
    *
    * @param {Object} data
-   * @param {string} data.email
    * @returns {Promise<{ message: string }>}
    */
   async forgotPassword(data) {
+    if (isMockMode()) {
+      return { message: 'Password reset link sent to your email.' };
+    }
+
     const response = await apiClient.post('/auth/forgot-password', data, {
       skipAuth: true,
     });
@@ -83,13 +100,13 @@ export const authService = {
    * Endpoint: POST /auth/reset-password
    *
    * @param {Object} data
-   * @param {string} data.token
-   * @param {string} data.email
-   * @param {string} data.password
-   * @param {string} [data.password_confirmation]
    * @returns {Promise<{ message: string }>}
    */
   async resetPassword(data) {
+    if (isMockMode()) {
+      return { message: 'Password has been reset successfully.' };
+    }
+
     const response = await apiClient.post('/auth/reset-password', data, {
       skipAuth: true,
     });
@@ -103,6 +120,10 @@ export const authService = {
    * @returns {Promise<Object>}
    */
   async getProfile() {
+    if (isMockMode()) {
+      return mockStore.getCurrentProfile();
+    }
+
     const response = await apiClient.get('/profile');
     return response.data;
   },
@@ -115,6 +136,10 @@ export const authService = {
    * @returns {Promise<Object>}
    */
   async updateProfile(data) {
+    if (isMockMode()) {
+      return mockStore.updateProfile(data);
+    }
+
     const response = await apiClient.put('/profile', data);
     return response.data;
   },

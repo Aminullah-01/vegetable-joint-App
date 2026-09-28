@@ -1,6 +1,8 @@
 import { Routes, Route } from 'react-router-dom';
 import { MainLayout, DashboardLayout } from '../components/layout';
 import { ROUTES } from './routeConfig';
+import { ProtectedRoute } from './ProtectedRoute';
+import { GuestRoute } from './GuestRoute';
 
 // Page Imports
 import {
@@ -77,23 +79,29 @@ export function AppRoutes() {
         <Route path={ROUTES.SELLER_PROFILE} element={<SellerProfile />} />
         <Route path={ROUTES.CART} element={<Cart />} />
 
-        {/* Guest / Auth Routes */}
-        <Route path={ROUTES.LOGIN} element={<Login />} />
-        <Route path={ROUTES.REGISTER} element={<Register />} />
-        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
-        <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+        {/* Guest / Auth Routes (Restricted to unauthenticated visitors) */}
+        <Route element={<GuestRoute />}>
+          <Route path={ROUTES.LOGIN} element={<Login />} />
+          <Route path={ROUTES.REGISTER} element={<Register />} />
+          <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
+          <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
+        </Route>
 
-        {/* Buyer Routes */}
-        <Route path={ROUTES.CHECKOUT} element={<Checkout />} />
-        <Route
-          path={ROUTES.ORDER_CONFIRMATION}
-          element={<OrderConfirmation />}
-        />
-        <Route path={ROUTES.MY_ORDERS} element={<MyOrders />} />
-        <Route path={ROUTES.ORDER_DETAIL} element={<OrderDetail />} />
+        {/* Buyer Routes (Protected: unauthenticated -> login; non-buyer -> 403) */}
+        <Route element={<ProtectedRoute allowedRoles={['buyer']} />}>
+          <Route path={ROUTES.CHECKOUT} element={<Checkout />} />
+          <Route
+            path={ROUTES.ORDER_CONFIRMATION}
+            element={<OrderConfirmation />}
+          />
+          <Route path={ROUTES.MY_ORDERS} element={<MyOrders />} />
+          <Route path={ROUTES.ORDER_DETAIL} element={<OrderDetail />} />
+        </Route>
 
-        {/* Account Profile Route */}
-        <Route path={ROUTES.PROFILE} element={<Profile />} />
+        {/* Authenticated Account Profile Route (Any logged in role) */}
+        <Route element={<ProtectedRoute />}>
+          <Route path={ROUTES.PROFILE} element={<Profile />} />
+        </Route>
 
         {/* Error Routes */}
         <Route path={ROUTES.FORBIDDEN} element={<Forbidden />} />
@@ -101,14 +109,16 @@ export function AppRoutes() {
         <Route path={ROUTES.SERVER_ERROR} element={<ServerError />} />
       </Route>
 
-      {/* Seller Dashboard Routes */}
+      {/* Seller Dashboard Routes (Protected: seller role only) */}
       <Route
         element={
-          <DashboardLayout
-            title="Seller Portal"
-            role="seller"
-            navItems={sellerNavItems}
-          />
+          <ProtectedRoute allowedRoles={['seller']}>
+            <DashboardLayout
+              title="Seller Portal"
+              role="seller"
+              navItems={sellerNavItems}
+            />
+          </ProtectedRoute>
         }
       >
         <Route path={ROUTES.SELLER_OVERVIEW} element={<SellerOverview />} />
@@ -130,14 +140,16 @@ export function AppRoutes() {
         <Route path={ROUTES.SELLER_SALES} element={<SellerSales />} />
       </Route>
 
-      {/* Admin Dashboard Routes */}
+      {/* Admin Dashboard Routes (Protected: admin role only) */}
       <Route
         element={
-          <DashboardLayout
-            title="Admin Portal"
-            role="admin"
-            navItems={adminNavItems}
-          />
+          <ProtectedRoute allowedRoles={['admin']}>
+            <DashboardLayout
+              title="Admin Portal"
+              role="admin"
+              navItems={adminNavItems}
+            />
+          </ProtectedRoute>
         }
       >
         <Route path={ROUTES.ADMIN_OVERVIEW} element={<AdminOverview />} />

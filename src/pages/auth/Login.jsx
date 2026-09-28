@@ -1,8 +1,56 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks';
+import { STRINGS } from '../../constants';
+import { getPostLoginRedirect } from '../../routes';
 
 export function Login() {
+  const { login } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Check if user was redirected from a protected route
+  const fromLocation = location.state?.from;
+  const redirectNotice = fromLocation
+    ? 'Please sign in to access that page.'
+    : null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setErrorMessage(STRINGS.ERRORS.REQUIRED_FIELD);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      const response = await login({ email, password });
+      const userRole = response?.user?.role;
+      // Post-login redirect logic strictly adhering to AUTH-07, AUTH-13, and FE-015
+      const destination = getPostLoginRedirect(userRole, fromLocation);
+      navigate(destination, { replace: true });
+    } catch (err) {
+      setErrorMessage(err?.message || STRINGS.ERRORS.INVALID_CREDENTIALS);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleQuickFill = (demoEmail, demoPassword = 'password123') => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setErrorMessage('');
+  };
+
   return (
-    <div style={{ maxWidth: '420px', margin: '2rem auto', width: '100%' }}>
+    <div style={{ maxWidth: '440px', margin: '2rem auto', width: '100%' }}>
       <div
         style={{
           backgroundColor: '#ffffff',
@@ -13,7 +61,13 @@ export function Login() {
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <span style={{ fontSize: '2.5rem' }}>🥦</span>
+          <span
+            style={{ fontSize: '2.5rem' }}
+            role="img"
+            aria-label="Vegetable"
+          >
+            🥦
+          </span>
           <h1
             style={{
               fontSize: '1.5rem',
@@ -24,13 +78,52 @@ export function Login() {
             Sign In to Vegetable Joint
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>
-            Access buyer or seller dashboard (SRS: AUTH-04)
+            Access buyer, seller, or admin areas (SRS: AUTH-04, AUTH-07)
           </p>
         </div>
 
+        {/* Redirect Notice Banner */}
+        {redirectNotice && (
+          <div
+            style={{
+              backgroundColor: '#fef3c7',
+              color: '#92400e',
+              border: '1px solid #fde68a',
+              borderRadius: '6px',
+              padding: '0.75rem',
+              fontSize: '0.85rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <span>🔒</span>
+            <span>{redirectNotice}</span>
+          </div>
+        )}
+
+        {/* Error Alert */}
+        {errorMessage && (
+          <div
+            style={{
+              backgroundColor: '#fee2e2',
+              color: '#b91c1c',
+              border: '1px solid #fca5a5',
+              borderRadius: '6px',
+              padding: '0.75rem',
+              fontSize: '0.85rem',
+              marginBottom: '1.25rem',
+            }}
+            role="alert"
+          >
+            {errorMessage}
+          </div>
+        )}
+
         <form
           style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={handleSubmit}
         >
           <div>
             <label
@@ -40,6 +133,7 @@ export function Login() {
                 fontSize: '0.85rem',
                 fontWeight: '500',
                 marginBottom: '0.25rem',
+                color: '#334155',
               }}
             >
               Email Address
@@ -47,13 +141,18 @@ export function Login() {
             <input
               id="login-email"
               type="email"
-              placeholder="e.g. buyer@example.ng"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. buyer@example.com"
+              required
+              disabled={isSubmitting}
               style={{
                 width: '100%',
-                padding: '0.6rem 0.8rem',
+                padding: '0.65rem 0.8rem',
                 borderRadius: '6px',
                 border: '1px solid #cbd5e1',
                 boxSizing: 'border-box',
+                fontSize: '0.9rem',
               }}
             />
           </div>
@@ -66,6 +165,7 @@ export function Login() {
                 fontSize: '0.85rem',
                 fontWeight: '500',
                 marginBottom: '0.25rem',
+                color: '#334155',
               }}
             >
               Password
@@ -73,13 +173,18 @@ export function Login() {
             <input
               id="login-password"
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              required
+              disabled={isSubmitting}
               style={{
                 width: '100%',
-                padding: '0.6rem 0.8rem',
+                padding: '0.65rem 0.8rem',
                 borderRadius: '6px',
                 border: '1px solid #cbd5e1',
                 boxSizing: 'border-box',
+                fontSize: '0.9rem',
               }}
             />
           </div>
@@ -101,6 +206,7 @@ export function Login() {
 
           <button
             type="submit"
+            disabled={isSubmitting}
             style={{
               backgroundColor: '#15803d',
               color: '#ffffff',
@@ -108,18 +214,92 @@ export function Login() {
               borderRadius: '6px',
               border: 'none',
               fontWeight: '600',
-              cursor: 'pointer',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
               fontSize: '0.95rem',
+              opacity: isSubmitting ? 0.7 : 1,
+              transition: 'background-color 0.2s',
             }}
           >
-            Sign In
+            {isSubmitting ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        {/* Quick Demo Role Selectors (Facilitates testing FE-015 route guards) */}
+        <div
+          style={{
+            marginTop: '1.5rem',
+            paddingTop: '1rem',
+            borderTop: '1px dashed #e2e8f0',
+          }}
+        >
+          <p
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: '#64748b',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '0.5rem',
+              textAlign: 'center',
+            }}
+          >
+            Quick Role Switcher for Testing (AUTH-07):
+          </p>
+          <div
+            style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}
+          >
+            <button
+              type="button"
+              onClick={() => handleQuickFill('buyer@example.com')}
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '4px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#f8fafc',
+                cursor: 'pointer',
+                color: '#0f172a',
+              }}
+            >
+              🛒 Buyer
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('seller@arewafarms.ng')}
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '4px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#f8fafc',
+                cursor: 'pointer',
+                color: '#0f172a',
+              }}
+            >
+              🌾 Seller
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('admin@example.com')}
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '4px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#f8fafc',
+                cursor: 'pointer',
+                color: '#0f172a',
+              }}
+            >
+              ⚙️ Admin
+            </button>
+          </div>
+        </div>
 
         <div
           style={{
             textAlign: 'center',
-            marginTop: '1.5rem',
+            marginTop: '1.25rem',
             fontSize: '0.85rem',
             color: '#64748b',
           }}
