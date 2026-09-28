@@ -176,6 +176,7 @@ export const STRINGS = {
     // Mandated verbatim by ERR-01:
     PRODUCT_NOT_FOUND: 'Product not found.',
     UNABLE_TO_LOAD_PRODUCTS: 'Unable to load products. Please try again.',
+    UNABLE_TO_LOAD: 'Unable to load content. Please try again.',
     CART_EMPTY: 'Your cart is empty.',
     INVALID_CREDENTIALS: 'Invalid login credentials.',
     PRODUCT_UNAVAILABLE: 'This product is currently unavailable.',
@@ -198,6 +199,27 @@ export const STRINGS = {
     INVALID_EMAIL: 'Please enter a valid email address.',
     NETWORK_ERROR:
       'Unable to connect to the network. Please check your internet connection.',
+  },
+
+  // Empty UI States (Figma UI Section 16 & MKT-10)
+  EMPTY: {
+    CART_TITLE: 'Your cart is empty',
+    CART_DESCRIPTION:
+      'Explore our fresh farm produce and add vegetables to your basket.',
+    ORDERS_TITLE: 'No orders yet',
+    ORDERS_DESCRIPTION:
+      'You have not placed any orders yet. Fresh farm vegetables are waiting for you.',
+    PRODUCTS_TITLE: 'No vegetables found',
+    PRODUCTS_DESCRIPTION:
+      'There are no vegetables available matching your criteria at this moment.',
+    SEARCH_TITLE: 'No matching vegetables found',
+    SEARCH_DESCRIPTION:
+      'Try adjusting your search terms or clearing selected filters to find produce.',
+    SELLERS_TITLE: 'No sellers found',
+    SELLERS_DESCRIPTION:
+      'No verified vegetable sellers currently match your filter criteria.',
+    DEFAULT_TITLE: 'Nothing here yet',
+    DEFAULT_DESCRIPTION: 'No items or records to display at this moment.',
   },
 
   // Common UI Button Labels

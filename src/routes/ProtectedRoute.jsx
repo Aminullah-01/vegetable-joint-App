@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks';
 import { ROUTES } from './routeConfig.js';
 import { isRoleAllowed } from './navigationHelpers.js';
+import { Spinner } from '../components/common/Spinner.jsx';
 
 /**
  * Route guard component enforcing authentication and role-based authorization.
@@ -22,35 +23,7 @@ export function ProtectedRoute({ allowedRoles, redirectPath, children }) {
 
   // Wait for session verification on mount/refresh
   if (isLoading) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '60vh',
-          gap: '1rem',
-          color: '#64748b',
-        }}
-        data-testid="route-guard-loading"
-      >
-        <div
-          className="animate-spin"
-          style={{
-            width: '36px',
-            height: '36px',
-            border: '3px solid #e2e8f0',
-            borderTopColor: '#15803d',
-            borderRadius: '50%',
-          }}
-          aria-hidden="true"
-        />
-        <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: '500' }}>
-          Verifying authorization...
-        </p>
-      </div>
-    );
+    return <Spinner size="lg" center text="Verifying authorization..." />;
   }
 
   // 1. Unauthenticated users: redirect to login and preserve origin

@@ -37,6 +37,7 @@ export function AuthProvider({ children }) {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
 
   // Sync token with ApiClient token provider
   useEffect(() => {
@@ -67,6 +68,16 @@ export function AuthProvider({ children }) {
     setTokenState(newToken);
     apiClient.setToken(newToken);
   }, []);
+
+  const dismissSessionExpired = useCallback(() => {
+    setIsSessionExpired(false);
+  }, []);
+
+  const triggerSessionExpired = useCallback(() => {
+    persistToken(null);
+    persistUser(null);
+    setIsSessionExpired(true);
+  }, [persistToken, persistUser]);
 
   /**
    * Log out the active session, invalidate token, and wipe credentials.
@@ -127,16 +138,18 @@ export function AuthProvider({ children }) {
 
     restoreSession();
 
-    // Register 401 interceptor
+    // Register 401 interceptor (ERR-04 session expired prompt)
     const unsubscribeUnauthorized = apiClient.onUnauthorized(() => {
-      logout();
+      persistToken(null);
+      persistUser(null);
+      setIsSessionExpired(true);
     });
 
     return () => {
       isMounted = false;
       unsubscribeUnauthorized();
     };
-  }, [logout, persistToken, persistUser, token]);
+  }, [persistToken, persistUser, token]);
 
   /**
    * Authenticate a user with email & password.
@@ -150,6 +163,7 @@ export function AuthProvider({ children }) {
     async (credentials) => {
       setIsLoading(true);
       setError(null);
+      setIsSessionExpired(false);
       try {
         const response = await authService.login(credentials);
         const authUser = response.user;
@@ -239,6 +253,9 @@ export function AuthProvider({ children }) {
       isAuthenticated,
       isLoading,
       error,
+      isSessionExpired,
+      dismissSessionExpired,
+      triggerSessionExpired,
       login,
       register,
       logout,
@@ -254,6 +271,9 @@ export function AuthProvider({ children }) {
       isAuthenticated,
       isLoading,
       error,
+      isSessionExpired,
+      dismissSessionExpired,
+      triggerSessionExpired,
       login,
       register,
       logout,

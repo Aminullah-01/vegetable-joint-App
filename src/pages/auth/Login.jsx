@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks';
+import { useAuth, useToast } from '../../hooks';
 import { STRINGS } from '../../constants';
 import { getPostLoginRedirect } from '../../routes';
 
 export function Login() {
   const { login } = useAuth();
+  const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -23,7 +24,9 @@ export function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setErrorMessage(STRINGS.ERRORS.REQUIRED_FIELD);
+      const requiredMsg = STRINGS.ERRORS.REQUIRED_FIELD;
+      setErrorMessage(requiredMsg);
+      toast.error(requiredMsg);
       return;
     }
 
@@ -33,20 +36,28 @@ export function Login() {
     try {
       const response = await login({ email, password });
       const userRole = response?.user?.role;
+      toast.success(`Welcome back, ${response?.user?.name || 'User'}!`);
       // Post-login redirect logic strictly adhering to AUTH-07, AUTH-13, and FE-015
       const destination = getPostLoginRedirect(userRole, fromLocation);
       navigate(destination, { replace: true });
     } catch (err) {
-      setErrorMessage(err?.message || STRINGS.ERRORS.INVALID_CREDENTIALS);
+      const errText = err?.message || STRINGS.ERRORS.INVALID_CREDENTIALS;
+      setErrorMessage(errText);
+      toast.error(errText);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleQuickFill = (demoEmail, demoPassword = 'password123') => {
+  const handleQuickFill = (
+    demoEmail,
+    demoPassword = 'password123',
+    demoRole = ''
+  ) => {
     setEmail(demoEmail);
     setPassword(demoPassword);
     setErrorMessage('');
+    toast.info(`Filled credentials for ${demoRole || demoEmail}`);
   };
 
   return (
@@ -250,7 +261,9 @@ export function Login() {
           >
             <button
               type="button"
-              onClick={() => handleQuickFill('buyer@example.com')}
+              onClick={() =>
+                handleQuickFill('buyer@example.com', 'password123', 'Buyer')
+              }
               style={{
                 fontSize: '0.75rem',
                 padding: '0.35rem 0.6rem',
@@ -265,7 +278,9 @@ export function Login() {
             </button>
             <button
               type="button"
-              onClick={() => handleQuickFill('seller@arewafarms.ng')}
+              onClick={() =>
+                handleQuickFill('seller@arewafarms.ng', 'password123', 'Seller')
+              }
               style={{
                 fontSize: '0.75rem',
                 padding: '0.35rem 0.6rem',
@@ -280,7 +295,9 @@ export function Login() {
             </button>
             <button
               type="button"
-              onClick={() => handleQuickFill('admin@example.com')}
+              onClick={() =>
+                handleQuickFill('admin@example.com', 'password123', 'Admin')
+              }
               style={{
                 fontSize: '0.75rem',
                 padding: '0.35rem 0.6rem',
