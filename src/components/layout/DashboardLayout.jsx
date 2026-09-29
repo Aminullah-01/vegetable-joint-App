@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { env } from '../../utils';
 import { useAuth } from '../../hooks';
+import { Spinner } from '../common/Spinner.jsx';
 
 export function DashboardLayout({ title, role, navItems }) {
   const { user, logout } = useAuth();
@@ -236,7 +237,13 @@ export function DashboardLayout({ title, role, navItems }) {
             boxSizing: 'border-box',
           }}
         >
-          <Outlet />
+          <Suspense
+            fallback={
+              <Spinner size="lg" center text="Loading dashboard page..." />
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

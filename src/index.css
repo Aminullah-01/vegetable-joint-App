@@ -320,6 +320,116 @@ textarea {
   background-color: var(--color-primary-50);
 }
 
+.btn-danger {
+  background-color: var(--color-error);
+  color: var(--color-text-inverse);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--color-error-text);
+  color: var(--color-text-inverse);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-primary);
+}
+
+.btn-accent {
+  background-color: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.btn-accent:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+  color: var(--color-text-inverse);
+}
+
+.btn-sm {
+  min-height: 38px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.btn-md {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.btn-lg {
+  min-height: 48px;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-base);
+}
+
+.btn-full-width {
+  width: 100%;
+}
+
+.btn:disabled,
+.btn-disabled {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* Accessible Links */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: inherit;
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.link-primary {
+  color: var(--color-primary);
+}
+
+.link-primary:hover {
+  color: var(--color-primary-hover);
+}
+
+.link-secondary {
+  color: var(--color-text-secondary);
+}
+
+.link-secondary:hover {
+  color: var(--color-text-primary);
+}
+
+.link-muted {
+  color: var(--color-text-muted);
+}
+
+.link-muted:hover {
+  color: var(--color-text-secondary);
+}
+
+.link-danger {
+  color: var(--color-error);
+}
+
+.link-danger:hover {
+  color: var(--color-error-text);
+}
+
+.link-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--space-2);
+}
+
 /* ==============================================================================
    Responsive Layout Shell & Horizontal Scroll Safeguards (NFR-COMP-02, UI-04)
    Adapts smoothly from 360px up to 1920px with zero horizontal scroll.
