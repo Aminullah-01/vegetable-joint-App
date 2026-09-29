@@ -168,7 +168,9 @@ class MockStore {
       location,
       sort = 'newest',
       page = 1,
-      per_page = 20,
+      // MKT-03: the public catalogue defaults to 12 listings per page.
+      // Other list endpoints retain their own API defaults.
+      per_page = 12,
     } = params;
 
     let results = this.products.filter((p) => !p.deleted_at);

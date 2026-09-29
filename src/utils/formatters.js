@@ -238,6 +238,24 @@ export function formatRelativeTime(dateInput) {
   return formatDate(date);
 }
 
+/**
+ * Formats a rating value (0–5, one decimal place) or returns "No ratings yet" (REV-01).
+ *
+ * @param {number|string|null|undefined} rating - Numeric rating or string.
+ * @returns {string} Formatted rating (e.g. "4.8", "5.0") or "No ratings yet".
+ */
+export function formatRating(rating) {
+  if (rating === null || rating === undefined || rating === '') {
+    return 'No ratings yet';
+  }
+  const num = Number(rating);
+  if (isNaN(num) || num <= 0) {
+    return 'No ratings yet';
+  }
+  const clamped = Math.min(5, Math.max(0, num));
+  return clamped.toFixed(1);
+}
+
 export default {
   TIMEZONE_LAGOS,
   formatCurrency,
@@ -249,4 +267,5 @@ export default {
   formatNumber,
   formatStock,
   formatRelativeTime,
+  formatRating,
 };

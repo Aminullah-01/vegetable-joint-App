@@ -71,7 +71,8 @@ export function queryMockProducts(params = {}) {
     location,
     sort = 'newest',
     page = 1,
-    per_page = 20,
+    // MKT-03: the public catalogue defaults to 12 listings per page.
+    per_page = 12,
   } = params;
 
   let results = [...mockProducts].filter((p) => !p.deleted_at);

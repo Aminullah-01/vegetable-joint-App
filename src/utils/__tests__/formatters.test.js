@@ -10,6 +10,7 @@ import {
   formatNumber,
   formatStock,
   formatRelativeTime,
+  formatRating,
 } from '../formatters.js';
 
 describe('Formatting Utilities (NFR-USAB-04, NFR-LOC-02, CON-07, DAT-06)', () => {
@@ -117,6 +118,28 @@ describe('Formatting Utilities (NFR-USAB-04, NFR-LOC-02, CON-07, DAT-06)', () =>
         Date.now() - 2 * 60 * 60 * 1000
       ).toISOString();
       expect(formatRelativeTime(twoHoursAgo)).toBe('2h ago');
+    });
+  });
+
+  describe('formatRating (REV-01)', () => {
+    it('formats numeric ratings with one decimal place', () => {
+      expect(formatRating(4.5)).toBe('4.5');
+      expect(formatRating(5)).toBe('5.0');
+      expect(formatRating(3)).toBe('3.0');
+    });
+
+    it('clamps values exceeding 5.0 to 5.0', () => {
+      expect(formatRating(5.8)).toBe('5.0');
+      expect(formatRating(10)).toBe('5.0');
+    });
+
+    it('returns "No ratings yet" for unrated, 0, or invalid input', () => {
+      expect(formatRating(null)).toBe('No ratings yet');
+      expect(formatRating(undefined)).toBe('No ratings yet');
+      expect(formatRating(0)).toBe('No ratings yet');
+      expect(formatRating(-1)).toBe('No ratings yet');
+      expect(formatRating('')).toBe('No ratings yet');
+      expect(formatRating('abc')).toBe('No ratings yet');
     });
   });
 });
