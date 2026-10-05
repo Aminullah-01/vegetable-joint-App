@@ -22,4 +22,18 @@ if (typeof window !== 'undefined') {
       dispatchEvent: () => false,
     }),
   });
+
+  if (!window.IntersectionObserver) {
+    class MockIntersectionObserver {
+      constructor(callback) {
+        this.callback = callback;
+      }
+      observe(element) {
+        this.callback([{ isIntersecting: true, target: element }]);
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+    window.IntersectionObserver = MockIntersectionObserver;
+  }
 }

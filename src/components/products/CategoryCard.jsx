@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { STRINGS } from '../../constants';
+import { LazyImage } from '../common/LazyImage';
 
 function getCategoryPath(category) {
   const categoryFilter = category.id ?? category.slug;
@@ -102,11 +103,14 @@ export function CategoryCard({
         }}
       >
         {image ? (
-          <img
+          <LazyImage
             src={image}
             alt={name}
-            loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            aspectRatio="auto"
+            width="100%"
+            height="100%"
+            fit="cover"
+            fallback={<span aria-hidden="true">{icon}</span>}
           />
         ) : (
           <span aria-hidden="true">{icon}</span>

@@ -5,4 +5,7 @@ export * from './formatters.js';
 export * from './pagination.js';
 export * from './filters.js';
 export * from './sorting.js';
+export * from './modal.js';
+export * from './orderStatus.js';
+export * from './image.js';
 export * from '../constants/index.js';

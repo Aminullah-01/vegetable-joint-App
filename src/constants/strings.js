@@ -163,6 +163,30 @@ export const STRINGS = {
     VIEW_ORDERS_BTN: 'View My Orders',
   },
 
+  // Order Status & History (ORD-02, ORD-05, ORD-06, ORD-07, FE-038)
+  ORDER_STATUS: {
+    PENDING: 'Pending',
+    CONFIRMED: 'Confirmed',
+    PROCESSING: 'Processing',
+    READY: 'Ready for Delivery',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+    UNKNOWN: 'Unknown',
+    DESCRIPTIONS: {
+      PENDING: 'Order placed by customer; awaiting seller confirmation.',
+      CONFIRMED: 'Order confirmed by seller.',
+      PROCESSING: 'Produce is being prepared and packed.',
+      READY: 'Package is ready for courier delivery or customer pickup.',
+      COMPLETED: 'Order successfully delivered and completed.',
+      CANCELLED: 'Order cancelled.',
+    },
+    TIMELINE_TITLE: 'Status History & Timeline',
+    NOTE_LABEL: 'Note',
+    REASON_LABEL: 'Cancellation Reason',
+    CHANGED_BY: (actor) => `Updated by ${actor}`,
+    NO_HISTORY: 'No status history recorded yet.',
+  },
+
   // Authentication & Accounts
   AUTH: {
     SIGN_IN_TITLE: 'Sign In to Vegetable Joint',
@@ -291,6 +315,41 @@ export const STRINGS = {
       'No verified vegetable sellers currently match your filter criteria.',
     DEFAULT_TITLE: 'Nothing here yet',
     DEFAULT_DESCRIPTION: 'No items or records to display at this moment.',
+  },
+
+  // Modal & Confirm Dialogs (SEL-04, ORD-07, FE-036)
+  MODAL: {
+    CLOSE: 'Close dialog',
+    CONFIRM: 'Confirm',
+    CANCEL: 'Cancel',
+    DELETE: 'Delete',
+    DELETE_TITLE: 'Confirm Deletion',
+    DELETE_PRODUCT_TITLE: 'Delete Vegetable Listing',
+    DELETE_PRODUCT_MESSAGE:
+      'Are you sure you want to delete this vegetable listing? In accordance with marketplace rules (SEL-04), this will be a soft delete: the listing will be removed from the marketplace and active seller catalog, while past orders and history remain intact.',
+    CANCEL_ORDER_TITLE: 'Cancel Order',
+    CANCEL_ORDER_MESSAGE: 'Are you sure you want to cancel this order?',
+    CANCELLATION_REASON_LABEL: 'Cancellation Reason',
+    CANCELLATION_REASON_HINT:
+      'A cancellation reason is required per marketplace rules (ORD-07) and will be visible to the customer.',
+    CANCELLATION_REASON_PLACEHOLDER:
+      'e.g. Produce out of stock, customer requested cancellation, unable to deliver to location...',
+    CANCELLATION_REASON_REQUIRED_ERROR:
+      'Please provide a cancellation reason before proceeding.',
+    OVERRIDE_TITLE: 'Confirm Override',
+    OVERRIDE_MESSAGE:
+      'Are you sure you want to proceed with this administrative override? This action will immediately update marketplace state.',
+  },
+
+  // Data Table (NFR-USAB-06, FE-037)
+  TABLE: {
+    EMPTY_TITLE: 'No records found',
+    EMPTY_DESCRIPTION: 'There are no items or data records to display.',
+    VIEW_AS_CARDS: 'Card View',
+    VIEW_AS_TABLE: 'Table View',
+    TOGGLE_VIEW: 'Switch view mode',
+    ACTIONS: 'Actions',
+    LOADING: 'Loading data...',
   },
 
   // Common UI Button Labels

@@ -5,6 +5,7 @@ import { formatPrice } from '../../utils';
 import { AvailabilityBadge } from '../common/AvailabilityBadge';
 import { RatingDisplay } from '../common/RatingDisplay';
 import { Button } from '../common/Button';
+import { LazyImage } from '../common/LazyImage';
 
 /**
  * ProductCard — Marketplace Vegetable Listing Card
@@ -39,7 +40,6 @@ export function ProductCard({
   className = '',
   style = {},
 }) {
-  const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // Normalize product properties whether passed as an object or individual props
@@ -123,42 +123,41 @@ export function ProductCard({
             textDecoration: 'none',
           }}
         >
-          {image && !imageError ? (
-            <img
-              src={image}
-              alt={name}
-              loading="lazy"
-              onError={() => setImageError(true)}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transform: isHovered ? 'scale(1.04)' : 'scale(1)',
-                transition: 'transform 0.3s ease',
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                backgroundColor: '#f0fdf4',
-                color: '#15803d',
-              }}
-            >
-              <span
-                style={{ fontSize: '3rem', lineHeight: 1 }}
-                role="img"
-                aria-label="Vegetable"
+          <LazyImage
+            src={image}
+            alt={name}
+            aspectRatio="auto"
+            width="100%"
+            height="100%"
+            fit="cover"
+            fallbackLabel="Vegetable"
+            fallback={
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: '#f0fdf4',
+                  color: '#15803d',
+                }}
               >
-                🥦
-              </span>
-            </div>
-          )}
+                <span
+                  style={{ fontSize: '3rem', lineHeight: 1 }}
+                  role="img"
+                  aria-label="Vegetable"
+                >
+                  🥦
+                </span>
+              </div>
+            }
+            imgStyle={{
+              transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+              transition: 'transform 0.3s ease',
+            }}
+          />
         </Link>
 
         {/* Availability Badge Overlay (MKT-02, SEL-07) */}

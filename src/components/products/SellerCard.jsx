@@ -5,6 +5,7 @@ import { STRINGS } from '../../constants';
 import { buildPath } from '../../routes/routeConfig';
 import { RatingDisplay } from '../common/RatingDisplay';
 import { Button } from '../common/Button';
+import { LazyImage } from '../common/LazyImage';
 
 function resolveProductCount(seller) {
   const raw =
@@ -50,7 +51,6 @@ export function SellerCard({
   className = '',
   style = {},
 }) {
-  const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // Accept the API/mock seller object or individual columns.
@@ -129,13 +129,20 @@ export function SellerCard({
             fontSize: '1.75rem',
           }}
         >
-          {image && !imageError ? (
-            <img
+          {image ? (
+            <LazyImage
               src={image}
               alt=""
-              loading="lazy"
-              onError={() => setImageError(true)}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              aspectRatio="1/1"
+              width="56px"
+              height="56px"
+              fit="cover"
+              borderRadius="50%"
+              fallback={
+                <span aria-hidden="true" style={{ lineHeight: 1 }}>
+                  👨‍🌾
+                </span>
+              }
             />
           ) : (
             <span aria-hidden="true" style={{ lineHeight: 1 }}>
