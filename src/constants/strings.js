@@ -62,11 +62,66 @@ export const STRINGS = {
     AVAILABLE_STOCK: (quantity) => `${quantity} available`,
     DECREASE_QUANTITY: 'Decrease quantity',
     INCREASE_QUANTITY: 'Increase quantity',
+    BROWSE_CATEGORY: (name) => `Browse ${name}`,
+    CATEGORY_PRODUCTS: (count) => `${count} products`,
     SELLER_LABEL: 'Seller',
     VIEW_DETAILS: 'View Details',
     ADD_TO_CART: 'Add to Cart 🛒',
     BACK_TO_PRODUCTS: '← Back to Vegetables',
     DELIVERY_AVAILABLE: 'Delivery within Lagos & major hubs available.',
+  },
+
+  // Keyword Search (SRCH-01) — shared by the navbar and the homepage hero
+  SEARCH: {
+    PLACEHOLDER: 'Search vegetables, categories, or sellers...',
+    NAVBAR_PLACEHOLDER: 'Search fresh vegetables, sellers...',
+    INPUT_LABEL: 'Search vegetables, categories, and sellers',
+    SUBMIT_LABEL: 'Submit search',
+    SUBMIT_TEXT: 'Go',
+    CLEAR_LABEL: 'Clear search query',
+    MOBILE_INPUT_LABEL: 'Search vegetables and sellers (mobile)',
+    MOBILE_SUBMIT_LABEL: 'Submit mobile search',
+    MOBILE_CLEAR_LABEL: 'Clear mobile search query',
+  },
+
+  // Filters Panel (SRCH-02, SRCH-03, SRCH-06, SRCH-08, FE-034)
+  FILTERS: {
+    TITLE: 'Filters',
+    CLEAR_ALL: 'Clear All',
+    APPLY: 'Apply Filters',
+    CATEGORY_LABEL: 'Category',
+    ALL_CATEGORIES: 'All Categories',
+    PRICE_RANGE_LABEL: 'Price Range (₦)',
+    MIN_PRICE_LABEL: 'Min Price',
+    MAX_PRICE_LABEL: 'Max Price',
+    MIN_PRICE_PLACEHOLDER: '0',
+    MAX_PRICE_PLACEHOLDER: '10,000',
+    AVAILABILITY_LABEL: 'Availability',
+    AVAILABILITY_ALL: 'All Statuses',
+    AVAILABILITY_IN_STOCK: 'In Stock Only',
+    AVAILABILITY_LOW_STOCK: 'Low Stock Only',
+    AVAILABILITY_OUT_OF_STOCK: 'Out of Stock Only',
+    SELLER_LABEL: 'Seller',
+    ALL_SELLERS: 'All Sellers',
+    LOCATION_LABEL: 'Location',
+    ALL_LOCATIONS: 'All Locations',
+    OPEN_MOBILE_FILTERS: 'Filters',
+    CLOSE_MOBILE_FILTERS: 'Close Filters',
+    ACTIVE_FILTERS: 'Active Filters',
+  },
+
+  // Sorting (SRCH-04, SRCH-05, FE-035)
+  SORT: {
+    LABEL: 'Sort by:',
+    ARIA_LABEL: 'Sort products by',
+    DEFAULT: 'newest',
+    OPTIONS: {
+      NEWEST: 'Newest First',
+      PRICE_ASC: 'Price: Low to High',
+      PRICE_DESC: 'Price: High to Low',
+      POPULARITY: 'Popularity',
+      RATING: 'Highest Rated',
+    },
   },
 
   // Cart
@@ -137,6 +192,19 @@ export const STRINGS = {
     BACK_TO_SIGN_IN: '← Back to Sign In',
     SELLER_PENDING_APPROVAL:
       'Your seller registration is currently under review by administrators. You will receive access once approved.',
+  },
+
+  // Public Seller Discovery (MKT-01 featured sellers, MKT-07 seller profile)
+  SELLERS: {
+    FEATURED_TITLE: 'Featured Sellers',
+    FEATURED_SUBTITLE:
+      'Buy fresh produce directly from verified farmers and vegetable vendors across Nigeria.',
+    VIEW_SELLER: 'View Seller',
+    VERIFIED_SELLER: 'Verified Seller',
+    LOCATION_LABEL: 'Location',
+    PRODUCTS_LABEL: (count) =>
+      `${count} ${Number(count) === 1 ? 'product' : 'products'}`,
+    SELLER_PROFILE_LABEL: (name) => `View seller profile for ${name}`,
   },
 
   // Seller Dashboard

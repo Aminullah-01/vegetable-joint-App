@@ -3,21 +3,23 @@ import PropTypes from 'prop-types';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { env } from '../../utils';
 import { useAuth, useCart } from '../../hooks';
+import { STRINGS } from '../../constants';
 import { mockCategories } from '../../data/mockCategories';
 import { categoryService } from '../../services/categoryService';
+import { SearchBar } from './SearchBar';
 
 /**
  * Navbar — Digital Vegetable Marketplace Shared Navigation Header
- * Conforms to SRS UI-01, UI-07, CART-07, and Task FE-022 acceptance criteria:
+ * Conforms to SRS UI-01, UI-07, CART-07, SRCH-01, and Task FE-022 acceptance criteria:
  * - Logo & Branding with link to homepage
- * - Search bar with instant navigation to product search
+ * - Search bar (shared FE-033 SearchBar) with instant navigation to product search
  * - Categories link with quick-browse dropdown
  * - Cart indicator with real-time item count badge (CART-07)
  * - Role-dependent navigation & account menu (UI-07: guest, buyer, seller, admin)
  * - Responsive desktop navigation and mobile drawer with touch targets >= 44px
  */
 export function Navbar({
-  searchPlaceholder = 'Search fresh vegetables, sellers...',
+  searchPlaceholder = STRINGS.SEARCH.NAVBAR_PLACEHOLDER,
   onSearch,
   showCategoriesDropdown = true,
 }) {
@@ -25,9 +27,6 @@ export function Navbar({
   const { itemCount } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Search input state
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Mobile menu toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -62,15 +61,6 @@ export function Navbar({
     };
   }, []);
 
-  // Sync search input when search query changes in URL
-  const currentSearchParam =
-    new URLSearchParams(location.search).get('search') || '';
-  const [prevSearchParam, setPrevSearchParam] = useState(currentSearchParam);
-  if (prevSearchParam !== currentSearchParam) {
-    setPrevSearchParam(currentSearchParam);
-    setSearchQuery(currentSearchParam);
-  }
-
   // Reset dropdowns and mobile menu on route change
   const [prevPathname, setPrevPathname] = useState(location.pathname);
   if (prevPathname !== location.pathname) {
@@ -96,24 +86,19 @@ export function Navbar({
     };
   }, []);
 
-  // Search submission handler
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
+  // Search submission handler. SearchBar owns the keyword; the navbar only
+  // routes the search and closes the mobile drawer (SRCH-01, SRCH-06).
+  const handleSearch = (query) => {
     if (onSearch) {
       onSearch(query);
+      return;
+    }
+    if (query) {
+      navigate(`/products?search=${encodeURIComponent(query)}`);
     } else {
-      if (query) {
-        navigate(`/products?search=${encodeURIComponent(query)}`);
-      } else {
-        navigate('/products');
-      }
+      navigate('/products');
     }
     setIsMobileMenuOpen(false);
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
   };
 
   // Nav link style helper
@@ -249,98 +234,17 @@ export function Navbar({
           </div>
         </Link>
 
-        {/* Center: Search Bar (Desktop) */}
-        <form
-          onSubmit={handleSearch}
-          role="search"
+        {/* Center: Search Bar (Desktop) — shared FE-033 component (SRCH-01) */}
+        <SearchBar
           className="hide-mobile"
-          style={{
-            flex: 1,
-            maxWidth: '440px',
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <span
-            style={{
-              position: 'absolute',
-              left: '0.75rem',
-              color: '#94a3b8',
-              fontSize: '0.95rem',
-              pointerEvents: 'none',
-            }}
-            aria-hidden="true"
-          >
-            🔍
-          </span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label="Search vegetables, categories, and sellers"
-            style={{
-              width: '100%',
-              padding: '0.5rem 2.25rem 0.5rem 2.25rem',
-              fontSize: '0.875rem',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              backgroundColor: '#f8fafc',
-              color: '#1e293b',
-              outline: 'none',
-              transition: 'all 0.15s ease',
-              boxSizing: 'border-box',
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#15803d';
-              e.target.style.backgroundColor = '#ffffff';
-              e.target.style.boxShadow = '0 0 0 3px rgba(21, 128, 61, 0.12)';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#cbd5e1';
-              e.target.style.backgroundColor = '#f8fafc';
-              e.target.style.boxShadow = 'none';
-            }}
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              aria-label="Clear search query"
-              style={{
-                position: 'absolute',
-                right: '2.5rem',
-                background: 'none',
-                border: 'none',
-                color: '#94a3b8',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                padding: '0.2rem',
-              }}
-            >
-              ✕
-            </button>
-          )}
-          <button
-            type="submit"
-            aria-label="Submit search"
-            style={{
-              position: 'absolute',
-              right: '0.25rem',
-              backgroundColor: '#15803d',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '0.3rem 0.6rem',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-          >
-            Go
-          </button>
-        </form>
+          placeholder={searchPlaceholder}
+          ariaLabel={STRINGS.SEARCH.INPUT_LABEL}
+          submitLabel={STRINGS.SEARCH.SUBMIT_LABEL}
+          clearLabel={STRINGS.SEARCH.CLEAR_LABEL}
+          navigateOnSubmit={false}
+          onSearch={handleSearch}
+          style={{ maxWidth: '440px' }}
+        />
 
         {/* Right-Center: Navigation Links (Desktop, Role-dependent UI-07) */}
         <nav
@@ -950,87 +854,17 @@ export function Navbar({
             overflowY: 'auto',
           }}
         >
-          {/* Mobile Search Input */}
-          <form
-            onSubmit={handleSearch}
-            role="search"
-            style={{
-              position: 'relative',
-              marginBottom: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <span
-              style={{
-                position: 'absolute',
-                left: '0.75rem',
-                color: '#94a3b8',
-                fontSize: '0.95rem',
-                pointerEvents: 'none',
-              }}
-              aria-hidden="true"
-            >
-              🔍
-            </span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label="Search vegetables and sellers (mobile)"
-              style={{
-                width: '100%',
-                padding: '0.65rem 2.25rem 0.65rem 2.25rem',
-                fontSize: '0.9rem',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                backgroundColor: '#f8fafc',
-                color: '#1e293b',
-                outline: 'none',
-                minHeight: '44px',
-                boxSizing: 'border-box',
-              }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                aria-label="Clear mobile search query"
-                style={{
-                  position: 'absolute',
-                  right: '2.75rem',
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  padding: '0.3rem',
-                }}
-              >
-                ✕
-              </button>
-            )}
-            <button
-              type="submit"
-              aria-label="Submit mobile search"
-              style={{
-                position: 'absolute',
-                right: '0.35rem',
-                backgroundColor: '#15803d',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.4rem 0.75rem',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                minHeight: '34px',
-              }}
-            >
-              Go
-            </button>
-          </form>
+          {/* Mobile Search Input — shared FE-033 component (SRCH-01) */}
+          <SearchBar
+            placeholder={searchPlaceholder}
+            ariaLabel={STRINGS.SEARCH.MOBILE_INPUT_LABEL}
+            submitLabel={STRINGS.SEARCH.MOBILE_SUBMIT_LABEL}
+            clearLabel={STRINGS.SEARCH.MOBILE_CLEAR_LABEL}
+            navigateOnSubmit={false}
+            onSearch={handleSearch}
+            size="lg"
+            style={{ marginBottom: '1rem' }}
+          />
 
           {/* Primary Mobile Links */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>

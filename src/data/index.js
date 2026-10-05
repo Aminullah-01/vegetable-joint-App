@@ -142,6 +142,13 @@ export function queryMockProducts(params = {}) {
     case 'rating':
       results.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
       break;
+    case 'popularity':
+      results.sort(
+        (a, b) =>
+          (b.sales_count || b.popularity || b.quantity || 0) -
+          (a.sales_count || a.popularity || a.quantity || 0)
+      );
+      break;
     case 'newest':
     default:
       results.sort(
