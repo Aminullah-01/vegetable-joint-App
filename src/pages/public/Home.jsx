@@ -1,84 +1,38 @@
 import { Link } from 'react-router-dom';
 import { env, formatPrice, formatDateTime, formatStock } from '../../utils';
+import {
+  HeroSection,
+  FeaturedProductsSection,
+  CategoriesSection,
+  FeaturedSellersSection,
+  HowItWorksSection,
+  BenefitsSection,
+  CtaSection,
+} from '../../components/home';
 
 export function Home() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Hero Banner */}
-      <section
-        style={{
-          background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
-          color: '#ffffff',
-          borderRadius: '16px',
-          padding: '3rem 2rem',
-          textAlign: 'center',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        <span
-          style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}
-        >
-          🥦🥕🍅
-        </span>
-        <h1
-          style={{
-            fontSize: '2.25rem',
-            fontWeight: '800',
-            marginBottom: '0.75rem',
-          }}
-        >
-          Fresh Vegetables, Directly from Verified Sellers
-        </h1>
-        <p
-          style={{
-            fontSize: '1.1rem',
-            opacity: 0.9,
-            maxWidth: '650px',
-            margin: '0 auto 1.5rem auto',
-          }}
-        >
-          Connecting vegetable sellers, farmers, and consumers across Nigeria.
-          Transparent pricing in Nigerian Naira (₦), guaranteed freshness, and
-          convenient delivery.
-        </p>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '1rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <Link
-            to="/products"
-            style={{
-              backgroundColor: '#ffffff',
-              color: '#15803d',
-              padding: '0.75rem 1.75rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: '700',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            Explore Vegetables
-          </Link>
-          <Link
-            to="/register"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              color: '#ffffff',
-              padding: '0.75rem 1.75rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: '600',
-              border: '1px solid rgba(255,255,255,0.3)',
-            }}
-          >
-            Become a Seller
-          </Link>
-        </div>
-      </section>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      {/* 1. Hero Section with Search and CTAs (FE-041, MKT-01, SRCH-01) */}
+      <HeroSection />
+
+      {/* 2. Featured Fresh Produce Section (FE-042, MKT-01) */}
+      <FeaturedProductsSection />
+
+      {/* 3. Vegetable Categories Section (FE-043, MKT-01, MKT-08) */}
+      <CategoriesSection />
+
+      {/* 4. Featured Sellers Showcase (FE-044, MKT-01, MKT-07) */}
+      <FeaturedSellersSection />
+
+      {/* 5. How It Works (FE-045, MKT-01) */}
+      <HowItWorksSection />
+
+      {/* 6. Marketplace Benefits & Value Propositions (FE-045, MKT-01) */}
+      <BenefitsSection />
+
+      {/* 7. Homepage Call to Action (FE-045, MKT-01) */}
+      <CtaSection />
 
       {/* Route Directory Grid (Demonstrating Route Map) */}
       <section

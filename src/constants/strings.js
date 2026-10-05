@@ -36,11 +36,123 @@ export const STRINGS = {
 
   // Public Homepage & Hero
   HOME: {
+    HERO_HEADLINE: 'Fresh Vegetables. Trusted Sellers. Simple Shopping.',
     HERO_TITLE: 'Fresh Vegetables, Directly from Verified Sellers',
     HERO_SUBTITLE:
-      'Connecting vegetable sellers, farmers, and consumers across Nigeria. Transparent pricing in Nigerian Naira (₦), guaranteed freshness, and convenient delivery.',
-    SHOP_VEGETABLES: 'Explore Vegetables',
+      'Discover fresh vegetables from local farmers and vendors across Nigeria, compare transparent prices in Naira (₦), and order what you need.',
+    SHOP_VEGETABLES: 'Browse Vegetables',
+    EXPLORE_VEGETABLES: 'Explore Vegetables',
     BECOME_SELLER: 'Become a Seller',
+    START_SELLING: 'Start Selling',
+    SEARCH_PLACEHOLDER: 'Search vegetables, categories, or sellers...',
+    POPULAR_SEARCHES: 'Popular Searches:',
+    QUICK_TAGS: ['Tomatoes', 'Peppers', 'Onions', 'Leafy Greens', 'Carrots'],
+    BENEFIT_FRESH: '100% Fresh Farm Produce',
+    BENEFIT_VERIFIED: 'Verified Local Sellers',
+    BENEFIT_PRICING: 'Direct Farm Pricing (₦)',
+    BENEFIT_PAYMENT: 'Pay on Delivery / Direct Deal',
+    FEATURED_PRODUCTS_BADGE: 'Fresh From the Farm',
+    FEATURED_PRODUCTS_TITLE: 'Featured Fresh Produce',
+    FEATURED_PRODUCTS_SUBTITLE:
+      'Top quality vegetables freshly harvested from our verified farmers and sellers.',
+    VIEW_ALL_PRODUCTS: 'View All Vegetables',
+    FEATURED_ERROR_MESSAGE:
+      'Unable to load featured produce. Please try again.',
+    CATEGORIES_BADGE: 'Vegetable Varieties',
+    CATEGORIES_TITLE: 'Browse by Vegetable Category',
+    CATEGORIES_SUBTITLE:
+      'Find exactly what you need by exploring our farm-fresh vegetable varieties.',
+    VIEW_ALL_CATEGORIES: 'View All Categories',
+    CATEGORIES_ERROR_MESSAGE:
+      'Unable to load vegetable categories. Please try again.',
+    FEATURED_SELLERS_BADGE: 'Verified Farmers & Vendors',
+    FEATURED_SELLERS_TITLE: 'Featured Sellers',
+    FEATURED_SELLERS_SUBTITLE:
+      'Connect directly with trusted local farmers and vegetable vendors across Nigeria.',
+    VIEW_ALL_SELLERS: 'View All Sellers',
+    FEATURED_SELLERS_ERROR_MESSAGE:
+      'Unable to load featured sellers. Please try again.',
+    HOW_IT_WORKS_BADGE: 'Simple 4-Step Process',
+    HOW_IT_WORKS_TITLE: 'How Vegetable Joint Works',
+    HOW_IT_WORKS_SUBTITLE:
+      'Buy fresh vegetables directly from local farmers and vendors in four simple steps.',
+    HOW_IT_WORKS_STEPS: [
+      {
+        number: 1,
+        title: 'Discover',
+        description:
+          'Browse farm-fresh vegetables, categories, and verified local sellers across Nigeria.',
+        icon: '🔍',
+      },
+      {
+        number: 2,
+        title: 'Compare',
+        description:
+          'Compare transparent prices in Naira (₦), quantities, seller ratings, and harvest locations.',
+        icon: '⚖️',
+      },
+      {
+        number: 3,
+        title: 'Order',
+        description:
+          'Add fresh produce to your cart and place your order with verified contact & delivery details.',
+        icon: '🛒',
+      },
+      {
+        number: 4,
+        title: 'Receive',
+        description:
+          'Coordinate delivery or pickup directly with the seller and inspect fresh produce on arrival.',
+        icon: '🚚',
+      },
+    ],
+    BENEFITS_BADGE: 'Why Vegetable Joint',
+    BENEFITS_TITLE: 'Freshness, Trust & Transparency',
+    BENEFITS_SUBTITLE:
+      'Experience a modernized vegetable marketplace designed for Nigerian buyers and farmers.',
+    BENEFITS_ITEMS: [
+      {
+        title: 'Fresh vegetable marketplace',
+        description:
+          'Access 100% farm-fresh vegetables harvested directly by verified local growers.',
+        icon: '🌿',
+      },
+      {
+        title: 'Multiple trusted sellers',
+        description:
+          'Connect with vetted, approved vegetable farmers and vendor cooperatives nationwide.',
+        icon: '👨‍🌾',
+      },
+      {
+        title: 'Easy product discovery',
+        description:
+          'Find exactly what you need with keyword search, variety categories, and price filters.',
+        icon: '🔎',
+      },
+      {
+        title: 'Simple ordering',
+        description:
+          'Intuitive cart and checkout flow with live stock indicators and no complicated procedures.',
+        icon: '⚡',
+      },
+      {
+        title: 'Transparent pricing',
+        description:
+          'Clear pricing in Nigerian Naira (₦) with standardized units (baskets, bunches, kg) and zero hidden fees.',
+        icon: '🏷️',
+      },
+      {
+        title: 'Convenient delivery details',
+        description:
+          'Coordinate direct drop-off or local hub pickup across Lagos and major Nigerian hubs.',
+        icon: '📍',
+      },
+    ],
+    CTA_TITLE: 'Ready to find fresh vegetables?',
+    CTA_SUBTITLE:
+      'Join thousands of happy consumers and businesses sourcing high quality vegetables directly from Nigerian farms.',
+    CTA_PRIMARY: 'Start Shopping',
+    CTA_SECONDARY: 'Sell on Vegetable Joint',
     ROUTE_DIRECTORY_TITLE: 'Interactive Route Directory (SRS 4.1.2)',
     ROUTE_DIRECTORY_SUBTITLE:
       'Full page inventory implemented with client-side React Router navigation.',

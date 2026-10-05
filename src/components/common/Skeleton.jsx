@@ -744,4 +744,132 @@ CategoryGridSkeleton.propTypes = {
   style: PropTypes.object,
 };
 
+/**
+ * Skeleton placeholder for individual Seller Cards (FE-040, FE-044, Figma Section 16)
+ */
+export function SellerCardSkeleton({ count = 1, className = '', style = {} }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className={`seller-card-skeleton ${className}`.trim()}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+            boxSizing: 'border-box',
+            height: '100%',
+            ...style,
+          }}
+          data-testid="seller-card-skeleton"
+        >
+          {/* Header with avatar & name */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '1.25rem 1.25rem 0.75rem',
+            }}
+          >
+            <Skeleton
+              width="56px"
+              height="56px"
+              borderRadius="50%"
+              variant="circular"
+            />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.35rem',
+                flex: 1,
+              }}
+            >
+              <Skeleton width="75%" height="1.1rem" variant="text" />
+              <Skeleton width="45%" height="0.8rem" variant="text" />
+            </div>
+          </div>
+
+          {/* Details body */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              gap: '0.625rem',
+              padding: '0 1.25rem 1.25rem',
+              boxSizing: 'border-box',
+            }}
+          >
+            <Skeleton width="110px" height="0.9rem" variant="text" />
+            <Skeleton width="100%" height="0.85rem" variant="text" />
+            <Skeleton width="85%" height="0.85rem" variant="text" />
+            <Skeleton width="90px" height="0.85rem" variant="text" />
+            <Skeleton
+              width="75px"
+              height="20px"
+              borderRadius="9999px"
+              variant="rounded"
+            />
+            <Skeleton
+              width="100%"
+              height="40px"
+              borderRadius="6px"
+              variant="rounded"
+              style={{ marginTop: 'auto', paddingTop: '0.5rem' }}
+            />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+SellerCardSkeleton.propTypes = {
+  count: PropTypes.number,
+  className: PropTypes.string,
+  style: PropTypes.object,
+};
+
+/**
+ * Skeleton placeholder for entire Seller Grid (FE-040, FE-044, Figma Section 16)
+ */
+export function SellerGridSkeleton({
+  count = 4,
+  columns,
+  className = '',
+  style = {},
+}) {
+  return (
+    <div
+      className={`seller-grid-skeleton ${className}`.trim()}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: columns || 'repeat(auto-fill, minmax(280px, 1fr))',
+        gap: '1.5rem',
+        width: '100%',
+        boxSizing: 'border-box',
+        ...style,
+      }}
+      data-testid="seller-grid-skeleton"
+      aria-label="Loading sellers..."
+      role="status"
+    >
+      <SellerCardSkeleton count={count} />
+    </div>
+  );
+}
+
+SellerGridSkeleton.propTypes = {
+  count: PropTypes.number,
+  columns: PropTypes.string,
+  className: PropTypes.string,
+  style: PropTypes.object,
+};
+
 export default Skeleton;

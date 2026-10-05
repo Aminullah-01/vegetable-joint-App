@@ -8,6 +8,8 @@ import {
   ProductDetailSkeleton,
   OrderDetailSkeleton,
   CategoryGridSkeleton,
+  SellerCardSkeleton,
+  SellerGridSkeleton,
   TextSkeleton,
 } from '../Skeleton';
 
@@ -170,6 +172,26 @@ describe('Skeleton Loaders (FE-040, MKT-10, Figma Section 16)', () => {
 
       expect(catGrid).toBeInTheDocument();
       expect(catGrid).toHaveClass('category-grid-skeleton');
+    });
+  });
+
+  describe('SellerGridSkeleton Component (FE-040, FE-044, Figma Section 16)', () => {
+    it('renders grid with requested count of seller card skeletons', () => {
+      render(<SellerGridSkeleton count={4} />);
+      const grid = screen.getByTestId('seller-grid-skeleton');
+
+      expect(grid).toBeInTheDocument();
+      expect(grid).toHaveAttribute('role', 'status');
+      expect(grid).toHaveAttribute('aria-label', 'Loading sellers...');
+
+      const cards = screen.getAllByTestId('seller-card-skeleton');
+      expect(cards).toHaveLength(4);
+    });
+
+    it('renders single seller card skeleton standalone', () => {
+      render(<SellerCardSkeleton count={1} />);
+      const card = screen.getByTestId('seller-card-skeleton');
+      expect(card).toBeInTheDocument();
     });
   });
 
