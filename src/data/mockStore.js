@@ -173,16 +173,42 @@ class MockStore {
       per_page = 12,
     } = params;
 
-    let results = this.products.filter((p) => !p.deleted_at);
+    // MKT-04: Public listings shall show only products that are published,
+    // not deleted, belong to an approved and active seller, and belong to an active category.
+    let results = this.products.filter((p) => {
+      if (p.deleted_at) return false;
+      if (p.is_published === false || p.status === 'draft') return false;
 
-    if (q && q.trim()) {
-      const term = q.trim().toLowerCase();
+      // Verify seller is approved and active
+      const sellerId = p.seller_id || p.seller?.id;
+      if (sellerId) {
+        const sellerObj = this.sellers.find((s) => s.id === Number(sellerId));
+        if (sellerObj && sellerObj.approval_status !== 'approved') return false;
+      }
+
+      // Verify category is active
+      const catId = p.category_id || p.category?.id;
+      if (catId) {
+        const catObj = this.categories.find((c) => c.id === Number(catId));
+        if (
+          catObj &&
+          (catObj.is_active === false || catObj.status === 'inactive')
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    const searchTerm = (q || params.search || '').trim().toLowerCase();
+    if (searchTerm) {
       results = results.filter(
         (p) =>
-          p.name.toLowerCase().includes(term) ||
-          p.description.toLowerCase().includes(term) ||
-          p.seller?.business_name.toLowerCase().includes(term) ||
-          p.category?.name.toLowerCase().includes(term)
+          p.name.toLowerCase().includes(searchTerm) ||
+          p.description?.toLowerCase().includes(searchTerm) ||
+          p.seller?.business_name.toLowerCase().includes(searchTerm) ||
+          p.category?.name.toLowerCase().includes(searchTerm)
       );
     }
 
@@ -220,7 +246,7 @@ class MockStore {
     if (location && location !== 'all') {
       results = results.filter((p) =>
         p.seller?.location
-          .toLowerCase()
+          ?.toLowerCase()
           .includes(String(location).toLowerCase())
       );
     }
@@ -235,6 +261,13 @@ class MockStore {
       case 'rating':
         results.sort(
           (a, b) => (b.average_rating || 0) - (a.average_rating || 0)
+        );
+        break;
+      case 'popularity':
+        results.sort(
+          (a, b) =>
+            (b.rating_count || 0) * (b.average_rating || 0) -
+            (a.rating_count || 0) * (a.average_rating || 0)
         );
         break;
       case 'newest':

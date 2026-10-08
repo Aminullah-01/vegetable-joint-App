@@ -83,6 +83,32 @@ function FilterFormContent({
     });
   };
 
+  const selectedCat =
+    filters.category && filters.category !== 'all'
+      ? categories.find(
+          (c) =>
+            String(c.id) === String(filters.category) ||
+            String(c.slug) === String(filters.category) ||
+            c.name?.toLowerCase() === String(filters.category).toLowerCase()
+        )
+      : null;
+  const selectedCategoryVal = selectedCat
+    ? String(selectedCat.slug || selectedCat.id)
+    : filters.category || 'all';
+
+  const selectedSeller =
+    filters.seller && filters.seller !== 'all'
+      ? sellers.find(
+          (s) =>
+            String(s.id) === String(filters.seller) ||
+            s.business_name?.toLowerCase() ===
+              String(filters.seller).toLowerCase()
+        )
+      : null;
+  const selectedSellerVal = selectedSeller
+    ? String(selectedSeller.id || selectedSeller.business_name)
+    : filters.seller || 'all';
+
   const handlePricePreset = (min, max) => {
     setMinPriceInput(min);
     setMaxPriceInput(max);
@@ -128,7 +154,10 @@ function FilterFormContent({
   const getCategoryName = (val) => {
     if (!val) return '';
     const found = categories.find(
-      (c) => String(c.slug || c.id) === String(val) || c.name === val
+      (c) =>
+        String(c.id) === String(val) ||
+        String(c.slug) === String(val) ||
+        c.name?.toLowerCase() === String(val).toLowerCase()
     );
     return found ? found.name : val;
   };
@@ -136,7 +165,9 @@ function FilterFormContent({
   const getSellerName = (val) => {
     if (!val) return '';
     const found = sellers.find(
-      (s) => String(s.id) === String(val) || s.business_name === val
+      (s) =>
+        String(s.id) === String(val) ||
+        s.business_name?.toLowerCase() === String(val).toLowerCase()
     );
     return found ? found.business_name : val;
   };
@@ -450,7 +481,7 @@ function FilterFormContent({
         </label>
         <select
           id={categoryId}
-          value={filters.category || 'all'}
+          value={selectedCategoryVal}
           onChange={handleCategoryChange}
           style={inputStyle}
           aria-label={STRINGS.FILTERS.CATEGORY_LABEL}
@@ -615,7 +646,7 @@ function FilterFormContent({
         </label>
         <select
           id={sellerId}
-          value={filters.seller || 'all'}
+          value={selectedSellerVal}
           onChange={handleSellerChange}
           style={inputStyle}
           aria-label={STRINGS.FILTERS.SELLER_LABEL}

@@ -67,7 +67,9 @@ export function SearchBar({
   const navigate = useNavigate();
 
   // Active keyword from the URL (SRCH-06) — the source of truth for results.
-  const urlQuery = new URLSearchParams(location.search).get('search') || '';
+  const searchParamsObj = new URLSearchParams(location.search);
+  const urlQuery =
+    searchParamsObj.get('search') || searchParamsObj.get('q') || '';
   const [query, setQuery] = useState(initialValue ?? urlQuery);
 
   // Keep the field in step with the URL, e.g. after the hero or navbar submits.
@@ -101,10 +103,18 @@ export function SearchBar({
   const handleClear = () => {
     setQuery('');
 
+    // A caller-supplied handler owns the result routing.
+    if (onSearch) {
+      onSearch('');
+      return;
+    }
+
     // Drop the criterion from the URL so the visible results match the field.
     if (urlQuery) {
       const params = new URLSearchParams(location.search);
       params.delete('search');
+      params.delete('q');
+      params.delete('page');
       const remaining = params.toString();
       navigate(
         remaining ? `${location.pathname}?${remaining}` : location.pathname

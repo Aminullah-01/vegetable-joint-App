@@ -79,3 +79,35 @@ export function countActiveFilters(filters) {
 
   return count;
 }
+
+export const CATEGORY_ICONS = {
+  tomato: '🍅',
+  pepper: '🌶️',
+  onion: '🧅',
+  carrot: '🥕',
+  cabbage: '🥬',
+  spinach: '🥗',
+  lettuce: '🥬',
+  cucumber: '🥒',
+  potato: '🥔',
+  'other-vegetables': '🥦',
+  'other vegetables': '🥦',
+};
+
+/**
+ * Resolves standard produce emoji icon for a category object or slug/name string.
+ *
+ * @param {Object|string} cat
+ * @returns {string}
+ */
+export function resolveCategoryIcon(cat) {
+  if (!cat) return '🥬';
+  if (typeof cat === 'string') {
+    const key = cat.toLowerCase();
+    return CATEGORY_ICONS[key] || '🥬';
+  }
+  if (cat.icon) return cat.icon;
+  const slugKey = (cat.slug || '').toLowerCase();
+  const nameKey = (cat.name || '').toLowerCase();
+  return CATEGORY_ICONS[slugKey] || CATEGORY_ICONS[nameKey] || '🥬';
+}

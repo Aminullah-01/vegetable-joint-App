@@ -8,27 +8,7 @@ import { ErrorState } from '../common/ErrorState.jsx';
 import { EmptyState } from '../common/EmptyState.jsx';
 import { STRINGS } from '../../constants/strings.js';
 import { ROUTES } from '../../routes/routeConfig.js';
-
-const CATEGORY_ICONS = {
-  tomato: '🍅',
-  pepper: '🌶️',
-  onion: '🧅',
-  carrot: '🥕',
-  cabbage: '🥬',
-  spinach: '🥗',
-  lettuce: '🥬',
-  cucumber: '🥒',
-  potato: '🥔',
-  'other-vegetables': '🥦',
-  'other vegetables': '🥦',
-};
-
-function resolveCategoryIcon(cat) {
-  if (cat?.icon) return cat.icon;
-  const slugKey = (cat?.slug || '').toLowerCase();
-  const nameKey = (cat?.name || '').toLowerCase();
-  return CATEGORY_ICONS[slugKey] || CATEGORY_ICONS[nameKey] || '🥬';
-}
+import { resolveCategoryIcon } from '../../utils/filters.js';
 
 /**
  * CategoriesSection — Homepage Vegetable Categories Section
