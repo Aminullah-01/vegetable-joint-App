@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useParams, Link } from 'react-router-dom';
 import { productService } from '../../services';
@@ -23,6 +23,7 @@ import { ProductCard } from '../../components/products/ProductCard';
  * - MKT-05: Product detail page displaying name, image, description, price, unit,
  *   available quantity, seller name and location, availability status, and rating.
  * - MKT-06: Quantity selector bounded by available stock; disabled with "Out of Stock" when unavailable.
+ * - CART-01, CART-02: Add to cart with chosen quantity (≥ 1); bounds line items to available stock.
  * - REV-01: Rating display with numeric average or "No ratings yet".
  * - Figma Section 6: Desktop 2-column layout (gallery left, specs right) with
  *   below-the-fold description, seller preview CTA, and related products grid.
@@ -49,6 +50,17 @@ export function ProductDetails({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [isAddedFeedback, setIsAddedFeedback] = useState(false);
+  const feedbackTimerRef = useRef(null);
+
+  // Cleanup feedback timer on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+    };
+  }, []);
 
   // Synchronize loading state during render when resolvedId or retryCount changes
   const currentKey = `${resolvedId ?? ''}-${retryCount}`;
@@ -237,13 +249,37 @@ export function ProductDetails({
     );
   }
 
+  // In-cart quantity for this product (BR-04, CART-01, CART-02)
+  const cartItem = cartContext?.items?.find(
+    (item) => Number(item.product_id) === Number(product.id)
+  );
+  const inCartQty = cartItem?.quantity || 0;
+  const totalStock = Math.max(0, Number(product.quantity) || 0);
+
   // Stock and Availability calculations (MKT-05, MKT-06, SEL-07)
-  const isOutOfStock =
-    product.availability === 'out_of_stock' ||
+  const isManuallyUnavailable =
     product.availability === 'unavailable' ||
     product.availability === false ||
-    product.quantity === 0 ||
-    Number(product.quantity) <= 0;
+    product.availability === 0 ||
+    product.availability === '0';
+
+  const isOutOfStock =
+    isManuallyUnavailable ||
+    product.availability === 'out_of_stock' ||
+    totalStock <= 0;
+
+  const remainingStock = Math.max(0, totalStock - inCartQty);
+  const isMaxInCart = totalStock > 0 && inCartQty >= totalStock;
+  const isButtonDisabled = isOutOfStock || isMaxInCart;
+
+  let buttonLabel = STRINGS.PRODUCTS.ADD_TO_CART;
+  if (isOutOfStock) {
+    buttonLabel = STRINGS.PRODUCTS.OUT_OF_STOCK;
+  } else if (isMaxInCart) {
+    buttonLabel = 'Max in Cart';
+  } else if (isAddedFeedback) {
+    buttonLabel = 'Added! ✓';
+  }
 
   const sellerName = product.seller?.business_name || 'Verified Seller';
   const sellerId = product.seller?.id || product.seller_id;
@@ -260,21 +296,35 @@ export function ProductDetails({
 
   // Add to Cart handler (MKT-06, CART-01, CART-02)
   const handleAddToCart = () => {
-    if (isOutOfStock) return;
+    if (isButtonDisabled) return;
+
+    const qtyToAdd = Math.min(quantity, remainingStock);
+    if (qtyToAdd <= 0) return;
 
     const added = cartContext?.addItem
-      ? cartContext.addItem(product, quantity)
+      ? cartContext.addItem(product, qtyToAdd)
       : true;
 
     if (added !== false) {
       const unitLabel = product.unit
-        ? quantity > 1 && !product.unit.endsWith('s')
+        ? qtyToAdd > 1 && !product.unit.endsWith('s')
           ? ` ${product.unit}s`
           : ` ${product.unit}`
         : '';
-      const feedbackMessage = `Added ${quantity}${unitLabel} of ${product.name} to cart!`;
+      const feedbackMessage = `Added ${qtyToAdd}${unitLabel} of ${product.name} to cart!`;
       toastContext?.success?.(feedbackMessage);
-      onAddToCart?.(product, quantity);
+      onAddToCart?.(product, qtyToAdd);
+
+      const nextRemaining = remainingStock - qtyToAdd;
+      setQuantity(nextRemaining > 0 ? 1 : 0);
+
+      setIsAddedFeedback(true);
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+      feedbackTimerRef.current = setTimeout(() => {
+        setIsAddedFeedback(false);
+      }, 1500);
     }
   };
 
@@ -636,14 +686,49 @@ export function ProductDetails({
               marginTop: '0.25rem',
             }}
           >
+            {/* In-cart and stock status hint */}
+            {inCartQty > 0 && !isOutOfStock && (
+              <div
+                data-testid="in-cart-indicator"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  fontSize: '0.8125rem',
+                  color: isMaxInCart ? '#b45309' : '#15803d',
+                  fontWeight: 600,
+                  backgroundColor: isMaxInCart ? '#fef3c7' : '#f0fdf4',
+                  padding: '0.25rem 0.625rem',
+                  borderRadius: '6px',
+                  border: `1px solid ${isMaxInCart ? '#fde68a' : '#bbf7d0'}`,
+                  alignSelf: 'flex-start',
+                }}
+              >
+                <span>🛒</span>
+                <span>
+                  {isMaxInCart
+                    ? `All ${totalStock} available in your cart`
+                    : `${inCartQty} currently in your cart`}
+                </span>
+              </div>
+            )}
+
             <QuantitySelector
-              value={quantity}
-              onChange={setQuantity}
+              value={
+                isOutOfStock
+                  ? 0
+                  : isMaxInCart
+                    ? 0
+                    : Math.min(quantity, Math.max(1, remainingStock))
+              }
+              onChange={(val) =>
+                setQuantity(Math.min(val, Math.max(1, remainingStock)))
+              }
               min={1}
-              max={Math.max(1, Number(product.quantity) || 1)}
-              availableStock={product.quantity}
+              max={Math.max(1, remainingStock)}
+              availableStock={remainingStock}
               availability={product.availability}
-              disabled={isOutOfStock}
+              disabled={isButtonDisabled}
               showStock={false}
             />
 
@@ -657,7 +742,7 @@ export function ProductDetails({
               <Button
                 variant="primary"
                 size="lg"
-                disabled={isOutOfStock}
+                disabled={isButtonDisabled}
                 onClick={handleAddToCart}
                 data-testid="add-to-cart-button"
                 style={{
@@ -667,9 +752,7 @@ export function ProductDetails({
                   fontSize: '1rem',
                 }}
               >
-                {isOutOfStock
-                  ? STRINGS.PRODUCTS.OUT_OF_STOCK
-                  : STRINGS.PRODUCTS.ADD_TO_CART}
+                {buttonLabel}
               </Button>
 
               <Button

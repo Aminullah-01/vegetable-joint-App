@@ -358,6 +358,29 @@ export function Footer({
         >
           <div data-testid="footer-copyright-text">{effectiveFooter}</div>
 
+          {/* Legal Policy Links (Figma Prompt & SRS NFR-SEC-12, OI-10, OI-11) */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '1rem',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+            data-testid="footer-legal-links"
+          >
+            <Link to="/terms" style={footerLinkStyle}>
+              Terms of Use
+            </Link>
+            <span style={{ color: '#64748b' }}>•</span>
+            <Link to="/privacy" style={footerLinkStyle}>
+              Privacy Notice
+            </Link>
+            <span style={{ color: '#64748b' }}>•</span>
+            <Link to="/refunds" style={footerLinkStyle}>
+              Refund &amp; Dispute Policy
+            </Link>
+          </div>
+
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             <span style={{ color: '#94a3b8' }}>
               Verified Agricultural Commerce

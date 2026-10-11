@@ -4,6 +4,10 @@ export * from './public/Products';
 export * from './public/ProductDetails';
 export * from './public/SellerProfile';
 export * from './public/Cart';
+export * from './public/PolicyLayout';
+export * from './public/TermsOfUse';
+export * from './public/PrivacyNotice';
+export * from './public/RefundPolicy';
 
 // Auth Pages
 export * from './auth/Login';

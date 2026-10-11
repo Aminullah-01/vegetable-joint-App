@@ -61,19 +61,30 @@ export function CartProvider({ children }) {
   const addItem = useCallback((product, quantity = 1) => {
     if (!product || !product.id) return false;
 
-    const requestedQty = Math.max(1, Number(quantity) || 1);
+    const requestedQty = Math.max(1, Math.floor(Number(quantity)) || 1);
     const availableStock =
       typeof product.quantity === 'number'
         ? product.quantity
-        : product.available_stock || 999;
+        : typeof product.available_stock === 'number'
+          ? product.available_stock
+          : typeof product.quantity_available === 'number'
+            ? product.quantity_available
+            : typeof product.stock === 'number'
+              ? product.stock
+              : 999;
 
-    if (availableStock <= 0 || product.availability === 'out_of_stock') {
+    if (
+      availableStock <= 0 ||
+      product.availability === 'out_of_stock' ||
+      product.availability === 'unavailable' ||
+      product.is_available === false
+    ) {
       return false;
     }
 
     setItems((prevItems) => {
       const existingIndex = prevItems.findIndex(
-        (item) => Number(item.product_id) === Number(product.id)
+        (item) => Number(item.product_id ?? item.id) === Number(product.id)
       );
 
       if (existingIndex > -1) {
@@ -102,10 +113,14 @@ export function CartProvider({ children }) {
         price: product.price,
         unit: product.unit || 'basket',
         quantity: initialQty,
-        image: product.image || '',
+        image: product.image || product.image_url || '',
         seller_id: product.seller_id,
-        seller_name: product.seller?.business_name || 'Verified Seller',
-        seller_location: product.seller?.location || '',
+        seller_name:
+          product.seller?.business_name ||
+          product.seller_name ||
+          'Verified Seller',
+        seller_location:
+          product.seller?.location || product.seller_location || '',
         available_stock: availableStock,
         subtotal: product.price * initialQty,
       };
@@ -126,15 +141,20 @@ export function CartProvider({ children }) {
   const updateQuantity = useCallback((productId, newQuantity) => {
     setItems((prevItems) => {
       const index = prevItems.findIndex(
-        (item) => Number(item.product_id) === Number(productId)
+        (item) => Number(item.product_id ?? item.id) === Number(productId)
       );
       if (index === -1) return prevItems;
 
       const item = prevItems[index];
       // Clamped: min 1, max available stock (CART-02, BR-04)
-      const stockLimit = item.available_stock || 999;
+      const stockLimit =
+        typeof item.available_stock === 'number'
+          ? item.available_stock
+          : typeof item.quantity === 'number'
+            ? item.quantity
+            : 999;
       const validQty = Math.min(
-        Math.max(1, Number(newQuantity) || 1),
+        Math.max(1, Math.floor(Number(newQuantity)) || 1),
         stockLimit
       );
 
@@ -155,7 +175,9 @@ export function CartProvider({ children }) {
    */
   const removeItem = useCallback((productId) => {
     setItems((prevItems) =>
-      prevItems.filter((item) => Number(item.product_id) !== Number(productId))
+      prevItems.filter(
+        (item) => Number(item.product_id ?? item.id) !== Number(productId)
+      )
     );
   }, []);
 

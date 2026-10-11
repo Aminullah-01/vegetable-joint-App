@@ -12,6 +12,9 @@ import { Products } from '../pages/public/Products';
 import { ProductDetails } from '../pages/public/ProductDetails';
 import { SellerProfile } from '../pages/public/SellerProfile';
 import { Cart } from '../pages/public/Cart';
+import { TermsOfUse } from '../pages/public/TermsOfUse';
+import { PrivacyNotice } from '../pages/public/PrivacyNotice';
+import { RefundPolicy } from '../pages/public/RefundPolicy';
 
 // Eagerly loaded Auth Pages
 import { Login } from '../pages/auth/Login';
@@ -92,6 +95,14 @@ export function AppRoutes() {
           <Route path={ROUTES.PRODUCT_DETAILS} element={<ProductDetails />} />
           <Route path={ROUTES.SELLER_PROFILE} element={<SellerProfile />} />
           <Route path={ROUTES.CART} element={<Cart />} />
+          <Route path={ROUTES.TERMS} element={<TermsOfUse />} />
+          <Route path="/terms-of-use" element={<TermsOfUse />} />
+          <Route path={ROUTES.PRIVACY} element={<PrivacyNotice />} />
+          <Route path="/privacy-policy" element={<PrivacyNotice />} />
+          <Route path="/privacy-notice" element={<PrivacyNotice />} />
+          <Route path={ROUTES.REFUNDS} element={<RefundPolicy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/dispute-policy" element={<RefundPolicy />} />
 
           {/* Guest / Auth Routes (Restricted to unauthenticated visitors) */}
           <Route element={<GuestRoute />}>

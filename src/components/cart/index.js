@@ -1,2 +1,2 @@
-// Cart-related components (CartDrawer, CartItem, CartSummary, CartBadge, etc.)
-export {};
+export { CartItem } from './CartItem';
+export { CartSummary } from './CartSummary';

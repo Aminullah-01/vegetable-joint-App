@@ -10,6 +10,9 @@ export const ROUTES = {
   PRODUCT_DETAILS: '/products/:id',
   SELLER_PROFILE: '/sellers/:id',
   CART: '/cart',
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
+  REFUNDS: '/refunds',
 
   // Guest / Auth
   LOGIN: '/login',
