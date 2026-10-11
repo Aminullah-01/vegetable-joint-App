@@ -2,9 +2,14 @@ import { useState, useMemo, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../hooks';
 import { ToastContext } from '../../context/toastContextDef.js';
-import { CartItem, CartSummary } from '../../components/cart';
+import {
+  CartItem,
+  CartSummary,
+  CartValidationNotices,
+} from '../../components/cart';
 import { EmptyState, Button, ConfirmDialog } from '../../components/common';
 import { STRINGS } from '../../constants';
+import { calculateSellerSubtotals, formatCurrency } from '../../utils';
 
 /**
  * Cart — Shopping Cart Page
@@ -14,6 +19,7 @@ import { STRINGS } from '../../constants';
  * - CART-05: Offers "Continue shopping" and "Proceed to checkout". Proceeding with an empty
  *   cart is prevented with the message "Your cart is empty."
  * - CART-01 to CART-03: Add, update quantity (bounded by stock), and remove lines.
+ * - CART-08: Cart re-validation notices for price/stock changes and unavailable items.
  * - CHK-05 / BR-06: Visually groups lines by seller for fulfillment transparency.
  * - NFR-USAB-01 to 04: Accessible semantic markup, WCAG AA color contrast, touch targets >= 44x44px.
  */
@@ -29,36 +35,15 @@ export function Cart() {
     removeItem,
     clearCart,
     validationNotice,
+    validationChanges,
+    acknowledgeValidation,
   } = useCart();
 
   const toast = useContext(ToastContext);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
   // Group items by seller for multi-vendor checkout visibility (CHK-05, BR-06)
-  const sellerGroups = useMemo(() => {
-    const map = new Map();
-    items.forEach((item) => {
-      const key =
-        item.seller_id ??
-        item.seller_name ??
-        item.seller?.business_name ??
-        'direct-seller';
-      if (!map.has(key)) {
-        map.set(key, {
-          sellerId: item.seller_id,
-          sellerName:
-            item.seller_name ||
-            item.seller?.business_name ||
-            'Verified Local Seller',
-          sellerLocation:
-            item.seller_location || item.seller?.location || 'Lagos, Nigeria',
-          items: [],
-        });
-      }
-      map.get(key).items.push(item);
-    });
-    return Array.from(map.values());
-  }, [items]);
+  const sellerGroups = useMemo(() => calculateSellerSubtotals(items), [items]);
 
   const handleRemoveItem = (productId) => {
     const targetItem = items.find(
@@ -158,8 +143,14 @@ export function Cart() {
         </ol>
       </nav>
 
-      {/* Cart Validation Notice Banner (CART-08) */}
-      {validationNotice && (
+      {/* Cart Validation Notices (CART-08) */}
+      {validationChanges && validationChanges.length > 0 ? (
+        <CartValidationNotices
+          changes={validationChanges}
+          notice={validationNotice}
+          onAccept={acknowledgeValidation}
+        />
+      ) : validationNotice ? (
         <div
           role="alert"
           style={{
@@ -182,7 +173,7 @@ export function Cart() {
           </span>
           <div style={{ flex: 1 }}>{validationNotice}</div>
         </div>
-      )}
+      ) : null}
 
       {/* Page Title & Top Actions */}
       <div
@@ -393,20 +384,44 @@ export function Cart() {
                     </div>
                   </div>
 
-                  {group.sellerLocation && (
-                    <div
-                      style={{
-                        fontSize: '0.8125rem',
-                        color: '#64748b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                      }}
-                    >
-                      <span aria-hidden="true">📍</span>
-                      <span>{group.sellerLocation}</span>
-                    </div>
-                  )}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {group.sellerLocation && (
+                      <div
+                        style={{
+                          fontSize: '0.8125rem',
+                          color: '#64748b',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
+                        <span aria-hidden="true">📍</span>
+                        <span>{group.sellerLocation}</span>
+                      </div>
+                    )}
+                    {group.subtotal > 0 && (
+                      <span
+                        style={{
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          color: '#15803d',
+                          backgroundColor: '#dcfce7',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '6px',
+                        }}
+                        data-testid={`seller-subtotal-${group.sellerId || groupIdx}`}
+                      >
+                        Seller Subtotal: {formatCurrency(group.subtotal)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Seller Group Line Items */}

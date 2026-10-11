@@ -1,5 +1,7 @@
+import { useContext } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '../common/Button';
+import { AuthContext } from '../../context/authContextDef';
 import { formatCurrency } from '../../utils';
 import { STRINGS } from '../../constants';
 
@@ -23,6 +25,8 @@ export function CartSummary({
   className = '',
   style = {},
 }) {
+  const auth = useContext(AuthContext);
+  const isGuest = auth ? !auth.isAuthenticated : false;
   const isMultiSeller = sellersCount > 1;
 
   return (
@@ -204,6 +208,21 @@ export function CartSummary({
         >
           {STRINGS.CART.PROCEED_TO_CHECKOUT}
         </Button>
+
+        {isGuest && itemCount > 0 && (
+          <p
+            style={{
+              margin: '-0.25rem 0 0 0',
+              fontSize: '0.75rem',
+              color: '#64748b',
+              textAlign: 'center',
+            }}
+            data-testid="cart-guest-checkout-hint"
+          >
+            🔒 You will be asked to sign in or register at checkout. Your cart
+            is preserved.
+          </p>
+        )}
 
         {/* Continue Shopping Button */}
         <Button

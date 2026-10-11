@@ -26,48 +26,64 @@ export function isRoleAllowed(role, allowedRoles) {
  * @returns {string} The computed destination path
  */
 export function getPostLoginRedirect(role, fromLocation) {
-  const destination =
-    typeof fromLocation === 'string' ? fromLocation : fromLocation?.pathname;
+  const path =
+    typeof fromLocation === 'string'
+      ? fromLocation.split('?')[0]
+      : fromLocation?.pathname;
+  const search =
+    typeof fromLocation === 'string'
+      ? fromLocation.includes('?')
+        ? `?${fromLocation.split('?')[1]}`
+        : ''
+      : fromLocation?.search || '';
+
+  const destination = path ? `${path}${search}` : null;
+  const basePath = path || '';
 
   // Ignore navigation back to auth routes or error pages
   if (
-    destination &&
-    destination !== ROUTES.LOGIN &&
-    destination !== ROUTES.REGISTER &&
-    destination !== ROUTES.FORGOT_PASSWORD &&
-    destination !== ROUTES.RESET_PASSWORD &&
-    destination !== ROUTES.FORBIDDEN &&
-    destination !== ROUTES.NOT_FOUND &&
-    destination !== ROUTES.SERVER_ERROR
+    basePath &&
+    basePath !== ROUTES.LOGIN &&
+    basePath !== ROUTES.REGISTER &&
+    basePath !== ROUTES.FORGOT_PASSWORD &&
+    basePath !== ROUTES.RESET_PASSWORD &&
+    basePath !== ROUTES.FORBIDDEN &&
+    basePath !== ROUTES.NOT_FOUND &&
+    basePath !== ROUTES.SERVER_ERROR
   ) {
     // Buyers: Allow return to requested page unless it is a seller or admin portal
     if (role === 'buyer') {
-      if (
-        destination.startsWith('/seller') ||
-        destination.startsWith('/admin')
-      ) {
+      if (basePath.startsWith('/seller') || basePath.startsWith('/admin')) {
         return ROUTES.HOME;
       }
-      return destination;
+      return destination || basePath;
     }
 
-    // Sellers: Allow return to seller routes and public pages, prevent admin portal
+    // Sellers: Allow return to seller routes and public pages, prevent admin portal and buyer checkout
     if (role === 'seller') {
-      if (destination.startsWith('/admin')) {
+      if (
+        basePath.startsWith('/admin') ||
+        basePath.startsWith('/checkout') ||
+        basePath.startsWith('/buyer')
+      ) {
         return ROUTES.SELLER_OVERVIEW;
       }
-      return destination;
+      return destination || basePath;
     }
 
     // Admins: Allow return to admin routes and public pages
     if (role === 'admin') {
-      if (destination.startsWith('/seller')) {
+      if (
+        basePath.startsWith('/seller') ||
+        basePath.startsWith('/checkout') ||
+        basePath.startsWith('/buyer')
+      ) {
         return ROUTES.ADMIN_OVERVIEW;
       }
-      return destination;
+      return destination || basePath;
     }
 
-    return destination;
+    return destination || basePath;
   }
 
   // Default role-based landing destinations (SRS: AUTH-13)

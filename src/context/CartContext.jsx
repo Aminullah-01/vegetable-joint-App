@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { CartContext } from './cartContextDef.js';
 import { productService } from '../services';
+import { STRINGS } from '../constants';
+import {
+  calculateLineSubtotal,
+  calculateCartTotals,
+} from '../utils/cartCalculations.js';
 
 const STORAGE_CART_KEY = 'vegetable_joint_cart';
 
@@ -45,6 +50,8 @@ function saveCartToStorage(items) {
 export function CartProvider({ children }) {
   const [items, setItems] = useState(loadCartFromStorage);
   const [validationNotice, setValidationNotice] = useState(null);
+  const [validationChanges, setValidationChanges] = useState([]);
+  const [validationResult, setValidationResult] = useState(null);
 
   // Sync state changes to storage
   useEffect(() => {
@@ -94,12 +101,14 @@ export function CartProvider({ children }) {
           existing.quantity + requestedQty,
           availableStock
         );
+        const effectivePrice = product.price ?? existing.price;
+        const lineSubtotal = calculateLineSubtotal(effectivePrice, newQty);
         const updated = [...prevItems];
         updated[existingIndex] = {
           ...existing,
           quantity: newQty,
-          price: product.price ?? existing.price,
-          subtotal: (product.price ?? existing.price) * newQty,
+          price: effectivePrice,
+          subtotal: lineSubtotal,
           available_stock: availableStock,
         };
         return updated;
@@ -107,6 +116,7 @@ export function CartProvider({ children }) {
 
       // New line item
       const initialQty = Math.min(requestedQty, availableStock);
+      const lineSubtotal = calculateLineSubtotal(product.price, initialQty);
       const newItem = {
         product_id: product.id,
         name: product.name,
@@ -122,7 +132,7 @@ export function CartProvider({ children }) {
         seller_location:
           product.seller?.location || product.seller_location || '',
         available_stock: availableStock,
-        subtotal: product.price * initialQty,
+        subtotal: lineSubtotal,
       };
 
       return [...prevItems, newItem];
@@ -158,11 +168,12 @@ export function CartProvider({ children }) {
         stockLimit
       );
 
+      const lineSubtotal = calculateLineSubtotal(item.price, validQty);
       const updated = [...prevItems];
       updated[index] = {
         ...item,
         quantity: validQty,
-        subtotal: item.price * validQty,
+        subtotal: lineSubtotal,
       };
       return updated;
     });
@@ -187,84 +198,146 @@ export function CartProvider({ children }) {
   const clearCart = useCallback(() => {
     setItems([]);
     setValidationNotice(null);
+    setValidationChanges([]);
+    setValidationResult(null);
   }, []);
 
   /**
-   * Re-validate cart items against current catalog price and stock before checkout (CART-08).
+   * Re-validate cart items against current catalog price, stock, availability and seller status before checkout (CART-08).
    *
-   * @returns {Promise<{ is_valid: boolean, has_price_changes: boolean, has_stock_issues: boolean }>}
+   * @param {Array} [overrideItems] - Optional items array to validate. Defaults to current cart items.
+   * @returns {Promise<{ is_valid: boolean, has_price_changes: boolean, has_stock_issues: boolean, has_unavailable: boolean, changes: Array, items: Array }>}
    */
-  const validateCart = useCallback(async () => {
-    if (!items.length) {
-      return {
-        is_valid: false,
-        has_price_changes: false,
-        has_stock_issues: false,
-        items: [],
-      };
-    }
-
-    try {
-      const result = await productService.validateCart(items);
-
-      if (result.has_price_changes || result.has_stock_issues) {
-        // Synchronize updated prices and stock into cart
-        setItems((currentItems) => {
-          return currentItems
-            .map((item) => {
-              const checked = result.items?.find(
-                (ci) => Number(ci.product_id) === Number(item.product_id)
-              );
-              if (!checked || checked.is_available === false) {
-                return null; // Out of stock / removed
-              }
-              const newPrice = checked.current_price ?? item.price;
-              const newStock = checked.current_stock ?? item.available_stock;
-              const adjustedQty = Math.min(item.quantity, newStock);
-
-              return {
-                ...item,
-                price: newPrice,
-                available_stock: newStock,
-                quantity: adjustedQty,
-                subtotal: newPrice * adjustedQty,
-              };
-            })
-            .filter(Boolean);
-        });
-
-        setValidationNotice(
-          'Some items in your cart had price or stock changes and have been adjusted.'
-        );
-      } else {
+  const validateCart = useCallback(
+    async (overrideItems) => {
+      const targetItems = overrideItems || items;
+      if (!targetItems.length) {
         setValidationNotice(null);
+        setValidationChanges([]);
+        setValidationResult(null);
+        return {
+          is_valid: true,
+          has_price_changes: false,
+          has_stock_issues: false,
+          has_unavailable: false,
+          changes: [],
+          items: [],
+        };
       }
 
-      return result;
-    } catch {
-      return {
-        is_valid: true,
-        has_price_changes: false,
-        has_stock_issues: false,
-        items,
-      };
+      try {
+        const result = await productService.validateCart(targetItems);
+        const changes = Array.isArray(result.changes) ? result.changes : [];
+        const hasIssues =
+          !result.is_valid ||
+          result.has_price_changes ||
+          result.has_stock_issues ||
+          result.has_unavailable ||
+          changes.length > 0;
+
+        if (hasIssues) {
+          setValidationChanges(changes);
+          setValidationResult(result);
+          const noticeSummary =
+            result.summary ||
+            STRINGS.CART.REVALIDATION_NOTICE ||
+            'Some items in your cart had price or stock changes and have been adjusted.';
+          setValidationNotice(noticeSummary);
+        } else {
+          setValidationNotice(null);
+          setValidationChanges([]);
+          setValidationResult(result);
+        }
+
+        return {
+          ...result,
+          changes,
+          is_valid: !hasIssues,
+        };
+      } catch {
+        return {
+          is_valid: true,
+          has_price_changes: false,
+          has_stock_issues: false,
+          has_unavailable: false,
+          changes: [],
+          items: targetItems,
+        };
+      }
+    },
+    [items]
+  );
+
+  /**
+   * Acknowledges and applies pending validation changes to the cart (CART-08, TC-18).
+   * Synchronizes updated prices and stock into cart items, and removes unavailable items.
+   *
+   * @returns {Array} Updated cart items after applying changes.
+   */
+  const acknowledgeValidation = useCallback(() => {
+    if (!validationResult || !Array.isArray(validationResult.items)) {
+      setValidationNotice(null);
+      setValidationChanges([]);
+      setValidationResult(null);
+      return items;
     }
-  }, [items]);
+
+    let updatedCart = [];
+    setItems((currentItems) => {
+      updatedCart = currentItems
+        .map((item) => {
+          const validated = validationResult.items.find(
+            (vi) =>
+              Number(vi.product_id ?? vi.id) ===
+              Number(item.product_id ?? item.id)
+          );
+
+          // If product is missing or unavailable, remove from cart (CART-08)
+          if (!validated || validated.is_available === false) {
+            return null;
+          }
+
+          const currentPrice = validated.current_price ?? item.price;
+          const currentStock = validated.current_stock ?? item.available_stock;
+          const adjustedQty = Math.max(
+            1,
+            Math.min(item.quantity, currentStock)
+          );
+
+          return {
+            ...item,
+            price: currentPrice,
+            available_stock: currentStock,
+            quantity: adjustedQty,
+            subtotal: calculateLineSubtotal(currentPrice, adjustedQty),
+          };
+        })
+        .filter(Boolean);
+
+      return updatedCart;
+    });
+
+    setValidationNotice(null);
+    setValidationChanges([]);
+    setValidationResult(null);
+    return updatedCart;
+  }, [items, validationResult]);
+
+  /**
+   * Clears the active validation notice and changes without applying changes.
+   */
+  const clearValidationNotice = useCallback(() => {
+    setValidationNotice(null);
+    setValidationChanges([]);
+    setValidationResult(null);
+  }, []);
 
   // Derived calculations (BR-02: subtotal = price × qty, grand total = sum of subtotals)
-  const itemCount = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity, 0),
-    [items]
-  );
-
-  const uniqueItemCount = items.length;
-
-  const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [items]
-  );
-
-  const total = subtotal; // No delivery fee, tax or discount in 1.0 (BR-02)
+  const cartTotals = useMemo(() => calculateCartTotals(items), [items]);
+  const itemCount = cartTotals.itemCount;
+  const uniqueItemCount = cartTotals.uniqueItemCount;
+  const subtotal = cartTotals.subtotal;
+  const total = cartTotals.total;
 
   const value = useMemo(
     () => ({
@@ -275,11 +348,15 @@ export function CartProvider({ children }) {
       total,
       isEmpty: items.length === 0,
       validationNotice,
+      validationChanges,
+      validationResult,
       addItem,
       updateQuantity,
       removeItem,
       clearCart,
       validateCart,
+      acknowledgeValidation,
+      clearValidationNotice,
     }),
     [
       items,
@@ -288,11 +365,15 @@ export function CartProvider({ children }) {
       subtotal,
       total,
       validationNotice,
+      validationChanges,
+      validationResult,
       addItem,
       updateQuantity,
       removeItem,
       clearCart,
       validateCart,
+      acknowledgeValidation,
+      clearValidationNotice,
     ]
   );
 

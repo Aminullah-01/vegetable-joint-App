@@ -9,6 +9,7 @@ import { useCart } from '../../hooks/useCart';
 import { Cart } from '../../pages/public/Cart';
 import { ToastProvider } from '../ToastContext';
 import { STRINGS } from '../../constants';
+import { productService } from '../../services/productService';
 
 const sampleTomato = {
   id: 1,
@@ -413,6 +414,130 @@ describe('Add / Update / Remove Cart Items (FE-055 / CART-01 to CART-03, BR-02, 
           level: 3,
         })
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('CART-08: Cart re-validation notices and acknowledgement (FE-059)', () => {
+    it('sets validationChanges and validationNotice when validateCart detects price or stock changes', async () => {
+      const { result } = renderHook(() => useCart(), { wrapper });
+
+      act(() => {
+        result.current.addItem(sampleTomato, 2);
+      });
+
+      vi.spyOn(productService, 'validateCart').mockResolvedValueOnce({
+        is_valid: false,
+        has_price_changes: true,
+        has_stock_issues: false,
+        has_unavailable: false,
+        changes: [
+          {
+            product_id: 1,
+            name: 'Fresh Roma Tomatoes',
+            type: 'price_changed',
+            old_price: 2500,
+            new_price: 3200,
+            message:
+              'Price for "Fresh Roma Tomatoes" changed from ₦2,500 to ₦3,200.',
+          },
+        ],
+        items: [
+          {
+            product_id: 1,
+            current_price: 3200,
+            current_stock: 10,
+            is_available: true,
+          },
+        ],
+      });
+
+      await act(async () => {
+        await result.current.validateCart();
+      });
+
+      expect(result.current.validationChanges).toHaveLength(1);
+      expect(result.current.validationChanges[0]).toMatchObject({
+        product_id: 1,
+        type: 'price_changed',
+        new_price: 3200,
+      });
+      expect(result.current.validationNotice).toBeTruthy();
+
+      // Before acknowledgement, current price is still the original price (TC-18)
+      expect(result.current.items[0].price).toBe(2500);
+
+      // Now acknowledge validation changes
+      act(() => {
+        result.current.acknowledgeValidation();
+      });
+
+      // Price updated to 3200, subtotal is 6400 (2 * 3200)
+      expect(result.current.items[0].price).toBe(3200);
+      expect(result.current.items[0].subtotal).toBe(6400);
+      expect(result.current.subtotal).toBe(6400);
+      expect(result.current.validationChanges).toHaveLength(0);
+      expect(result.current.validationNotice).toBeNull();
+    });
+
+    it('removes unavailable items and clamps stock on acknowledgement (CART-08, BR-04)', async () => {
+      const { result } = renderHook(() => useCart(), { wrapper });
+
+      act(() => {
+        result.current.addItem(sampleTomato, 5);
+        result.current.addItem(samplePepper, 3);
+      });
+
+      vi.spyOn(productService, 'validateCart').mockResolvedValueOnce({
+        is_valid: false,
+        has_price_changes: false,
+        has_stock_issues: true,
+        has_unavailable: true,
+        changes: [
+          {
+            product_id: 1,
+            name: 'Fresh Roma Tomatoes',
+            type: 'stock_reduced',
+            old_quantity: 5,
+            new_quantity: 2,
+          },
+          {
+            product_id: 2,
+            name: 'Fresh Scotch Bonnet',
+            type: 'unavailable',
+          },
+        ],
+        items: [
+          {
+            product_id: 1,
+            current_price: 2500,
+            current_stock: 2,
+            is_available: true,
+          },
+          {
+            product_id: 2,
+            current_price: 1800,
+            current_stock: 0,
+            is_available: false,
+          },
+        ],
+      });
+
+      await act(async () => {
+        await result.current.validateCart();
+      });
+
+      expect(result.current.validationChanges).toHaveLength(2);
+
+      act(() => {
+        result.current.acknowledgeValidation();
+      });
+
+      // Tomatoes clamped to 2, Peppers removed
+      expect(result.current.items).toHaveLength(1);
+      expect(result.current.items[0].product_id).toBe(1);
+      expect(result.current.items[0].quantity).toBe(2);
+      expect(result.current.items[0].subtotal).toBe(5000);
+      expect(result.current.itemCount).toBe(2);
     });
   });
 });

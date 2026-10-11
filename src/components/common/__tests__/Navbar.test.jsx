@@ -3,10 +3,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { AuthProvider, ToastProvider } from '../../../context';
+import { AuthProvider, ToastProvider, CartProvider } from '../../../context';
 import { Navbar } from '../Navbar';
 import { CartContext } from '../../../context/cartContextDef';
 import { authService } from '../../../services/authService';
+import { useCart } from '../../../hooks';
 
 // Wrapper with context providers
 function TestWrapper({
@@ -58,6 +59,50 @@ TestWrapper.propTypes = {
   initialRole: PropTypes.string,
   cartOverrides: PropTypes.object,
 };
+
+function LiveWrapper({ children }) {
+  return (
+    <MemoryRouter>
+      <ToastProvider>
+        <AuthProvider>
+          <CartProvider>{children}</CartProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </MemoryRouter>
+  );
+}
+
+LiveWrapper.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+function LiveCartTester() {
+  const { addItem, updateQuantity, removeItem, clearCart } = useCart();
+  return (
+    <div>
+      <Navbar />
+      <button
+        onClick={() =>
+          addItem({ id: 1, name: 'Fresh Tomatoes', price: 500, stock: 20 }, 2)
+        }
+      >
+        Add 2 Tomatoes
+      </button>
+      <button
+        onClick={() =>
+          addItem({ id: 2, name: 'Habanero Pepper', price: 300, stock: 15 }, 3)
+        }
+      >
+        Add 3 Peppers
+      </button>
+      <button onClick={() => updateQuantity(1, 1)}>
+        Update Tomato Qty to 1
+      </button>
+      <button onClick={() => removeItem(1)}>Remove Tomatoes</button>
+      <button onClick={() => clearCart()}>Clear Cart</button>
+    </div>
+  );
+}
 
 describe('Navbar Component (FE-022, UI-01, UI-07, CART-07)', () => {
   beforeEach(() => {
@@ -210,6 +255,96 @@ describe('Navbar Component (FE-022, UI-01, UI-07, CART-07)', () => {
 
       const cartLink = screen.getByLabelText(/Shopping Cart with 5 items/i);
       expect(cartLink).toBeInTheDocument();
+    });
+
+    it('formats accessible label correctly for single item (singular)', () => {
+      render(
+        <TestWrapper cartOverrides={{ itemCount: 1 }}>
+          <Navbar />
+        </TestWrapper>
+      );
+
+      const badge = screen.getByTestId('navbar-cart-badge');
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent('1');
+      expect(
+        screen.getByLabelText(/Shopping Cart with 1 item$/i)
+      ).toBeInTheDocument();
+    });
+
+    it('displays 99+ when item count exceeds 99 while keeping full count in aria-label', () => {
+      render(
+        <TestWrapper cartOverrides={{ itemCount: 150 }}>
+          <Navbar />
+        </TestWrapper>
+      );
+
+      const badge = screen.getByTestId('navbar-cart-badge');
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent('99+');
+      expect(
+        screen.getByLabelText(/Shopping Cart with 150 items/i)
+      ).toBeInTheDocument();
+    });
+
+    it('shows mobile drawer cart badge when drawer is opened and cart has items', async () => {
+      const user = userEvent.setup();
+      render(
+        <TestWrapper cartOverrides={{ itemCount: 4 }}>
+          <Navbar />
+        </TestWrapper>
+      );
+
+      const hamburgerBtn = screen.getByLabelText(/Toggle navigation menu/i);
+      await user.click(hamburgerBtn);
+
+      const mobileBadge = screen.getByTestId('navbar-mobile-cart-badge');
+      expect(mobileBadge).toBeInTheDocument();
+      expect(mobileBadge).toHaveTextContent('4');
+    });
+
+    it('reactively updates live item count on item additions, modifications, and removal', async () => {
+      const user = userEvent.setup();
+      render(
+        <LiveWrapper>
+          <LiveCartTester />
+        </LiveWrapper>
+      );
+
+      // Initially empty
+      expect(screen.queryByTestId('navbar-cart-badge')).not.toBeInTheDocument();
+      expect(
+        screen.getByLabelText(/Shopping Cart \(empty\)/i)
+      ).toBeInTheDocument();
+
+      // Add 2 tomatoes
+      await user.click(screen.getByText('Add 2 Tomatoes'));
+      expect(screen.getByTestId('navbar-cart-badge')).toHaveTextContent('2');
+      expect(
+        screen.getByLabelText(/Shopping Cart with 2 items/i)
+      ).toBeInTheDocument();
+
+      // Add 3 peppers (total 5)
+      await user.click(screen.getByText('Add 3 Peppers'));
+      expect(screen.getByTestId('navbar-cart-badge')).toHaveTextContent('5');
+      expect(
+        screen.getByLabelText(/Shopping Cart with 5 items/i)
+      ).toBeInTheDocument();
+
+      // Update tomatoes from 2 to 1 (total 4)
+      await user.click(screen.getByText('Update Tomato Qty to 1'));
+      expect(screen.getByTestId('navbar-cart-badge')).toHaveTextContent('4');
+
+      // Remove tomatoes entirely (total 3 peppers)
+      await user.click(screen.getByText('Remove Tomatoes'));
+      expect(screen.getByTestId('navbar-cart-badge')).toHaveTextContent('3');
+
+      // Clear cart
+      await user.click(screen.getByText('Clear Cart'));
+      expect(screen.queryByTestId('navbar-cart-badge')).not.toBeInTheDocument();
+      expect(
+        screen.getByLabelText(/Shopping Cart \(empty\)/i)
+      ).toBeInTheDocument();
     });
   });
 

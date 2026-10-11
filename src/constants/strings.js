@@ -250,6 +250,10 @@ export const STRINGS = {
     REMOVE: 'Remove',
     REVALIDATION_NOTICE:
       'Some items in your cart may have updated prices or stock availability.',
+    GUEST_CHECKOUT_NOTICE:
+      'Please sign in or register to complete your checkout. Your shopping cart has been preserved.',
+    GUEST_CHECKOUT_HINT:
+      'You will be asked to sign in or register at checkout. Your cart is preserved.',
   },
 
   // Checkout & Orders
@@ -410,7 +414,7 @@ export const STRINGS = {
 
   // Empty UI States (Figma UI Section 16 & MKT-10)
   EMPTY: {
-    CART_TITLE: 'Your cart is empty',
+    CART_TITLE: 'Your cart is empty.',
     CART_DESCRIPTION:
       'Explore our fresh farm produce and add vegetables to your basket.',
     ORDERS_TITLE: 'No orders yet',

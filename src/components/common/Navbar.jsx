@@ -31,6 +31,17 @@ export function Navbar({
   // Mobile menu toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Live cart indicators (CART-07)
+  const displayCartCount = itemCount > 99 ? '99+' : itemCount;
+  const cartAriaLabel =
+    itemCount > 0
+      ? `Shopping Cart with ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`
+      : 'Shopping Cart (empty)';
+  const cartTitle =
+    itemCount > 0
+      ? `Shopping Cart (${itemCount} ${itemCount === 1 ? 'item' : 'items'})`
+      : 'Shopping Cart (empty)';
+
   // Dropdown states
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -417,25 +428,24 @@ export function Navbar({
           {/* Cart Icon with Live Item Count (CART-07) */}
           <Link
             to="/cart"
-            aria-label={
-              itemCount > 0
-                ? `Shopping Cart with ${itemCount} items`
-                : 'Shopping Cart (empty)'
-            }
+            aria-label={cartAriaLabel}
+            title={cartTitle}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '42px',
-              height: '42px',
+              width: '44px',
+              height: '44px',
+              minWidth: '44px',
+              minHeight: '44px',
               borderRadius: '8px',
               backgroundColor: '#f8fafc',
               border: '1px solid #e2e8f0',
               color: '#1e293b',
               textDecoration: 'none',
               position: 'relative',
-              transition: 'background-color 0.15s ease',
-              minWidth: '42px',
+              transition:
+                'background-color 0.15s ease, border-color 0.15s ease',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#f0fdf4';
@@ -452,6 +462,7 @@ export function Navbar({
             {itemCount > 0 && (
               <span
                 data-testid="navbar-cart-badge"
+                aria-hidden="true"
                 style={{
                   position: 'absolute',
                   top: '-4px',
@@ -460,17 +471,19 @@ export function Navbar({
                   color: '#ffffff',
                   fontSize: '0.7rem',
                   fontWeight: '700',
-                  minWidth: '18px',
-                  height: '18px',
+                  minWidth: '20px',
+                  height: '20px',
                   borderRadius: '999px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: '0 4px',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+                  pointerEvents: 'none',
+                  lineHeight: 1,
                 }}
               >
-                {itemCount}
+                {displayCartCount}
               </span>
             )}
           </Link>
@@ -823,8 +836,10 @@ export function Navbar({
             aria-label="Toggle navigation menu"
             aria-expanded={isMobileMenuOpen}
             style={{
-              width: '42px',
-              height: '42px',
+              width: '44px',
+              height: '44px',
+              minWidth: '44px',
+              minHeight: '44px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -886,20 +901,24 @@ export function Navbar({
               to="/cart"
               style={mobileNavLinkStyle}
               onClick={() => setIsMobileMenuOpen(false)}
+              aria-label={cartAriaLabel}
             >
               <span>🛒 Shopping Cart</span>
               {itemCount > 0 && (
                 <span
+                  data-testid="navbar-mobile-cart-badge"
                   style={{
                     backgroundColor: '#15803d',
                     color: '#ffffff',
                     fontSize: '0.75rem',
                     fontWeight: '700',
-                    padding: '0.1rem 0.5rem',
+                    padding: '0.12rem 0.55rem',
                     borderRadius: '999px',
+                    minWidth: '20px',
+                    textAlign: 'center',
                   }}
                 >
-                  {itemCount}
+                  {displayCartCount}
                 </span>
               )}
             </NavLink>

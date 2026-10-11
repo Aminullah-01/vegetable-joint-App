@@ -376,40 +376,127 @@ class MockStore {
   validateCart(items = []) {
     let hasPriceChanges = false;
     let hasStockIssues = false;
+    let hasUnavailable = false;
+    const changes = [];
 
     const validatedItems = items.map((item) => {
-      const product = this.products.find(
-        (p) => p.id === Number(item.product_id)
-      );
-      if (!product || product.deleted_at) {
+      const productId = Number(item.product_id ?? item.id);
+      const product = this.products.find((p) => p.id === productId);
+
+      if (!product || product.deleted_at || product.is_active === false) {
         hasStockIssues = true;
+        hasUnavailable = true;
+        changes.push({
+          product_id: productId,
+          name: item.name || 'Product',
+          type: 'unavailable',
+          message: `"${item.name || 'Product'}" is currently unavailable and has been removed from your cart.`,
+        });
         return {
           ...item,
+          product_id: productId,
           is_available: false,
+          current_stock: 0,
           error: STRINGS.ERRORS.PRODUCT_UNAVAILABLE,
         };
       }
 
-      const priceChanged = product.price !== item.price;
-      const stockIssue = product.quantity < item.quantity;
-      if (priceChanged) hasPriceChanges = true;
-      if (stockIssue) hasStockIssues = true;
+      // Check seller status (CART-08: current price, stock, availability and seller status)
+      const seller =
+        product.seller ||
+        (product.seller_id
+          ? this.users.find((u) => u.id === product.seller_id)
+          : null);
+      if (
+        seller &&
+        (seller.is_active === false ||
+          seller.status === 'suspended' ||
+          seller.approval_status === 'suspended')
+      ) {
+        hasStockIssues = true;
+        hasUnavailable = true;
+        changes.push({
+          product_id: productId,
+          name: item.name || product.name,
+          type: 'seller_suspended',
+          message: `Seller for "${item.name || product.name}" is currently unavailable. Item removed from cart.`,
+        });
+        return {
+          ...item,
+          product_id: productId,
+          is_available: false,
+          current_stock: 0,
+          error: 'Seller is currently unavailable.',
+        };
+      }
+
+      const availableStock =
+        typeof product.quantity === 'number' ? product.quantity : 0;
+      if (
+        availableStock <= 0 ||
+        product.availability === 'out_of_stock' ||
+        product.availability === 'unavailable'
+      ) {
+        hasStockIssues = true;
+        hasUnavailable = true;
+        changes.push({
+          product_id: productId,
+          name: item.name || product.name,
+          type: 'unavailable',
+          message: `"${item.name || product.name}" is out of stock and has been removed from your cart.`,
+        });
+        return {
+          ...item,
+          product_id: productId,
+          is_available: false,
+          current_stock: 0,
+          error: 'Out of stock.',
+        };
+      }
+
+      const priceChanged = Number(product.price) !== Number(item.price);
+      const stockIssue = availableStock < Number(item.quantity);
+      if (priceChanged) {
+        hasPriceChanges = true;
+        changes.push({
+          product_id: productId,
+          name: item.name || product.name,
+          type: 'price_changed',
+          old_price: Number(item.price),
+          new_price: Number(product.price),
+          message: `Price for "${item.name || product.name}" changed from ₦${Number(item.price).toLocaleString()} to ₦${Number(product.price).toLocaleString()}.`,
+        });
+      }
+      if (stockIssue) {
+        hasStockIssues = true;
+        changes.push({
+          product_id: productId,
+          name: item.name || product.name,
+          type: 'stock_reduced',
+          old_quantity: Number(item.quantity),
+          new_quantity: availableStock,
+          message: `Available stock for "${item.name || product.name}" is now ${availableStock} (reduced from ${item.quantity}).`,
+        });
+      }
 
       return {
         ...item,
+        product_id: productId,
         current_price: product.price,
-        current_stock: product.quantity,
-        is_available: product.quantity > 0,
+        current_stock: availableStock,
+        is_available: true,
         price_changed: priceChanged,
         stock_issue: stockIssue,
       };
     });
 
     return {
-      is_valid: !hasPriceChanges && !hasStockIssues,
+      is_valid: !hasPriceChanges && !hasStockIssues && !hasUnavailable,
       items: validatedItems,
+      changes,
       has_price_changes: hasPriceChanges,
       has_stock_issues: hasStockIssues,
+      has_unavailable: hasUnavailable,
     };
   }
 

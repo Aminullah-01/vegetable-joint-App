@@ -15,11 +15,28 @@ export function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Check if user was redirected from a protected route
-  const fromLocation = location.state?.from;
-  const redirectNotice = fromLocation
-    ? 'Please sign in to access that page.'
-    : null;
+  // Check if user was redirected from a protected route or query param (CART-09, AUTH-07)
+  const searchParams = new URLSearchParams(location.search);
+  const redirectParam =
+    searchParams.get('redirect') || searchParams.get('returnUrl');
+  const fromLocation =
+    location.state?.from ||
+    (redirectParam ? { pathname: redirectParam } : null);
+
+  const fromPath =
+    typeof fromLocation === 'string'
+      ? fromLocation
+      : fromLocation?.pathname || '';
+  const isCheckoutRedirect = Boolean(
+    fromPath && fromPath.startsWith('/checkout')
+  );
+
+  const redirectNotice = isCheckoutRedirect
+    ? STRINGS.CART.GUEST_CHECKOUT_NOTICE ||
+      'Please sign in or register to complete your checkout. Your shopping cart has been preserved.'
+    : fromLocation
+      ? 'Please sign in to access that page.'
+      : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -93,8 +110,42 @@ export function Login() {
           </p>
         </div>
 
-        {/* Redirect Notice Banner */}
-        {redirectNotice && (
+        {/* Redirect Notice Banner (CART-09, AUTH-07) */}
+        {isCheckoutRedirect ? (
+          <div
+            data-testid="checkout-guest-notice"
+            role="status"
+            style={{
+              backgroundColor: '#f0fdf4',
+              color: '#166534',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              padding: '0.875rem 1rem',
+              fontSize: '0.85rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem',
+              lineHeight: 1.45,
+            }}
+          >
+            <span
+              style={{ fontSize: '1.35rem', lineHeight: 1 }}
+              aria-hidden="true"
+            >
+              🛒
+            </span>
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>
+                Ready to complete your order?
+              </div>
+              <div>
+                Please sign in or register to complete your checkout. Your
+                shopping cart has been preserved and will remain intact.
+              </div>
+            </div>
+          </div>
+        ) : redirectNotice ? (
           <div
             style={{
               backgroundColor: '#fef3c7',
@@ -108,11 +159,12 @@ export function Login() {
               alignItems: 'center',
               gap: '0.5rem',
             }}
+            data-testid="login-redirect-notice"
           >
             <span>🔒</span>
             <span>{redirectNotice}</span>
           </div>
-        )}
+        ) : null}
 
         {/* Error Alert */}
         {errorMessage && (
@@ -323,7 +375,12 @@ export function Login() {
         >
           Don&apos;t have an account?{' '}
           <Link
-            to="/register"
+            to={{
+              pathname: '/register',
+              search: location.search,
+            }}
+            state={location.state}
+            data-testid="login-register-link"
             style={{
               color: '#15803d',
               fontWeight: '600',
