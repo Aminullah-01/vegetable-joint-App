@@ -263,3 +263,96 @@ export function calculateSellerSubtotals(items = []) {
 
   return Array.from(sellerMap.values());
 }
+
+/**
+ * Merges local client-side cart items with remote server-side cart items (CART-10).
+ * Conforms to BR-04: quantities are clamped by available stock.
+ *
+ * Strategy:
+ * - If both carts contain an item with the same product ID:
+ *   Combines quantities up to available stock limit.
+ *   Uses latest unit price and available stock info.
+ * - Items present only in local or only in server cart are included in the merged list.
+ *
+ * @param {Array<object>} [localItems=[]] - Items currently in local storage / client state.
+ * @param {Array<object>} [serverItems=[]] - Items fetched from remote server / device sync.
+ * @returns {Array<object>} Merged cart items array.
+ */
+export function mergeCartItems(localItems = [], serverItems = []) {
+  const safeLocal = Array.isArray(localItems) ? localItems : [];
+  const safeServer = Array.isArray(serverItems) ? serverItems : [];
+
+  if (safeServer.length === 0) return [...safeLocal];
+  if (safeLocal.length === 0) return [...safeServer];
+
+  const mergedMap = new Map();
+
+  // 1. Seed with server items
+  for (const sItem of safeServer) {
+    if (!sItem) continue;
+    const pid = Number(sItem.product_id ?? sItem.id);
+    if (!pid) continue;
+    const price = Number(sItem.price) || 0;
+    const qty = Math.max(1, Math.floor(Number(sItem.quantity) || 1));
+    const stock = Number(
+      sItem.available_stock ?? sItem.quantity_available ?? sItem.stock ?? 999
+    );
+    const clampedQty = Math.min(qty, stock > 0 ? stock : qty);
+
+    mergedMap.set(pid, {
+      ...sItem,
+      product_id: pid,
+      price,
+      quantity: clampedQty,
+      available_stock: stock,
+      subtotal: calculateLineSubtotal(price, clampedQty),
+    });
+  }
+
+  // 2. Merge local items
+  for (const lItem of safeLocal) {
+    if (!lItem) continue;
+    const pid = Number(lItem.product_id ?? lItem.id);
+    if (!pid) continue;
+    const lPrice = Number(lItem.price) || 0;
+    const lQty = Math.max(1, Math.floor(Number(lItem.quantity) || 1));
+    const stock = Number(
+      lItem.available_stock ?? lItem.quantity_available ?? lItem.stock ?? 999
+    );
+
+    if (mergedMap.has(pid)) {
+      const existing = mergedMap.get(pid);
+      const sStock =
+        existing.available_stock !== undefined &&
+        existing.available_stock !== null
+          ? Number(existing.available_stock)
+          : null;
+      const effectiveStock =
+        sStock !== null && sStock > 0 ? sStock : stock > 0 ? stock : 999;
+      // Combine quantities bounded by available stock
+      const combinedQty = Math.min(existing.quantity + lQty, effectiveStock);
+      const effectivePrice = existing.price || lPrice;
+      mergedMap.set(pid, {
+        ...lItem,
+        ...existing,
+        product_id: pid,
+        price: effectivePrice,
+        quantity: combinedQty,
+        available_stock: effectiveStock,
+        subtotal: calculateLineSubtotal(effectivePrice, combinedQty),
+      });
+    } else {
+      const clampedQty = Math.min(lQty, stock > 0 ? stock : lQty);
+      mergedMap.set(pid, {
+        ...lItem,
+        product_id: pid,
+        price: lPrice,
+        quantity: clampedQty,
+        available_stock: stock,
+        subtotal: calculateLineSubtotal(lPrice, clampedQty),
+      });
+    }
+  }
+
+  return Array.from(mergedMap.values());
+}

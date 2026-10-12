@@ -12,6 +12,9 @@ export { default as authService } from './authService.js';
 export * from './productService.js';
 export { default as productService } from './productService.js';
 
+export * from './cartService.js';
+export { default as cartService } from './cartService.js';
+
 export * from './categoryService.js';
 export { default as categoryService } from './categoryService.js';
 

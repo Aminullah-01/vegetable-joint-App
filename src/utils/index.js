@@ -9,4 +9,5 @@ export * from './modal.js';
 export * from './orderStatus.js';
 export * from './image.js';
 export * from './cartCalculations.js';
+export * from './validation.js';
 export * from '../constants/index.js';

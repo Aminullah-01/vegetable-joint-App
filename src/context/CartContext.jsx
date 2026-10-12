@@ -1,11 +1,20 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useContext,
+} from 'react';
 import PropTypes from 'prop-types';
 import { CartContext } from './cartContextDef.js';
-import { productService } from '../services';
+import { AuthContext } from './authContextDef.js';
+import { cartService } from '../services';
 import { STRINGS } from '../constants';
 import {
   calculateLineSubtotal,
   calculateCartTotals,
+  mergeCartItems,
 } from '../utils/cartCalculations.js';
 
 const STORAGE_CART_KEY = 'vegetable_joint_cart';
@@ -53,10 +62,108 @@ export function CartProvider({ children }) {
   const [validationChanges, setValidationChanges] = useState([]);
   const [validationResult, setValidationResult] = useState(null);
 
+  // CART-10: Server-side cart synchronization state
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'synced' | 'error'
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [syncError, setSyncError] = useState(null);
+
+  const auth = useContext(AuthContext);
+  const user = auth?.user;
+  const isAuthenticated = auth?.isAuthenticated;
+  const isBuyer = auth?.isBuyer || user?.role === 'buyer';
+  const userId = user?.id;
+
+  const hasInitializedSyncRef = useRef(false);
+  const isSyncingRef = useRef(false);
+
   // Sync state changes to storage
   useEffect(() => {
     saveCartToStorage(items);
   }, [items]);
+
+  // Initial Server-side Cart Sync / Merge upon Buyer Authentication (CART-10)
+  useEffect(() => {
+    if (!isAuthenticated || !isBuyer || !userId) {
+      hasInitializedSyncRef.current = false;
+      return;
+    }
+
+    let isMounted = true;
+
+    async function initialDeviceSync() {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      isSyncingRef.current = true;
+
+      try {
+        const remote = await cartService.fetchCart();
+        const remoteItems = remote?.items || [];
+
+        if (isMounted) {
+          setItems((currentLocalItems) => {
+            const merged = mergeCartItems(currentLocalItems, remoteItems);
+            // Re-sync merged cart back to server to ensure parity across devices
+            cartService.syncCart(merged).catch(() => {});
+            return merged;
+          });
+
+          hasInitializedSyncRef.current = true;
+          isSyncingRef.current = false;
+          setSyncStatus('synced');
+          setLastSyncedAt(new Date().toISOString());
+        }
+      } catch (err) {
+        if (isMounted) {
+          hasInitializedSyncRef.current = true;
+          isSyncingRef.current = false;
+          setSyncStatus('error');
+          setSyncError(err?.message || 'Server cart sync unavailable');
+        }
+      }
+    }
+
+    initialDeviceSync();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, isBuyer, userId]);
+
+  // Debounced Auto-sync on Cart State Mutations for Authenticated Buyers (CART-10)
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      !isBuyer ||
+      !userId ||
+      !hasInitializedSyncRef.current ||
+      isSyncingRef.current
+    ) {
+      return;
+    }
+
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      setSyncStatus('syncing');
+      try {
+        const result = await cartService.syncCart(items);
+        if (isMounted) {
+          setSyncStatus('synced');
+          setLastSyncedAt(result?.updated_at || new Date().toISOString());
+          setSyncError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setSyncStatus('error');
+          setSyncError(err?.message || 'Failed to sync cart to server');
+        }
+      }
+    }, 200);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [items, isAuthenticated, isBuyer, userId]);
 
   /**
    * Add a product to the cart with a specified quantity (CART-01, CART-02).
@@ -200,7 +307,17 @@ export function CartProvider({ children }) {
     setValidationNotice(null);
     setValidationChanges([]);
     setValidationResult(null);
-  }, []);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.removeItem(STORAGE_CART_KEY);
+      } catch {
+        // storage restricted
+      }
+    }
+    if (isAuthenticated && isBuyer && userId) {
+      cartService.clearCart().catch(() => {});
+    }
+  }, [isAuthenticated, isBuyer, userId]);
 
   /**
    * Re-validate cart items against current catalog price, stock, availability and seller status before checkout (CART-08).
@@ -226,7 +343,7 @@ export function CartProvider({ children }) {
       }
 
       try {
-        const result = await productService.validateCart(targetItems);
+        const result = await cartService.validateCart(targetItems);
         const changes = Array.isArray(result.changes) ? result.changes : [];
         const hasIssues =
           !result.is_valid ||
@@ -332,6 +449,35 @@ export function CartProvider({ children }) {
     setValidationResult(null);
   }, []);
 
+  /**
+   * Manually trigger server-side cart synchronization (CART-10).
+   *
+   * @param {Array} [overrideItems] - Optional items array to sync. Defaults to current cart items.
+   * @returns {Promise<Array>}
+   */
+  const syncServerCart = useCallback(
+    async (overrideItems) => {
+      if (!isAuthenticated || !isBuyer || !userId) {
+        return items;
+      }
+      setSyncStatus('syncing');
+      setSyncError(null);
+      try {
+        const target = overrideItems || items;
+        const result = await cartService.syncCart(target);
+        setSyncStatus('synced');
+        setLastSyncedAt(result?.updated_at || new Date().toISOString());
+        return target;
+      } catch (err) {
+        setSyncStatus('error');
+        const errText = err?.message || 'Server sync failed';
+        setSyncError(errText);
+        throw err;
+      }
+    },
+    [isAuthenticated, isBuyer, userId, items]
+  );
+
   // Derived calculations (BR-02: subtotal = price × qty, grand total = sum of subtotals)
   const cartTotals = useMemo(() => calculateCartTotals(items), [items]);
   const itemCount = cartTotals.itemCount;
@@ -350,6 +496,13 @@ export function CartProvider({ children }) {
       validationNotice,
       validationChanges,
       validationResult,
+      // CART-10: Server sync status and methods
+      syncStatus,
+      isSyncing: syncStatus === 'syncing',
+      isSynced: syncStatus === 'synced',
+      lastSyncedAt,
+      syncError,
+      syncServerCart,
       addItem,
       updateQuantity,
       removeItem,
@@ -367,6 +520,10 @@ export function CartProvider({ children }) {
       validationNotice,
       validationChanges,
       validationResult,
+      syncStatus,
+      lastSyncedAt,
+      syncError,
+      syncServerCart,
       addItem,
       updateQuantity,
       removeItem,

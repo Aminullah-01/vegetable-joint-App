@@ -254,6 +254,10 @@ export const STRINGS = {
       'Please sign in or register to complete your checkout. Your shopping cart has been preserved.',
     GUEST_CHECKOUT_HINT:
       'You will be asked to sign in or register at checkout. Your cart is preserved.',
+    SYNC_ACROSS_DEVICES: 'Cart synced across devices',
+    SYNCING: 'Syncing cart across devices...',
+    SYNC_OFFLINE: 'Offline: Cart saved locally',
+    SYNC_NOW: 'Sync Now',
   },
 
   // Checkout & Orders
@@ -307,11 +311,32 @@ export const STRINGS = {
   AUTH: {
     SIGN_IN_TITLE: 'Sign In to Vegetable Joint',
     SIGN_IN_SUBTITLE: 'Access buyer or seller dashboard',
+    REGISTER_TITLE: 'Join Vegetable Joint',
+    REGISTER_BUYER_TITLE: 'Create a Buyer Account',
+    REGISTER_BUYER_SUBTITLE:
+      'Buy fresh vegetables directly from local farmers and vendors across Nigeria (AUTH-01, AUTH-08)',
+    REGISTER_SELLER_TITLE: 'Register as Vegetable Seller',
+    REGISTER_SELLER_SUBTITLE:
+      'List farm produce and reach thousands of buyers across Nigeria (AUTH-02)',
+    ROLE_CHOICE_LABEL: 'Select Account Type:',
+    ROLE_BUYER_TAB: 'Register as Buyer',
+    ROLE_SELLER_TAB: 'Register as Seller',
     EMAIL_LABEL: 'Email Address',
     PASSWORD_LABEL: 'Password',
     CONFIRM_PASSWORD_LABEL: 'Confirm Password',
     NEW_PASSWORD_LABEL: 'New Password',
     FULL_NAME_LABEL: 'Full Name',
+    PHONE_LABEL: 'Phone Number',
+    NAME_PLACEHOLDER: 'e.g. Amina Bello',
+    EMAIL_PLACEHOLDER: 'e.g. amina@example.ng',
+    PHONE_PLACEHOLDER: 'e.g. 08012345678 or +2348012345678',
+    PASSWORD_PLACEHOLDER: 'Minimum 8 characters with letters & numbers',
+    CONFIRM_PASSWORD_PLACEHOLDER: 'Re-enter your password',
+    PASSWORD_HINT:
+      'Password must be at least 8 characters and contain both letters and digits.',
+    PASSWORD_RULE_LENGTH: 'At least 8 characters',
+    PASSWORD_RULE_LETTERS: 'Contains letters (a-z)',
+    PASSWORD_RULE_NUMBERS: 'Contains numbers (0-9)',
     ROLE_LABEL: 'I want to:',
     ROLE_BUYER_OPTION: 'Buy fresh vegetables (Buyer)',
     ROLE_SELLER_OPTION: 'Sell vegetables / Farm produce (Seller)',
@@ -319,6 +344,8 @@ export const STRINGS = {
     REMEMBER_ME: 'Remember me',
     SIGN_IN_BTN: 'Sign In',
     REGISTER_BTN: 'Create Account',
+    REGISTER_BUYER_BTN: 'Create Buyer Account',
+    SUBMITTING_BTN: 'Creating Account...',
     NO_ACCOUNT_PROMPT: "Don't have an account?",
     REGISTER_NOW_LINK: 'Register now',
     HAVE_ACCOUNT_PROMPT: 'Already have an account?',
@@ -332,6 +359,14 @@ export const STRINGS = {
     BACK_TO_SIGN_IN: '← Back to Sign In',
     SELLER_PENDING_APPROVAL:
       'Your seller registration is currently under review by administrators. You will receive access once approved.',
+    BUYER_REGISTRATION_SUCCESS: (name) =>
+      `Welcome to Vegetable Joint, ${name}! Your account is ready.`,
+    EMAIL_ALREADY_EXISTS:
+      'This email has already been taken. Please sign in or use another email.',
+    PASSWORDS_DONT_MATCH: 'Passwords do not match.',
+    CHECKOUT_REDIRECT_HEADING: 'Ready to complete your order?',
+    CHECKOUT_REDIRECT_TEXT:
+      'Create an account to complete your checkout. Your shopping cart has been preserved and will remain intact.',
   },
 
   // Public Seller Discovery (MKT-01 featured sellers, MKT-07 seller profile)

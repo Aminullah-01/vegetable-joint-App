@@ -27,6 +27,7 @@ class MockStore {
     this.settings = JSON.parse(JSON.stringify(mockSettings));
     this.auditLogs = JSON.parse(JSON.stringify(mockAuditLogs));
     this.currentUser = this.users.find((u) => u.id === 6) || null; // Amina Bello (Buyer)
+    this.serverCarts = {};
   }
 
   // --- Auth & Users ---
@@ -43,13 +44,41 @@ class MockStore {
   }
 
   registerUser(payload) {
-    const existing = this.findUserByEmail(payload.email);
-    if (existing) {
+    const errors = {};
+
+    if (!payload?.name || !String(payload.name).trim()) {
+      errors.name = ['Full name is required.'];
+    }
+
+    const email = String(payload?.email || '')
+      .trim()
+      .toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      errors.email = ['Email address is required.'];
+    } else if (!emailRegex.test(email)) {
+      errors.email = ['Please enter a valid email address.'];
+    } else if (this.findUserByEmail(email)) {
+      errors.email = ['The email has already been taken.'];
+    }
+
+    const password = String(payload?.password || '');
+    const hasLetters = /[a-zA-Z]/.test(password);
+    const hasDigits = /\d/.test(password);
+    if (!password) {
+      errors.password = ['Password is required.'];
+    } else if (password.length < 8) {
+      errors.password = ['Password must be at least 8 characters.'];
+    } else if (!hasLetters || !hasDigits) {
+      errors.password = ['Password must contain both letters and digits.'];
+    }
+
+    if (Object.keys(errors).length > 0) {
       throw new ApiError({
         message: 'The given data was invalid.',
         status: 422,
         code: 'VALIDATION_ERROR',
-        errors: { email: ['The email has already been taken.'] },
+        errors,
       });
     }
 
@@ -371,6 +400,38 @@ class MockStore {
     const product = this.getProductById(id);
     product.deleted_at = new Date().toISOString();
     return { message: 'Product deleted successfully.' };
+  }
+
+  // --- Cart Management & Server-side Sync (CART-08, CART-10) ---
+  getServerCart(userId) {
+    if (!userId) {
+      return { items: [], updated_at: null };
+    }
+    const cart = this.serverCarts[userId] || [];
+    return {
+      items: JSON.parse(JSON.stringify(cart)),
+      updated_at: cart._updatedAt || new Date().toISOString(),
+    };
+  }
+
+  syncServerCart(userId, items = []) {
+    if (!userId) {
+      return { items: [], updated_at: new Date().toISOString() };
+    }
+    const cleanItems = JSON.parse(JSON.stringify(items));
+    cleanItems._updatedAt = new Date().toISOString();
+    this.serverCarts[userId] = cleanItems;
+    return {
+      items: JSON.parse(JSON.stringify(cleanItems)),
+      updated_at: cleanItems._updatedAt,
+    };
+  }
+
+  clearServerCart(userId) {
+    if (userId && this.serverCarts[userId]) {
+      delete this.serverCarts[userId];
+    }
+    return { success: true };
   }
 
   validateCart(items = []) {
