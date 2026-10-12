@@ -75,6 +75,43 @@ export const mockSellers = [
     created_at: '2026-02-18T14:20:00Z',
     updated_at: '2026-02-18T14:20:00Z',
   },
+  {
+    id: 5,
+    user_id: 9,
+    business_name: 'Savannah Vegetables Ltd',
+    description:
+      'Commercial vegetable grower and distributor awaiting document re-verification.',
+    location: 'Kaduna',
+    phone: '+2348039999001',
+    approval_status: 'rejected',
+    rejection_reason:
+      'Incomplete business registration documentation and unverified farm stall address.',
+    reviewed_by: 1,
+    reviewed_at: '2026-02-02T11:00:00Z',
+    average_rating: 0,
+    rating_count: 0,
+    total_products: 0,
+    created_at: '2026-02-01T10:00:00Z',
+    updated_at: '2026-02-02T11:00:00Z',
+  },
+  {
+    id: 6,
+    user_id: 10,
+    business_name: 'Zaria Fresh Agro',
+    description:
+      'Bulk tomato and sweet pepper farmer currently under administrative compliance review.',
+    location: 'Kaduna',
+    phone: '+2348039999002',
+    approval_status: 'suspended',
+    rejection_reason: null,
+    reviewed_by: 1,
+    reviewed_at: '2026-02-15T14:00:00Z',
+    average_rating: 3.5,
+    rating_count: 12,
+    total_products: 2,
+    created_at: '2026-01-18T09:00:00Z',
+    updated_at: '2026-02-15T14:00:00Z',
+  },
 ];
 
 export default mockSellers;

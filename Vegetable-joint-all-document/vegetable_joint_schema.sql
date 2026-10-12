@@ -255,10 +255,10 @@ CREATE TABLE personal_access_tokens (
   name            VARCHAR(255)    NOT NULL,
   token           VARCHAR(64)     NOT NULL,
   abilities       TEXT            NULL,
-  last_used_at    TIMESTAMP       NULL DEFAULT NULL,
+  last_used_at    TIMESTAMP       NULL DEFAULT NULL, 
   expires_at      TIMESTAMP       NULL DEFAULT NULL,                  -- tokens must expire (NFR-SEC-03)
-  created_at      TIMESTAMP       NULL DEFAULT NULL,
-  updated_at      TIMESTAMP       NULL DEFAULT NULL,
+  created_at      TIMESTAMP       NULL DEFAULT NULL, 
+  updated_at      TIMESTAMP       NULL DEFAULT NULL, 
   PRIMARY KEY (id),
   UNIQUE KEY personal_access_tokens_token_unique (token),
   KEY personal_access_tokens_tokenable (tokenable_type, tokenable_id),

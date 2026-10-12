@@ -1,6 +1,18 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks';
+import {
+  getSellerApprovalStatus,
+  canSellerPublish,
+  getSellerStatusMeta,
+} from '../../utils/sellerStatus.js';
+import { SellerStatusBadge } from '../../components/seller/SellerStatusBadge.jsx';
 
 export function SellerProducts() {
+  const { user } = useAuth();
+  const status = getSellerApprovalStatus(user);
+  const canPublish = canSellerPublish(user);
+  const statusMeta = getSellerStatusMeta(status);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div
@@ -8,12 +20,24 @@ export function SellerProducts() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
         }}
       >
         <div>
-          <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
-            My Vegetables & Listings (SEL-02, SEL-03)
-          </h1>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
+              My Vegetables & Listings (SEL-02, SEL-03)
+            </h1>
+            <SellerStatusBadge user={user} />
+          </div>
           <p
             style={{
               color: '#64748b',
@@ -24,21 +48,70 @@ export function SellerProducts() {
             Manage and edit vegetables listed on the public marketplace.
           </p>
         </div>
-        <Link
-          to="/seller/products/new"
+
+        {canPublish ? (
+          <Link
+            to="/seller/products/new"
+            data-testid="add-product-link"
+            style={{
+              backgroundColor: '#15803d',
+              color: '#ffffff',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+            }}
+          >
+            + Add Product
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            data-testid="add-product-btn-disabled"
+            title={`Publishing disabled: account is ${statusMeta.label.toLowerCase()} (AUTH-03)`}
+            style={{
+              backgroundColor: '#94a3b8',
+              color: '#ffffff',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '6px',
+              border: 'none',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+              cursor: 'not-allowed',
+              opacity: 0.85,
+            }}
+          >
+            + Add Product (Publishing Disabled)
+          </button>
+        )}
+      </div>
+
+      {!canPublish && (
+        <div
+          role="status"
+          data-testid="seller-products-restricted-notice"
           style={{
-            backgroundColor: '#15803d',
-            color: '#ffffff',
-            padding: '0.6rem 1.2rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            fontWeight: '600',
-            fontSize: '0.9rem',
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: '8px',
+            padding: '0.75rem 1rem',
+            fontSize: '0.85rem',
+            color: '#92400e',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
           }}
         >
-          + Add Product
-        </Link>
-      </div>
+          <span aria-hidden="true">⚠️</span>
+          <span>
+            <strong>Publishing Notice:</strong> While your account is {statusMeta.label.toLowerCase()},
+            new listings cannot be published to the marketplace and existing products will not be visible to buyers (AUTH-03, BR-11).
+          </span>
+        </div>
+      )}
 
       <div
         style={{

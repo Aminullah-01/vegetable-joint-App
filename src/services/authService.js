@@ -22,14 +22,16 @@ export const authService = {
       }
       return result;
     }
-
+    
     const response = await apiClient.post('/auth/register', payload, {
       skipAuth: true,
     });
+
     if (response.data?.token) {
       apiClient.setToken(response.data.token);
     }
     return response.data;
+    
   },
 
   /**
@@ -44,6 +46,8 @@ export const authService = {
       const result = mockStore.loginUser(credentials);
       if (result?.token) {
         apiClient.setToken(result.token);
+        this was the 
+        
       }
       return result;
     }

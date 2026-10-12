@@ -1,12 +1,34 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks';
+import {
+  getSellerApprovalStatus,
+  canSellerPublish,
+  getSellerStatusMeta,
+} from '../../utils/sellerStatus.js';
+import { SellerStatusBadge } from '../../components/seller/SellerStatusBadge.jsx';
 
 export function SellerOverview() {
+  const { user } = useAuth();
+  const status = getSellerApprovalStatus(user);
+  const canPublish = canSellerPublish(user);
+  const statusMeta = getSellerStatusMeta(status);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
-        <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
-          Seller Overview (SEL-13)
-        </h1>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
+            Seller Overview (SEL-13)
+          </h1>
+          <SellerStatusBadge user={user} />
+        </div>
         <p
           style={{
             color: '#64748b',
@@ -99,21 +121,45 @@ export function SellerOverview() {
         >
           Quick Actions
         </h2>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <Link
-            to="/seller/products/new"
-            style={{
-              backgroundColor: '#15803d',
-              color: '#ffffff',
-              padding: '0.6rem 1.2rem',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontWeight: '500',
-              fontSize: '0.9rem',
-            }}
-          >
-            + Add New Vegetable
-          </Link>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {canPublish ? (
+            <Link
+              to="/seller/products/new"
+              data-testid="add-vegetable-link"
+              style={{
+                backgroundColor: '#15803d',
+                color: '#ffffff',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                fontWeight: '500',
+                fontSize: '0.9rem',
+              }}
+            >
+              + Add New Vegetable
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              data-testid="add-vegetable-disabled-btn"
+              title={`Publishing disabled: seller account is ${statusMeta.label.toLowerCase()} (AUTH-03)`}
+              style={{
+                backgroundColor: '#94a3b8',
+                color: '#ffffff',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '6px',
+                border: 'none',
+                fontWeight: '500',
+                fontSize: '0.9rem',
+                cursor: 'not-allowed',
+                opacity: 0.85,
+              }}
+            >
+              + Add New Vegetable (Publishing Disabled)
+            </button>
+          )}
           <Link
             to="/seller/orders"
             style={{

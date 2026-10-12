@@ -37,6 +37,7 @@ export function Cart() {
     validationNotice,
     validationChanges,
     acknowledgeValidation,
+    syncStatus,
   } = useCart();
 
   const toast = useContext(ToastContext);
@@ -213,6 +214,52 @@ export function Cart() {
               data-testid="cart-item-count-badge"
             >
               {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            </span>
+          )}
+
+          {syncStatus && syncStatus !== 'idle' && (
+            <span
+              style={{
+                backgroundColor:
+                  syncStatus === 'synced'
+                    ? '#f0fdf4'
+                    : syncStatus === 'error'
+                      ? '#fffbeb'
+                      : '#eff6ff',
+                color:
+                  syncStatus === 'synced'
+                    ? '#15803d'
+                    : syncStatus === 'error'
+                      ? '#b45309'
+                      : '#1d4ed8',
+                border: `1px solid ${
+                  syncStatus === 'synced'
+                    ? '#bbf7d0'
+                    : syncStatus === 'error'
+                      ? '#fde68a'
+                      : '#bfdbfe'
+                }`,
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                padding: '0.2rem 0.65rem',
+                borderRadius: '9999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+              data-testid="cart-sync-indicator"
+              role="status"
+              aria-live="polite"
+            >
+              <span>{syncStatus === 'error' ? '⚠️' : '☁️'}</span>
+              <span>
+                {syncStatus === 'syncing'
+                  ? STRINGS.CART.SYNCING || 'Syncing across devices...'
+                  : syncStatus === 'synced'
+                    ? STRINGS.CART.SYNC_ACROSS_DEVICES ||
+                      'Cart synced across devices'
+                    : STRINGS.CART.SYNC_OFFLINE || 'Saved locally (offline)'}
+              </span>
             </span>
           )}
         </div>

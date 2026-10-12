@@ -309,7 +309,12 @@ export function Login() {
             Quick Role Switcher for Testing (AUTH-07):
           </p>
           <div
-            style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}
+            style={{
+              display: 'flex',
+              gap: '0.4rem',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+            }}
           >
             <button
               type="button"
@@ -343,7 +348,61 @@ export function Login() {
                 color: '#0f172a',
               }}
             >
-              🌾 Seller
+              🌾 Seller (Approved)
+            </button>
+            <button
+              type="button"
+              data-testid="login-quick-fill-pending-seller"
+              onClick={() =>
+                handleQuickFill('pending@newfarm.ng', 'password123', 'Pending Seller')
+              }
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '4px',
+                border: '1px solid #fde68a',
+                backgroundColor: '#fffbeb',
+                cursor: 'pointer',
+                color: '#92400e',
+              }}
+            >
+              ⏳ Pending Seller
+            </button>
+            <button
+              type="button"
+              data-testid="login-quick-fill-suspended-seller"
+              onClick={() =>
+                handleQuickFill('suspended@seller.ng', 'password123', 'Suspended Seller')
+              }
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '4px',
+                border: '1px solid #fecdd3',
+                backgroundColor: '#fff1f2',
+                cursor: 'pointer',
+                color: '#9f1239',
+              }}
+            >
+              🚫 Suspended Seller
+            </button>
+            <button
+              type="button"
+              data-testid="login-quick-fill-rejected-seller"
+              onClick={() =>
+                handleQuickFill('rejected@farm.ng', 'password123', 'Rejected Seller')
+              }
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '4px',
+                border: '1px solid #fecaca',
+                backgroundColor: '#fef2f2',
+                cursor: 'pointer',
+                color: '#991b1b',
+              }}
+            >
+              ✕ Rejected Seller
             </button>
             <button
               type="button"

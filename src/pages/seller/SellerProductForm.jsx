@@ -1,8 +1,33 @@
 import { useParams, Link } from 'react-router-dom';
+import { useAuth, useToast } from '../../hooks';
+import {
+  getSellerApprovalStatus,
+  canSellerPublish,
+  getSellerStatusMeta,
+} from '../../utils/sellerStatus.js';
+import { SellerStatusBadge } from '../../components/seller/SellerStatusBadge.jsx';
+import { SellerApprovalNotice } from '../../components/seller/SellerApprovalNotice.jsx';
 
 export function SellerProductForm() {
   const { id } = useParams();
   const isEditing = Boolean(id);
+  const { user } = useAuth();
+  const toast = useToast();
+
+  const status = getSellerApprovalStatus(user);
+  const canPublish = canSellerPublish(user);
+  const statusMeta = getSellerStatusMeta(status);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!canPublish) {
+      toast.error(
+        `Cannot publish listing: Your seller account is ${statusMeta.label.toLowerCase()} (AUTH-03).`
+      );
+      return;
+    }
+    toast.success(isEditing ? 'Listing updated successfully!' : 'Listing published successfully!');
+  };
 
   return (
     <div
@@ -24,19 +49,32 @@ export function SellerProductForm() {
         >
           ← Back to My Products
         </Link>
-        <h1
+        <div
           style={{
-            fontSize: '1.75rem',
-            color: '#1e293b',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
             margin: '0.5rem 0 0 0',
           }}
         >
-          {isEditing
-            ? `Edit Vegetable Listing #${id}`
-            : 'Add New Vegetable Listing'}{' '}
-          (SEL-02, SEL-03)
-        </h1>
+          <h1
+            style={{
+              fontSize: '1.75rem',
+              color: '#1e293b',
+              margin: 0,
+            }}
+          >
+            {isEditing
+              ? `Edit Vegetable Listing #${id}`
+              : 'Add New Vegetable Listing'}{' '}
+            (SEL-02, SEL-03)
+          </h1>
+          <SellerStatusBadge user={user} />
+        </div>
       </div>
+
+      {!canPublish && <SellerApprovalNotice inline status={status} />}
 
       <div
         style={{
@@ -48,7 +86,7 @@ export function SellerProductForm() {
       >
         <form
           style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={handleSubmit}
         >
           <div>
             <label
@@ -168,20 +206,33 @@ export function SellerProductForm() {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
             <button
               type="submit"
+              disabled={!canPublish}
+              aria-disabled={!canPublish}
+              data-testid="save-product-submit-btn"
+              title={
+                !canPublish
+                  ? `Publishing disabled: account is ${statusMeta.label.toLowerCase()} (AUTH-03)`
+                  : undefined
+              }
               style={{
-                backgroundColor: '#15803d',
+                backgroundColor: canPublish ? '#15803d' : '#94a3b8',
                 color: '#ffffff',
                 padding: '0.65rem 1.5rem',
                 borderRadius: '6px',
                 border: 'none',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: canPublish ? 'pointer' : 'not-allowed',
+                opacity: canPublish ? 1 : 0.85,
               }}
             >
-              {isEditing ? 'Update Listing' : 'Save & Publish Listing'}
+              {canPublish
+                ? isEditing
+                  ? 'Update Listing'
+                  : 'Save & Publish Listing'
+                : `Publishing Disabled (${statusMeta.label})`}
             </button>
             <Link
               to="/seller/products"

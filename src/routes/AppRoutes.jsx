@@ -156,14 +156,21 @@ export function AppRoutes() {
             path={ROUTES.SELLER_EDIT_PRODUCT}
             element={<SellerProductForm />}
           />
-          <Route path={ROUTES.SELLER_ORDERS} element={<SellerOrders />} />
+          <Route 
+            path={ROUTES.SELLER_ORDERS} 
+            element={<SellerOrders />} />
           <Route
             path={ROUTES.SELLER_ORDER_DETAIL}
             element={<SellerOrderDetail />}
           />
-          <Route path={ROUTES.SELLER_INVENTORY} element={<SellerInventory />} />
-          <Route path={ROUTES.SELLER_SALES} element={<SellerSales />} />
-        </Route>
+          <Route 
+            path={ROUTES.SELLER_INVENTORY} 
+            element={<SellerInventory />} />
+
+          <Route 
+            path={ROUTES.SELLER_SALES} 
+            element={<SellerSales />} />
+          </Route>
 
         {/* Admin Dashboard Routes (Protected: admin role only) */}
         <Route

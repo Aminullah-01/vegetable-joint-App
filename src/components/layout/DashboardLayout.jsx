@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { env } from '../../utils';
 import { useAuth } from '../../hooks';
 import { Spinner } from '../common/Spinner.jsx';
+import { SellerApprovalNotice } from '../seller/SellerApprovalNotice.jsx';
 
 export function DashboardLayout({ title, role, navItems }) {
   const { user, logout } = useAuth();
@@ -237,6 +238,11 @@ export function DashboardLayout({ title, role, navItems }) {
             boxSizing: 'border-box',
           }}
         >
+          {role === 'seller' && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <SellerApprovalNotice />
+            </div>
+          )}
           <Suspense
             fallback={
               <Spinner size="lg" center text="Loading dashboard page..." />

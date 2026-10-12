@@ -63,33 +63,36 @@ export function formatUrl(baseUrl, endpoint, params = {}) {
     const cleanEndpoint = endpoint.replace(/^\/+/, '');
     fullUrl = cleanBase ? `${cleanBase}/${cleanEndpoint}` : `/${cleanEndpoint}`;
   }
-
+  
   const queryString = buildQueryString(params);
   if (queryString) {
     const separator = fullUrl.includes('?') ? '&' : '?';
     fullUrl = `${fullUrl}${separator}${queryString}`;
   }
-
   return fullUrl;
 }
+
 
 /**
  * API Client Class providing a standard wrapper for Laravel REST API communication.
  * Satisfies IF-01 to IF-05, CON-01, NFR-MAIN-02, and ERR-01 to ERR-04.
  */
+
+
 export class ApiClient {
+
   /**
    * @param {Object} [config={}]
    * @param {string} [config.baseUrl] - Base API URL (defaults to env.apiBaseUrl).
    * @param {number} [config.timeout=30000] - Default request timeout in milliseconds.
    */
+  
   constructor({ baseUrl = env.apiBaseUrl, timeout = 30000 } = {}) {
     this.baseUrl = baseUrl;
     this.timeout = timeout;
     this.token = null;
     this.tokenProvider = null;
     this.unauthorizedListeners = new Set();
-
     // Initialize token from localStorage if in a browser environment
     this.initTokenFromStorage();
   }

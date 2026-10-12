@@ -92,6 +92,28 @@ export const mockUsers = [
     created_at: '2026-01-05T10:00:00Z',
     updated_at: '2026-02-10T16:00:00Z',
   },
+  {
+    id: 9,
+    name: 'Tukur Mohammed',
+    email: 'rejected@farm.ng',
+    phone: '+2348039999001',
+    role: 'seller',
+    status: 'active',
+    email_verified_at: '2026-02-01T10:00:00Z',
+    created_at: '2026-02-01T10:00:00Z',
+    updated_at: '2026-02-02T11:00:00Z',
+  },
+  {
+    id: 10,
+    name: 'Suleiman Bello',
+    email: 'suspended@seller.ng',
+    phone: '+2348039999002',
+    role: 'seller',
+    status: 'active',
+    email_verified_at: '2026-01-18T09:00:00Z',
+    created_at: '2026-01-18T09:00:00Z',
+    updated_at: '2026-02-15T14:00:00Z',
+  },
 ];
 
 export default mockUsers;
