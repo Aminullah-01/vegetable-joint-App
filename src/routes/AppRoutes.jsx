@@ -108,6 +108,14 @@ export function AppRoutes() {
           <Route element={<GuestRoute />}>
             <Route path={ROUTES.LOGIN} element={<Login />} />
             <Route path={ROUTES.REGISTER} element={<Register />} />
+            <Route
+              path={ROUTES.REGISTER_SELLER}
+              element={<Register defaultRole="seller" />}
+            />
+            <Route
+              path="/seller/register"
+              element={<Register defaultRole="seller" />}
+            />
             <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
             <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
           </Route>

@@ -1,8 +1,99 @@
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../../hooks';
+import { canSellerPublish } from '../../utils/sellerStatus';
 
 export function SellerProductForm() {
   const { id } = useParams();
   const isEditing = Boolean(id);
+  const { user } = useAuth();
+  const canPublish = canSellerPublish(user);
+
+  if (!canPublish) {
+    return (
+      <div
+        style={{
+          maxWidth: '650px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+        }}
+      >
+        <div>
+          <Link
+            to="/seller/products"
+            style={{
+              color: '#15803d',
+              textDecoration: 'none',
+              fontSize: '0.85rem',
+            }}
+          >
+            ← Back to My Products
+          </Link>
+          <h1
+            style={{
+              fontSize: '1.75rem',
+              color: '#1e293b',
+              margin: '0.5rem 0 0 0',
+            }}
+          >
+            {isEditing
+              ? `Edit Vegetable Listing #${id}`
+              : 'Add New Vegetable Listing'}
+          </h1>
+        </div>
+
+        {/* Publishing locked notice (FE-064 / AUTH-03 / ADM-03) */}
+        <div
+          data-testid="product-form-publishing-locked"
+          role="alert"
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+          }}
+        >
+          <h2
+            style={{
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            🔒 Product publishing is disabled
+          </h2>
+          <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.55 }}>
+            Your seller account is not currently approved, so you cannot
+            {isEditing
+              ? ' edit or republish this listing'
+              : ' create or publish new listings'}{' '}
+            (AUTH-03, ADM-03). Product publishing becomes available as soon as a
+            platform administrator approves your account.
+          </p>
+          <Link
+            to="/seller"
+            data-testid="product-form-blocked-back-link"
+            style={{
+              alignSelf: 'flex-start',
+              backgroundColor: '#15803d',
+              color: '#ffffff',
+              padding: '0.55rem 1.1rem',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '0.875rem',
+            }}
+          >
+            Return to Seller Overview
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

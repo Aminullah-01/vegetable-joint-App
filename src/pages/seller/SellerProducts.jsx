@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks';
+import { canSellerPublish } from '../../utils/sellerStatus';
 
 export function SellerProducts() {
+  const { user } = useAuth();
+  const canPublish = canSellerPublish(user);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div
@@ -24,21 +29,68 @@ export function SellerProducts() {
             Manage and edit vegetables listed on the public marketplace.
           </p>
         </div>
-        <Link
-          to="/seller/products/new"
+        {canPublish ? (
+          <Link
+            to="/seller/products/new"
+            data-testid="add-product-link"
+            style={{
+              backgroundColor: '#15803d',
+              color: '#ffffff',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+            }}
+          >
+            + Add Product
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            data-testid="add-product-disabled-btn"
+            title="You cannot publish product listings until your seller account is approved by an administrator (AUTH-03)."
+            style={{
+              backgroundColor: '#f1f5f9',
+              color: '#94a3b8',
+              border: '1px solid #cbd5e1',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '6px',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+              cursor: 'not-allowed',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            }}
+          >
+            <span aria-hidden="true">🔒</span>
+            <span>+ Add Product (Locked)</span>
+          </button>
+        )}
+      </div>
+
+      {/* Publishing disabled notice (FE-064 / AUTH-03) */}
+      {!canPublish && (
+        <div
+          data-testid="products-publishing-disabled-notice"
+          role="alert"
           style={{
-            backgroundColor: '#15803d',
-            color: '#ffffff',
-            padding: '0.6rem 1.2rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            fontWeight: '600',
-            fontSize: '0.9rem',
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fde68a',
+            color: '#92400e',
+            borderRadius: '8px',
+            padding: '0.75rem 1rem',
+            fontSize: '0.85rem',
+            lineHeight: 1.5,
           }}
         >
-          + Add Product
-        </Link>
-      </div>
+          ⚠️ <strong>Publishing disabled:</strong> You cannot create new product
+          listings until an administrator approves your seller account
+          (AUTH-03). Existing listings below remain visible only to you.
+        </div>
+      )}
 
       <div
         style={{

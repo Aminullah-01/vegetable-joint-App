@@ -31,6 +31,7 @@ export const ERROR_CODES = {
   CONFLICT: 'CONFLICT',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   RATE_LIMITED: 'RATE_LIMITED',
+  INVALID_RESET_TOKEN: 'INVALID_RESET_TOKEN',
   SERVER_ERROR: 'SERVER_ERROR',
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 };
@@ -49,6 +50,7 @@ export class ApiError extends Error {
    * @param {any} [options.data=null] - Raw response payload or parsed body.
    * @param {Response} [options.rawResponse=null] - Raw Fetch Response instance.
    * @param {Error} [options.originalError=null] - Original caught JavaScript error.
+   * @param {number|null} [options.retryAfter=null] - Seconds until the client may retry (HTTP 429 only).
    */
   constructor({
     message,
@@ -58,6 +60,7 @@ export class ApiError extends Error {
     data = null,
     rawResponse = null,
     originalError = null,
+    retryAfter = null,
   }) {
     super(message);
     this.name = 'ApiError';
@@ -67,6 +70,7 @@ export class ApiError extends Error {
     this.data = data;
     this.rawResponse = rawResponse;
     this.originalError = originalError;
+    this.retryAfter = retryAfter;
 
     // Categorization flags
     this.isNetworkError = status === 0;
@@ -165,7 +169,7 @@ export function getStatusDetails(status) {
       };
     case HTTP_STATUS.TOO_MANY_REQUESTS:
       return {
-        message: 'Too many requests. Please wait a moment before trying again.',
+        message: STRINGS.AUTH.TOO_MANY_ATTEMPTS,
         code: ERROR_CODES.RATE_LIMITED,
       };
     default:
@@ -213,6 +217,18 @@ export function createApiErrorFromResponse(response, body) {
     }
   }
 
+  // SRS NFR-SEC-07 / IF-03: surface the throttle window so callers can show a friendly cooldown.
+  let retryAfter = null;
+  const headerRetry = response.headers?.get?.('Retry-After');
+  const bodyRetry =
+    body && typeof body === 'object'
+      ? (body.retry_after ?? body.retryAfter)
+      : null;
+  const parsedRetry = Number(headerRetry ?? bodyRetry);
+  if (Number.isFinite(parsedRetry) && parsedRetry >= 0) {
+    retryAfter = Math.ceil(parsedRetry);
+  }
+
   return new ApiError({
     message,
     status,
@@ -220,6 +236,7 @@ export function createApiErrorFromResponse(response, body) {
     errors,
     data: body,
     rawResponse: response,
+    retryAfter,
   });
 }
 

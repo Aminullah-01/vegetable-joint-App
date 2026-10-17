@@ -75,6 +75,43 @@ export const mockSellers = [
     created_at: '2026-02-18T14:20:00Z',
     updated_at: '2026-02-18T14:20:00Z',
   },
+  {
+    id: 5,
+    user_id: 9,
+    business_name: 'Kaduna Agro Export Ltd',
+    description: 'Wholesale farm supplier attempting platform registration.',
+    location: 'Kaduna',
+    phone: '+2348091122334',
+    approval_status: 'rejected',
+    rejection_reason:
+      'Incomplete business registration documentation and invalid stall address.',
+    reviewed_by: 1,
+    reviewed_at: '2026-02-21T11:00:00Z',
+    average_rating: 0,
+    rating_count: 0,
+    total_products: 0,
+    created_at: '2026-02-20T10:00:00Z',
+    updated_at: '2026-02-21T11:00:00Z',
+  },
+  {
+    id: 6,
+    user_id: 10,
+    business_name: 'Niger River Veggies',
+    description:
+      'Riverbank vegetable seller suspended due to repeated unfulfilled orders.',
+    location: 'Niger',
+    phone: '+2348095566778',
+    approval_status: 'suspended',
+    rejection_reason:
+      'Account suspended due to policy violations (multiple unfulfilled orders).',
+    reviewed_by: 1,
+    reviewed_at: '2026-02-23T09:00:00Z',
+    average_rating: 2.1,
+    rating_count: 5,
+    total_products: 2,
+    created_at: '2026-02-22T10:00:00Z',
+    updated_at: '2026-02-23T09:00:00Z',
+  },
 ];
 
 export default mockSellers;

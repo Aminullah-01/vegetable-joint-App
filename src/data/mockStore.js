@@ -6,8 +6,39 @@ import { mockOrders } from './mockOrders.js';
 import { mockSettings } from './mockSettings.js';
 import { mockAuditLogs } from './mockAuditLogs.js';
 import { createPaginationMeta } from './index.js';
-import { ApiError } from '../services/apiErrors.js';
+import { ApiError, ERROR_CODES } from '../services/apiErrors.js';
 import { STRINGS } from '../constants/index.js';
+import { hashPassword, verifyPassword } from '../utils/passwordHash.js';
+import { PHONE_REGEX } from '../utils/validation.js';
+
+/**
+ * Shared demo password for every seeded mock account. It is hashed on load so
+ * the plaintext value is never persisted on the seeded user records.
+ */
+const MOCK_DEMO_PASSWORD = 'password123';
+
+// SRS AUTH-06: password-reset links are time-limited and single-use.
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 60 minutes
+
+// SRS AUTH-09 / NFR-SEC-07: failed-login throttling limits.
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 60 * 1000;
+
+/**
+ * Removes credential material from a user object before it is returned by any
+ * service method (SRS NFR-SEC-01: passwords/hashes never appear in responses).
+ *
+ * @param {Object|null|undefined} user
+ * @returns {Object|null}
+ */
+function sanitizeUser(user) {
+  if (!user) return user;
+  if (!Object.prototype.hasOwnProperty.call(user, 'password_hash')) {
+    return { ...user };
+  }
+  const { password_hash: _passwordHash, ...safeUser } = user;
+  return safeUser;
+}
 
 /**
  * In-memory Mock Data Store for interactive mock sessions and testing.
@@ -20,7 +51,10 @@ class MockStore {
 
   reset() {
     this.categories = JSON.parse(JSON.stringify(mockCategories));
-    this.users = JSON.parse(JSON.stringify(mockUsers));
+    this.users = JSON.parse(JSON.stringify(mockUsers)).map((user) => ({
+      ...user,
+      password_hash: hashPassword(MOCK_DEMO_PASSWORD),
+    }));
     this.sellers = JSON.parse(JSON.stringify(mockSellers));
     this.products = JSON.parse(JSON.stringify(mockProducts));
     this.orders = JSON.parse(JSON.stringify(mockOrders));
@@ -28,6 +62,10 @@ class MockStore {
     this.auditLogs = JSON.parse(JSON.stringify(mockAuditLogs));
     this.currentUser = this.users.find((u) => u.id === 6) || null; // Amina Bello (Buyer)
     this.serverCarts = {};
+    // AUTH-09: per-email failed-login timestamps used for throttling.
+    this.loginAttempts = {};
+    // AUTH-06: issued password-reset tokens keyed by token string.
+    this.resetTokens = {};
   }
 
   // --- Auth & Users ---
@@ -73,6 +111,15 @@ class MockStore {
       errors.password = ['Password must contain both letters and digits.'];
     }
 
+    if (payload?.role === 'seller') {
+      if (!payload?.business_name || !String(payload.business_name).trim()) {
+        errors.business_name = ['Business or Farm name is required.'];
+      }
+      if (!payload?.location || !String(payload.location).trim()) {
+        errors.location = ['Farm or stall location is required.'];
+      }
+    }
+
     if (Object.keys(errors).length > 0) {
       throw new ApiError({
         message: 'The given data was invalid.',
@@ -90,6 +137,7 @@ class MockStore {
       phone: payload.phone || '+2348000000000',
       role: payload.role || 'buyer',
       status: 'active',
+      password_hash: hashPassword(payload.password),
       email_verified_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -123,7 +171,7 @@ class MockStore {
     this.currentUser = newUser;
     return {
       user: {
-        ...newUser,
+        ...sanitizeUser(newUser),
         seller_profile: sellerProfile,
       },
       token,
@@ -131,58 +179,428 @@ class MockStore {
   }
 
   loginUser(credentials) {
-    const user = this.findUserByEmail(credentials.email);
-    if (!user) {
+    const email = String(credentials?.email || '')
+      .trim()
+      .toLowerCase();
+
+    // AUTH-09: throttle repeated failed logins (5 per minute) BEFORE credential checks.
+    const retryAfter = this.getLoginRetryAfter(email);
+    if (retryAfter > 0) {
       throw new ApiError({
-        message: STRINGS.ERRORS.INVALID_CREDENTIALS,
-        status: 401,
-        code: 'UNAUTHORIZED',
+        message: STRINGS.AUTH.TOO_MANY_ATTEMPTS_WAIT(retryAfter),
+        status: 429,
+        code: ERROR_CODES.RATE_LIMITED,
+        retryAfter,
       });
     }
 
-    if (user.status === 'suspended') {
+    const user = this.findUserByEmail(email);
+
+    // AUTH-09: never reveal whether an email exists. Unknown accounts and
+    // incorrect passwords both return the same generic 401 message.
+    if (!user || !verifyPassword(credentials?.password, user.password_hash)) {
+      this.recordFailedLogin(email);
       throw new ApiError({
-        message:
-          'Your account has been suspended. Please contact administrator.',
-        status: 403,
-        code: 'FORBIDDEN',
+        message: STRINGS.ERRORS.INVALID_CREDENTIALS,
+        status: 401,
+        code: ERROR_CODES.UNAUTHORIZED,
       });
     }
 
     const sellerProfile =
       this.sellers.find((s) => s.user_id === user.id) || null;
+
+    // AUTH-12 / ADM-03 / TC-30: suspended or deactivated users (including
+    // suspended sellers) are blocked from logging in with a friendly message.
+    if (user.status === 'suspended') {
+      throw new ApiError({
+        message: STRINGS.AUTH.ACCOUNT_SUSPENDED_MESSAGE,
+        status: 403,
+        code: ERROR_CODES.FORBIDDEN,
+      });
+    }
+    if (user.status === 'deactivated' || user.status === 'inactive') {
+      throw new ApiError({
+        message: STRINGS.AUTH.ACCOUNT_DEACTIVATED_MESSAGE,
+        status: 403,
+        code: ERROR_CODES.FORBIDDEN,
+      });
+    }
+    if (sellerProfile?.approval_status === 'suspended') {
+      throw new ApiError({
+        message: STRINGS.AUTH.SELLER_ACCOUNT_SUSPENDED_MESSAGE,
+        status: 403,
+        code: ERROR_CODES.FORBIDDEN,
+      });
+    }
+
+    // Successful login clears any prior failed-attempt throttle for this email.
+    delete this.loginAttempts[email];
+
     const token = `mock-token-${Date.now()}-${user.id}`;
     this.currentUser = user;
 
     return {
       user: {
-        ...user,
+        ...sanitizeUser(user),
         seller_profile: sellerProfile,
       },
       token,
     };
   }
 
+  /**
+   * Records a failed login attempt for throttling (AUTH-09).
+   * @param {string} email
+   */
+  recordFailedLogin(email) {
+    if (!email) return;
+    const now = Date.now();
+    const windowStart = now - LOGIN_WINDOW_MS;
+    const recent = (this.loginAttempts[email] || []).filter(
+      (ts) => ts > windowStart
+    );
+    recent.push(now);
+    this.loginAttempts[email] = recent;
+  }
+
+  /**
+   * Returns remaining cooldown seconds (0 when under the limit).
+   * AUTH-09: 5 failed attempts per 60-second window.
+   * @param {string} email
+   * @returns {number}
+   */
+  getLoginRetryAfter(email) {
+    if (!email) return 0;
+    const now = Date.now();
+    const windowStart = now - LOGIN_WINDOW_MS;
+    const recent = (this.loginAttempts[email] || []).filter(
+      (ts) => ts > windowStart
+    );
+    if (recent.length < MAX_LOGIN_ATTEMPTS) return 0;
+    const oldest = Math.min(...recent);
+    const elapsed = now - oldest;
+    const remainingMs = LOGIN_WINDOW_MS - elapsed;
+    return remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0;
+  }
+
   logoutUser() {
     this.currentUser = null;
+  }
+
+  /**
+   * Issues a time-limited, single-use password-reset token (SRS AUTH-06).
+   *
+   * Prepends a random component so tokens are not guessable. To avoid email
+   * enumeration the response shape is identical whether or not the account
+   * exists. In mock mode the token is returned so the in-browser demo can
+   * complete the flow; a real backend delivers it by email only.
+   *
+   * @param {{ email?: string }} payload
+   * @returns {{ message: string, reset_token?: string, expires_at?: string }}
+   */
+  forgotPassword(payload) {
+    const email = String(payload?.email || '')
+      .trim()
+      .toLowerCase();
+    const response = { message: STRINGS.AUTH.FORGOT_SUCCESS };
+
+    const user = this.findUserByEmail(email);
+    if (!user) {
+      return response;
+    }
+
+    // Only the newest link should work: invalidate this email's unused tokens.
+    for (const [token, entry] of Object.entries(this.resetTokens)) {
+      if (entry.email === email && !entry.used_at) {
+        delete this.resetTokens[token];
+      }
+    }
+
+    const token = this.generateResetToken();
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
+    this.resetTokens[token] = {
+      email,
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt,
+      used_at: null,
+    };
+
+    return { ...response, reset_token: token, expires_at: expiresAt };
+  }
+
+  /**
+   * Generates an opaque mock reset token.
+   * @returns {string}
+   */
+  generateResetToken() {
+    const rand = Math.random().toString(36).slice(2, 10);
+    return `mock-reset-${Date.now().toString(36)}-${rand}`;
+  }
+
+  /**
+   * Sets a new password using a valid, unused, unexpired reset token
+   * (SRS AUTH-06).
+   *
+   * @param {{
+   *   token?: string,
+   *   email?: string,
+   *   password?: string,
+   *   password_confirmation?: string
+   * }} payload
+   * @returns {{ message: string }}
+   */
+  resetPassword(payload) {
+    const token = String(payload?.token || '').trim();
+    const entry = token ? this.resetTokens[token] : null;
+
+    const throwInvalid = (reason, message) => {
+      const friendly = message || STRINGS.AUTH.RESET_TOKEN_INVALID;
+      throw new ApiError({
+        message: friendly,
+        status: 422,
+        code: ERROR_CODES.INVALID_RESET_TOKEN,
+        errors: { token: [friendly] },
+        data: { reason },
+      });
+    };
+
+    if (!entry) throwInvalid('invalid');
+    if (entry.used_at) throwInvalid('used', STRINGS.AUTH.RESET_TOKEN_USED);
+    if (Date.now() > new Date(entry.expires_at).getTime()) {
+      throwInvalid('expired', STRINGS.AUTH.RESET_TOKEN_EXPIRED);
+    }
+
+    // When an email is supplied it must match the token's owner.
+    const email = String(payload?.email || '')
+      .trim()
+      .toLowerCase();
+    if (email && email !== entry.email) throwInvalid('invalid');
+
+    const errors = {};
+    const password = String(payload?.password ?? '');
+    const confirmation = String(payload?.password_confirmation ?? '');
+    const hasLetters = /[a-zA-Z]/.test(password);
+    const hasDigits = /\d/.test(password);
+    if (!password) {
+      errors.password = ['Password is required.'];
+    } else if (password.length < 8) {
+      errors.password = ['Password must be at least 8 characters.'];
+    } else if (!hasLetters || !hasDigits) {
+      errors.password = ['Password must contain both letters and digits.'];
+    }
+    if (!confirmation) {
+      errors.password_confirmation = ['Please confirm your password.'];
+    } else if (password !== confirmation) {
+      errors.password_confirmation = ['Passwords do not match.'];
+    }
+
+    if (Object.keys(errors).length > 0) {
+      throw new ApiError({
+        message: 'The given data was invalid.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors,
+      });
+    }
+
+    const user = this.findUserByEmail(entry.email);
+    if (!user) throwInvalid('invalid');
+
+    user.password_hash = hashPassword(password);
+    user.updated_at = new Date().toISOString();
+
+    // AUTH-06: the link is single-use.
+    entry.used_at = new Date().toISOString();
+    // Clear any failed-login throttle for the account.
+    delete this.loginAttempts[entry.email];
+    // NFR-SEC-03: changing the password revokes the active session.
+    if (this.currentUser && this.currentUser.id === user.id) {
+      this.currentUser = null;
+    }
+
+    return { message: STRINGS.AUTH.RESET_SUCCESS };
   }
 
   getCurrentProfile() {
     if (!this.currentUser) {
       // Default to guest/demo buyer
-      return this.users.find((u) => u.id === 6);
+      return sanitizeUser(this.users.find((u) => u.id === 6));
     }
     const seller = this.sellers.find((s) => s.user_id === this.currentUser.id);
     return {
-      ...this.currentUser,
+      ...sanitizeUser(this.currentUser),
       seller_profile: seller || null,
     };
   }
 
-  updateProfile(data) {
-    const user = this.currentUser || this.users[0];
-    Object.assign(user, data, { updated_at: new Date().toISOString() });
-    return user;
+  /**
+   * Update the authenticated user's profile (SRS AUTH-11).
+   *
+   * Updates account fields (name, phone) and, for sellers, the linked
+   * business details (business name, location, description). Email and role
+   * are intentionally immutable here.
+   *
+   * @param {Object} data
+   * @returns {Object} the updated profile (user + seller_profile)
+   */
+  updateProfile(data = {}) {
+    const user = this.currentUser;
+    if (!user) {
+      throw new ApiError({
+        message: STRINGS.ERRORS.INVALID_CREDENTIALS,
+        status: 401,
+        code: ERROR_CODES.UNAUTHORIZED,
+      });
+    }
+
+    const errors = {};
+
+    const name = data.name !== undefined ? String(data.name).trim() : user.name;
+    if (!name) {
+      errors.name = ['Full name is required.'];
+    } else if (name.length < 2) {
+      errors.name = ['Full name must be at least 2 characters.'];
+    }
+
+    const phone =
+      data.phone !== undefined ? String(data.phone).trim() : user.phone;
+    if (!phone) {
+      errors.phone = ['Phone number is required.'];
+    } else {
+      const digits = phone.replace(/[^0-9]/g, '');
+      if (!PHONE_REGEX.test(phone) || digits.length < 10) {
+        errors.phone = [
+          'Please enter a valid phone number (at least 10 digits).',
+        ];
+      }
+    }
+
+    const seller = this.sellers.find((s) => s.user_id === user.id) || null;
+
+    let businessName = null;
+    let location = null;
+    let description = null;
+    if (seller) {
+      businessName =
+        data.business_name !== undefined
+          ? String(data.business_name).trim()
+          : seller.business_name;
+      if (!businessName) {
+        errors.business_name = ['Business or Farm name is required.'];
+      } else if (businessName.length > 150) {
+        errors.business_name = ['Business name cannot exceed 150 characters.'];
+      }
+
+      location =
+        data.location !== undefined
+          ? String(data.location).trim()
+          : seller.location;
+      if (!location) {
+        errors.location = ['Farm or stall location is required.'];
+      } else if (location.length > 150) {
+        errors.location = ['Location cannot exceed 150 characters.'];
+      }
+
+      description =
+        data.description !== undefined
+          ? String(data.description)
+          : seller.description;
+      if (description && description.length > 1000) {
+        errors.description = ['Description cannot exceed 1000 characters.'];
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      throw new ApiError({
+        message: 'The given data was invalid.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors,
+      });
+    }
+
+    user.name = name;
+    user.phone = phone;
+    user.updated_at = new Date().toISOString();
+
+    if (seller) {
+      seller.business_name = businessName;
+      seller.location = location;
+      seller.description = description;
+      if (data.phone !== undefined) seller.phone = phone;
+      seller.updated_at = new Date().toISOString();
+    }
+
+    return {
+      ...sanitizeUser(user),
+      seller_profile: seller || null,
+    };
+  }
+
+  /**
+   * Change the authenticated user's password (SRS AUTH-11, AUTH-08).
+   *
+   * Requires the correct current password, enforces the password policy on the
+   * new password and confirmation, and rejects reusing the current password.
+   *
+   * @param {{ current_password?: string, password?: string, password_confirmation?: string }} payload
+   * @returns {{ message: string }}
+   */
+  changePassword(payload = {}) {
+    const user = this.currentUser;
+    if (!user) {
+      throw new ApiError({
+        message: STRINGS.ERRORS.INVALID_CREDENTIALS,
+        status: 401,
+        code: ERROR_CODES.UNAUTHORIZED,
+      });
+    }
+
+    const errors = {};
+
+    const currentPassword = String(payload.current_password ?? '');
+    if (!currentPassword) {
+      errors.current_password = [STRINGS.PROFILE.CURRENT_PASSWORD_REQUIRED];
+    } else if (!verifyPassword(currentPassword, user.password_hash)) {
+      errors.current_password = [STRINGS.PROFILE.CURRENT_PASSWORD_INCORRECT];
+    }
+
+    const password = String(payload.password ?? '');
+    const confirmation = String(payload.password_confirmation ?? '');
+    const hasLetters = /[a-zA-Z]/.test(password);
+    const hasDigits = /\d/.test(password);
+    if (!password) {
+      errors.password = ['New password is required.'];
+    } else if (password.length < 8) {
+      errors.password = ['Password must be at least 8 characters.'];
+    } else if (!hasLetters || !hasDigits) {
+      errors.password = ['Password must contain both letters and digits.'];
+    } else if (currentPassword && password === currentPassword) {
+      errors.password = [STRINGS.PROFILE.PASSWORD_SAME_AS_CURRENT];
+    }
+
+    if (!confirmation) {
+      errors.password_confirmation = ['Please confirm your new password.'];
+    } else if (password !== confirmation) {
+      errors.password_confirmation = ['Passwords do not match.'];
+    }
+
+    if (Object.keys(errors).length > 0) {
+      throw new ApiError({
+        message: 'The given data was invalid.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors,
+      });
+    }
+
+    user.password_hash = hashPassword(password);
+    user.updated_at = new Date().toISOString();
+    // A successful password change clears any failed-login throttle.
+    delete this.loginAttempts[user.email];
+
+    return { message: STRINGS.PROFILE.PASSWORD_SUCCESS };
   }
 
   // --- Products ---
@@ -349,6 +767,14 @@ class MockStore {
     const sellerId = Number(data.seller_id || data.sellerId) || 1;
     const seller =
       this.sellers.find((s) => s.id === sellerId) || this.sellers[0];
+
+    if (seller && seller.approval_status !== 'approved') {
+      throw new ApiError({
+        message: `Cannot publish product: seller account status is ${seller.approval_status} (AUTH-03).`,
+        status: 403,
+        code: 'FORBIDDEN',
+      });
+    }
 
     const newProduct = {
       id: nextId,
@@ -987,7 +1413,9 @@ class MockStore {
     const offset = (meta.current_page - 1) * meta.per_page;
 
     return {
-      data: results.slice(offset, offset + meta.per_page),
+      data: results
+        .slice(offset, offset + meta.per_page)
+        .map((u) => sanitizeUser(u)),
       meta,
       links: {
         first: '?page=1',
@@ -1012,7 +1440,7 @@ class MockStore {
     }
     user.status = status;
     user.updated_at = new Date().toISOString();
-    return user;
+    return sanitizeUser(user);
   }
 
   getAdminSellers(params = {}) {

@@ -10,4 +10,6 @@ export * from './orderStatus.js';
 export * from './image.js';
 export * from './cartCalculations.js';
 export * from './validation.js';
+export * from './sellerStatus.js';
+export * from './passwordHash.js';
 export * from '../constants/index.js';

@@ -1,12 +1,26 @@
 import { useState, Suspense } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import { env } from '../../utils';
 import { useAuth } from '../../hooks';
 import { Spinner } from '../common/Spinner.jsx';
+import {
+  getSellerApprovalStatus,
+  SELLER_STATUS_CONFIG,
+  canSellerPublish,
+} from '../../utils/sellerStatus';
+import { SellerStatusNotice } from '../seller/SellerStatusNotice';
 
 export function DashboardLayout({ title, role, navItems }) {
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const sellerApprovalStatus =
+    role === 'seller' ? getSellerApprovalStatus(user) : null;
+  const sellerStatusConfig = sellerApprovalStatus
+    ? SELLER_STATUS_CONFIG[sellerApprovalStatus]
+    : null;
+  const canPublish = role === 'seller' ? canSellerPublish(user) : true;
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -96,6 +110,28 @@ export function DashboardLayout({ title, role, navItems }) {
           >
             {title}
           </span>
+
+          {/* Seller live approval status pill in top header (FE-064 / AUTH-03) */}
+          {role === 'seller' && sellerStatusConfig && (
+            <span
+              data-testid="header-seller-status-badge"
+              style={{
+                backgroundColor: sellerStatusConfig.badgeBg,
+                color: sellerStatusConfig.badgeTextCol,
+                border: `1px solid ${sellerStatusConfig.border}`,
+                padding: '0.2rem 0.6rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+              }}
+            >
+              <span>{sellerStatusConfig.icon}</span>
+              <span>{sellerStatusConfig.badgeText}</span>
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -200,30 +236,58 @@ export function DashboardLayout({ title, role, navItems }) {
           >
             Navigation
           </div>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.end}
-              onClick={closeSidebar}
-              style={({ isActive }) => ({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.65rem',
-                padding: '0.65rem 0.8rem',
-                borderRadius: '6px',
-                color: isActive ? '#15803d' : '#334155',
-                backgroundColor: isActive ? '#f0fdf4' : 'transparent',
-                fontWeight: isActive ? '600' : '500',
-                fontSize: '0.9rem',
-                textDecoration: 'none',
-                minHeight: '44px',
-              })}
-            >
-              <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const isAddProduct = item.path === '/seller/products/new';
+            const isLocked = isAddProduct && role === 'seller' && !canPublish;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.end}
+                onClick={closeSidebar}
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.65rem',
+                  padding: '0.65rem 0.8rem',
+                  borderRadius: '6px',
+                  color: isActive ? '#15803d' : '#334155',
+                  backgroundColor: isActive ? '#f0fdf4' : 'transparent',
+                  fontWeight: isActive ? '600' : '500',
+                  fontSize: '0.9rem',
+                  textDecoration: 'none',
+                  minHeight: '44px',
+                })}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.65rem',
+                  }}
+                >
+                  <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </div>
+                {isLocked && (
+                  <span
+                    data-testid="sidebar-locked-badge"
+                    style={{
+                      fontSize: '0.7rem',
+                      backgroundColor: '#fef3c7',
+                      color: '#b45309',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '4px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    🔒 Locked
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </aside>
 
         {/* Dashboard Main Content Area */}
@@ -237,6 +301,7 @@ export function DashboardLayout({ title, role, navItems }) {
             boxSizing: 'border-box',
           }}
         >
+          {role === 'seller' && <SellerStatusNotice user={user} />}
           <Suspense
             fallback={
               <Spinner size="lg" center text="Loading dashboard page..." />
@@ -249,5 +314,18 @@ export function DashboardLayout({ title, role, navItems }) {
     </div>
   );
 }
+
+DashboardLayout.propTypes = {
+  title: PropTypes.string.isRequired,
+  role: PropTypes.string.isRequired,
+  navItems: PropTypes.arrayOf(
+    PropTypes.shape({
+      path: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+      icon: PropTypes.node,
+      end: PropTypes.bool,
+    })
+  ).isRequired,
+};
 
 export default DashboardLayout;

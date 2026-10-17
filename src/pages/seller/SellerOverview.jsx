@@ -1,6 +1,15 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks';
+import {
+  canSellerPublish,
+  getSellerApprovalStatus,
+} from '../../utils/sellerStatus';
 
 export function SellerOverview() {
+  const { user } = useAuth();
+  const canPublish = canSellerPublish(user);
+  const approvalStatus = getSellerApprovalStatus(user);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
@@ -99,21 +108,68 @@ export function SellerOverview() {
         >
           Quick Actions
         </h2>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <Link
-            to="/seller/products/new"
-            style={{
-              backgroundColor: '#15803d',
-              color: '#ffffff',
-              padding: '0.6rem 1.2rem',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontWeight: '500',
-              fontSize: '0.9rem',
-            }}
-          >
-            + Add New Vegetable
-          </Link>
+        <div
+          style={{
+            display: 'flex',
+            gap: '1rem',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          {canPublish ? (
+            <Link
+              to="/seller/products/new"
+              style={{
+                backgroundColor: '#15803d',
+                color: '#ffffff',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                fontWeight: '500',
+                fontSize: '0.9rem',
+              }}
+            >
+              + Add New Vegetable
+            </Link>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+              }}
+            >
+              <button
+                type="button"
+                disabled
+                data-testid="add-vegetable-disabled-btn"
+                title="Product publishing is disabled until your seller account is approved by an administrator."
+                style={{
+                  backgroundColor: '#f1f5f9',
+                  color: '#94a3b8',
+                  border: '1px solid #cbd5e1',
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '6px',
+                  fontWeight: '500',
+                  fontSize: '0.9rem',
+                  cursor: 'not-allowed',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span>🔒</span>
+                <span>+ Add New Vegetable (Publishing Disabled)</span>
+              </button>
+              <span
+                data-testid="overview-publishing-disabled-notice"
+                style={{ fontSize: '0.75rem', color: '#b45309' }}
+              >
+                ⚠️ Publishing disabled: account is{' '}
+                <strong>{approvalStatus}</strong> (AUTH-03)
+              </span>
+            </div>
+          )}
           <Link
             to="/seller/orders"
             style={{
