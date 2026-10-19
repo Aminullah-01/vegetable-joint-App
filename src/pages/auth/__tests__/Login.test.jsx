@@ -88,12 +88,18 @@ describe('Login Page (FE-065 / AUTH-04, AUTH-09, AUTH-13)', () => {
       expect(screen.getByTestId('login-register-link')).toBeInTheDocument();
     });
 
-    it('uses a masked password input (security, AUTH-04)', () => {
+    it('uses a masked password input by default and allows toggling visibility', async () => {
+      const user = userEvent.setup({ delay: null });
       render(<TestLoginApp />);
-      expect(screen.getByTestId('login-password-input')).toHaveAttribute(
-        'type',
-        'password'
-      );
+      const passwordInput = screen.getByTestId('login-password-input');
+      expect(passwordInput).toHaveAttribute('type', 'password');
+
+      const toggleBtn = screen.getByTestId('login-password-toggle-btn');
+      await user.click(toggleBtn);
+      expect(passwordInput).toHaveAttribute('type', 'text');
+
+      await user.click(toggleBtn);
+      expect(passwordInput).toHaveAttribute('type', 'password');
     });
 
     it('shows required-field validation when submitting an empty form', async () => {

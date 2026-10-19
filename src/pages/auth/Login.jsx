@@ -23,6 +23,7 @@ export function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   // SRS AUTH-12: title for account-status messages (suspended / deactivated).
@@ -305,25 +306,50 @@ export function Login() {
             >
               Password
             </label>
-            <input
-              id="login-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              disabled={isSubmitting}
-              autoComplete="current-password"
-              data-testid="login-password-input"
-              style={{
-                width: '100%',
-                padding: '0.65rem 0.8rem',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                boxSizing: 'border-box',
-                fontSize: '0.9rem',
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                disabled={isSubmitting}
+                autoComplete="current-password"
+                data-testid="login-password-input"
+                style={{
+                  width: '100%',
+                  padding: '0.65rem 2.5rem 0.65rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  boxSizing: 'border-box',
+                  fontSize: '0.9rem',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                data-testid="login-password-toggle-btn"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute',
+                  right: '0.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  padding: '0.25rem',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
 
           <div
