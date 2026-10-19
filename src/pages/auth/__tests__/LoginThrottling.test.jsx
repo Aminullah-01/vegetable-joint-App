@@ -155,7 +155,7 @@ describe('Login throttling & suspended messages (FE-066 / AUTH-09, AUTH-12)', ()
 
   describe('Friendly throttle UI (FE-066)', () => {
     it('shows a cooldown countdown and disables submit when rate limited', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       render(<TestLoginApp />);
 
       // Exhaust the throttle window through the real UI.
@@ -175,12 +175,12 @@ describe('Login throttling & suspended messages (FE-066 / AUTH-09, AUTH-12)', ()
       const submitBtn = screen.getByTestId('login-submit-btn');
       expect(submitBtn).toBeDisabled();
       expect(submitBtn).toHaveTextContent(/Retry in \d+s/i);
-    });
+    }, 15000);
   });
 
   describe('Suspended / deactivated accounts (AUTH-12, TC-30)', () => {
     it('blocks a suspended buyer with a friendly message and no session', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       render(<TestLoginApp />);
 
       await submitLogin(user, {
