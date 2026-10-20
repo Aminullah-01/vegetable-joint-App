@@ -11,8 +11,12 @@ describe('Seller Status Utilities (AUTH-03, ADM-03, FE-064)', () => {
     it('returns null for empty, undefined, or non-seller users', () => {
       expect(getSellerApprovalStatus(null)).toBeNull();
       expect(getSellerApprovalStatus(undefined)).toBeNull();
-      expect(getSellerApprovalStatus({ role: 'buyer', status: 'active' })).toBeNull();
-      expect(getSellerApprovalStatus({ role: 'admin', status: 'active' })).toBeNull();
+      expect(
+        getSellerApprovalStatus({ role: 'buyer', status: 'active' })
+      ).toBeNull();
+      expect(
+        getSellerApprovalStatus({ role: 'admin', status: 'active' })
+      ).toBeNull();
     });
 
     it('returns "suspended" if user account status is suspended (AUTH-12, ADM-02)', () => {

@@ -3,9 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, useCart, useToast } from '../../hooks';
 import { EmptyState, Button, Spinner } from '../../components/common';
 import { CartValidationNotices } from '../../components/cart';
-import { DeliveryDetailsForm } from '../../components/checkout';
+import {
+  DeliveryDetailsForm,
+  OrderSummary,
+  OrderReviewModal,
+  CheckoutStepper,
+} from '../../components/checkout';
 import { STRINGS, DELIVERY_DETAILS_STORAGE_KEY } from '../../constants';
-import { formatCurrency } from '../../utils';
+import { orderService } from '../../services/orderService';
 
 /**
  * Reads delivery details previously saved on this device (CHK-02).
@@ -22,18 +27,22 @@ function readSavedDeliveryDetails() {
 }
 
 /**
- * Checkout — Checkout & Delivery Details Page
+ * Checkout — Checkout, Delivery Details, Order Summary & Review Page
  *
  * SRS References:
  * - CHK-01: Checkout requires an authenticated buyer (enforced by route guard).
  * - CHK-02: Collect recipient name, phone, delivery address (street/landmark,
  *   town/area, state) and optional notes; pre-fill from the buyer's profile.
- * - CART-08: Before checkout completes, system re-validates cart lines against current
- *   price, stock, availability and seller status; tells buyer about any change before proceeding.
+ * - CHK-03: The checkout page shall show an order summary: selected products,
+ *   quantities, unit prices, subtotals, and total amount, and require explicit confirmation.
+ * - CHK-05: Multi-seller checkout split into independent orders linked by checkout reference.
+ * - CHK-08: Order cleared from cart after placement; confirmation page shown.
+ * - CHK-09: Payment method: "Pay on delivery / pay seller directly".
+ * - CHK-10: 4-step flow: Cart → Delivery details → Review → Confirmation.
+ * - CART-08: Re-validates cart lines against current price, stock, availability and seller status.
  * - CART-05, TC-11: Empty cart state prevents checkout.
  * - TC-18: Price changed by seller after item in cart: Buyer is notified at checkout;
  *   new price applied only after acknowledgement.
- * - UC-02 Alternative flow 1a: Price/stock changed: system informs buyer; buyer accepts changes or edits cart.
  * - BR-02: Subtotal = sum of line subtotals. No delivery fee/tax/discount in 1.0.
  */
 export function Checkout() {
@@ -43,6 +52,7 @@ export function Checkout() {
     itemCount,
     subtotal,
     total,
+    clearCart,
     validateCart,
     validationNotice,
     validationChanges,
@@ -52,10 +62,17 @@ export function Checkout() {
   const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+
   const [isValidating, setIsValidating] = useState(true);
   const [validationError, setValidationError] = useState(null);
   const [pendingChanges, setPendingChanges] = useState([]);
   const [hasAcknowledgedChanges, setHasAcknowledgedChanges] = useState(false);
+
+  // Explicit confirmation state (CHK-03)
+  const [hasConfirmed, setHasConfirmed] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState(null);
 
   // Delivery details (CHK-02): profile name/phone take precedence, address is
   // restored from this device when available.
@@ -150,6 +167,96 @@ export function Checkout() {
     toast.success(STRINGS.CHECKOUT.DELIVERY_SAVED);
   };
 
+  // Validates delivery details before allowing order review / confirmation
+  const validateDeliveryDetails = () => {
+    const name = (deliveryDetails.name || user?.name || '').trim();
+    const phone = (deliveryDetails.phone || user?.phone || '').trim();
+    const street = (deliveryDetails.street || '').trim();
+    const town = (deliveryDetails.town || '').trim();
+    const state = (deliveryDetails.state || '').trim();
+
+    if (!name || !phone || !street || !town || !state) {
+      toast.error(
+        'Please enter and save your delivery details (address, town, and state) before proceeding to review.'
+      );
+      return false;
+    }
+    return true;
+  };
+
+  // Opens the Review & Explicit Confirmation Modal (CHK-03, CHK-10)
+  const handleProceedToReview = () => {
+    if (needsAcknowledgement || isValidating) return;
+
+    if (!validateDeliveryDetails()) {
+      return;
+    }
+
+    setIsReviewModalOpen(true);
+  };
+
+  // Submits the finalized order (CHK-03, CHK-05, CHK-07, CHK-08)
+  const handleConfirmOrder = async () => {
+    if (!hasConfirmed) {
+      toast.error('Please check the box to explicitly confirm your order.');
+      return;
+    }
+
+    const recipientName = (deliveryDetails.name || user?.name || '').trim();
+    const recipientPhone = (deliveryDetails.phone || user?.phone || '').trim();
+    const fullAddress = [
+      deliveryDetails.street,
+      deliveryDetails.town,
+      deliveryDetails.state,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    const payload = {
+      items: items.map((it) => ({
+        product_id: it.product_id ?? it.id,
+        quantity: it.quantity,
+        price: it.price,
+      })),
+      delivery_name: recipientName,
+      delivery_phone: recipientPhone,
+      delivery_address: fullAddress,
+      notes: deliveryDetails.notes || '',
+      payment_method: 'pay_on_delivery',
+    };
+
+    try {
+      setIsSubmitting(true);
+      setSubmissionError(null);
+
+      const result = await orderService.createOrder(payload);
+
+      // CHK-08: Clear the ordered items from the cart
+      clearCart();
+
+      toast.success(
+        STRINGS.CHECKOUT.ORDER_SUCCESS || 'Order placed successfully!'
+      );
+      setIsReviewModalOpen(false);
+
+      const orderRef =
+        result?.checkout_ref ||
+        result?.orders?.[0]?.order_number ||
+        'ORD-2026-001';
+
+      navigate(`/checkout/confirmation/${orderRef}`);
+    } catch (err) {
+      const errMsg =
+        err?.data?.message ||
+        err?.message ||
+        'Failed to place order. Please review your cart and try again.';
+      setSubmissionError(errMsg);
+      toast.error(errMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // 1. Empty Cart Guard (CART-05 & TC-11)
   if (isCartEmpty) {
     return (
@@ -209,14 +316,19 @@ export function Checkout() {
   return (
     <div
       style={{
-        maxWidth: '800px',
+        maxWidth: '960px',
         margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
         gap: '1.5rem',
+        padding: '1rem',
+        boxSizing: 'border-box',
       }}
       data-testid="checkout-page"
     >
+      {/* 4-Step Visual Stepper (CHK-10, Figma Section 10) */}
+      <CheckoutStepper currentStep={2} />
+
       <h1 style={{ fontSize: '1.75rem', color: '#15803d', margin: 0 }}>
         Checkout & Delivery Details (CHK-01 to CHK-04)
       </h1>
@@ -263,6 +375,24 @@ export function Checkout() {
         </div>
       )}
 
+      {/* Submission Error banner */}
+      {submissionError && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+          }}
+          data-testid="checkout-submission-error"
+        >
+          <strong>Order Error:</strong> {submissionError}
+        </div>
+      )}
+
       {/* Cart Re-validation Notices (CART-08, TC-18) */}
       {needsAcknowledgement && (
         <div data-testid="checkout-validation-notices">
@@ -284,6 +414,7 @@ export function Checkout() {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: '1.5rem',
+          alignItems: 'start',
         }}
       >
         {/* Delivery Details Form (CHK-02) */}
@@ -307,153 +438,35 @@ export function Checkout() {
           />
         </div>
 
-        {/* Order Summary & Place Order */}
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            border: '1px solid #e2e8f0',
-            padding: '1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-          }}
-        >
-          <h2 style={{ fontSize: '1.15rem', color: '#1e293b', margin: 0 }}>
-            Order Summary
-          </h2>
-
-          {/* Selected Products List (CHK-03) */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.625rem',
-              maxHeight: '240px',
-              overflowY: 'auto',
-              paddingRight: '0.25rem',
-            }}
-            data-testid="checkout-order-items"
-          >
-            {items.map((item) => (
-              <div
-                key={item.product_id ?? item.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '0.85rem',
-                  paddingBottom: '0.5rem',
-                  borderBottom: '1px solid #f1f5f9',
-                }}
-              >
-                <div>
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      color: '#1e293b',
-                      display: 'block',
-                    }}
-                  >
-                    {item.name}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {item.quantity} × {formatCurrency(item.price)} per{' '}
-                    {item.unit || 'unit'}
-                  </span>
-                </div>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                  {formatCurrency(item.subtotal ?? item.price * item.quantity)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.9rem',
-            }}
-          >
-            <span>Items ({itemCount}):</span>
-            <span data-testid="checkout-subtotal">
-              {formatCurrency(subtotal)}
-            </span>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.9rem',
-            }}
-          >
-            <span>Estimated Delivery:</span>
-            <span>Calculated on delivery (BR-02)</span>
-          </div>
-          <div
-            style={{
-              borderTop: '1px solid #e2e8f0',
-              paddingTop: '0.75rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontWeight: '700',
-              fontSize: '1.1rem',
-              color: '#15803d',
-            }}
-          >
-            <span>Total:</span>
-            <span data-testid="checkout-total">{formatCurrency(total)}</span>
-          </div>
-
-          <div
-            style={{
-              backgroundColor: '#f0fdf4',
-              padding: '0.75rem',
-              borderRadius: '6px',
-              fontSize: '0.8rem',
-              color: '#166534',
-            }}
-          >
-            Payment Method: Cash or Bank Transfer on Delivery (OI-01)
-          </div>
-
-          {needsAcknowledgement && (
-            <div
-              style={{
-                backgroundColor: '#fffbeb',
-                border: '1px solid #fde68a',
-                padding: '0.65rem 0.75rem',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                color: '#92400e',
-              }}
-            >
-              Please accept the cart changes above before completing your order.
-            </div>
-          )}
-
-          <Button
-            to={
-              needsAcknowledgement || isValidating
-                ? undefined
-                : '/checkout/confirmation/ORD-2026-001'
-            }
-            disabled={needsAcknowledgement || isValidating}
-            variant="primary"
-            size="lg"
-            fullWidth
-            data-testid="checkout-place-order-button"
-            style={{
-              textAlign: 'center',
-              textDecoration: 'none',
-              marginTop: 'auto',
-              minHeight: '44px',
-            }}
-          >
-            Place Order Now →
-          </Button>
-        </div>
+        {/* Order Summary & Review CTA (CHK-03, CHK-05, CHK-09, BR-02) */}
+        <OrderSummary
+          items={items}
+          subtotal={subtotal}
+          total={total}
+          itemCount={itemCount}
+          disabled={needsAcknowledgement || isValidating}
+          isSubmitting={isSubmitting}
+          onProceedToReview={handleProceedToReview}
+          onPlaceOrder={handleConfirmOrder}
+          hasConfirmed={hasConfirmed}
+          onToggleConfirm={setHasConfirmed}
+          showExplicitConfirm={true}
+        />
       </div>
+
+      {/* Explicit Order Review & Confirmation Modal (CHK-03, CHK-10, Figma Section 10) */}
+      <OrderReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        onConfirmOrder={handleConfirmOrder}
+        items={items}
+        deliveryDetails={deliveryInitialValues}
+        subtotal={subtotal}
+        total={total}
+        isSubmitting={isSubmitting}
+        hasConfirmed={hasConfirmed}
+        onToggleConfirm={setHasConfirmed}
+      />
     </div>
   );
 }

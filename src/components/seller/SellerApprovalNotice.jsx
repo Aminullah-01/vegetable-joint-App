@@ -26,7 +26,11 @@ import { SellerStatusBadge } from './SellerStatusBadge.jsx';
  * @param {string} [props.reason] - Rejection or suspension reason message
  * @param {boolean} [props.inline=false] - Display as compact inline alert rather than full card
  */
-export function SellerApprovalNotice({ status: explicitStatus, reason, inline = false }) {
+export function SellerApprovalNotice({
+  status: explicitStatus,
+  reason,
+  inline = false,
+}) {
   const { user } = useAuth();
   const status = explicitStatus || getSellerApprovalStatus(user);
 
@@ -35,7 +39,7 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
     return null;
   }
 
-  const meta = getSellerStatusMeta(status);
+  const _meta = getSellerStatusMeta(status);
   const rejectionReason =
     reason ||
     user?.seller_profile?.rejection_reason ||
@@ -55,10 +59,14 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
           border: '1px solid #fde68a',
           borderRadius: inline ? '8px' : '12px',
           padding: inline ? '0.875rem 1rem' : '1.25rem 1.5rem',
-          boxShadow: inline ? 'none' : '0 2px 8px -2px rgba(245, 158, 11, 0.12)',
+          boxShadow: inline
+            ? 'none'
+            : '0 2px 8px -2px rgba(245, 158, 11, 0.12)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+        <div
+          style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}
+        >
           <span
             style={{
               fontSize: inline ? '1.35rem' : '1.75rem',
@@ -101,9 +109,13 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
                 lineHeight: 1.5,
               }}
             >
-              Your seller registration was submitted successfully and is currently under
-              review by platform administrators. While your account is pending approval,{' '}
-              <strong>you cannot publish vegetable listings to the public marketplace</strong>.
+              Your seller registration was submitted successfully and is
+              currently under review by platform administrators. While your
+              account is pending approval,{' '}
+              <strong>
+                you cannot publish vegetable listings to the public marketplace
+              </strong>
+              .
             </p>
 
             {!inline && (
@@ -123,13 +135,16 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
                   What happens next?
                 </div>
                 <div>
-                  • Administrator review typically completes within 24 to 48 hours.
+                  • Administrator review typically completes within 24 to 48
+                  hours.
                 </div>
                 <div>
-                  • Once approved, the ability to add and publish vegetable listings will automatically unlock.
+                  • Once approved, the ability to add and publish vegetable
+                  listings will automatically unlock.
                 </div>
                 <div>
-                  • In the meantime, you can review inventory formats and platform guidelines.
+                  • In the meantime, you can review inventory formats and
+                  platform guidelines.
                 </div>
               </div>
             )}
@@ -178,7 +193,9 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
           boxShadow: inline ? 'none' : '0 2px 8px -2px rgba(220, 38, 38, 0.12)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+        <div
+          style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}
+        >
           <span
             style={{
               fontSize: inline ? '1.35rem' : '1.75rem',
@@ -221,8 +238,11 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
                 lineHeight: 1.5,
               }}
             >
-              Your seller account application was not approved by platform administrators.{' '}
-              <strong>You cannot publish vegetable listings or receive buyer orders.</strong>
+              Your seller account application was not approved by platform
+              administrators.{' '}
+              <strong>
+                You cannot publish vegetable listings or receive buyer orders.
+              </strong>
             </p>
 
             {rejectionReason && (
@@ -249,8 +269,8 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
                 color: '#991b1b',
               }}
             >
-              If you have updated business credentials or wish to appeal this decision,
-              please reach out to{' '}
+              If you have updated business credentials or wish to appeal this
+              decision, please reach out to{' '}
               <a
                 href="mailto:support@vegetablejoint.ng"
                 style={{
@@ -284,7 +304,9 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
         boxShadow: inline ? 'none' : '0 2px 8px -2px rgba(225, 29, 72, 0.12)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}
+      >
         <span
           style={{
             fontSize: inline ? '1.35rem' : '1.75rem',
@@ -327,8 +349,9 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
               lineHeight: 1.5,
             }}
           >
-            Your seller privileges have been suspended by an administrator (ADM-03).
-            All of your product listings are hidden from the marketplace, and{' '}
+            Your seller privileges have been suspended by an administrator
+            (ADM-03). All of your product listings are hidden from the
+            marketplace, and{' '}
             <strong>publishing new listings is disabled</strong>.
           </p>
 
@@ -339,8 +362,8 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
               margin: '0 0 0.5rem 0',
             }}
           >
-            Note: Open orders previously placed by buyers remain visible in your orders
-            panel for delivery completion.
+            Note: Open orders previously placed by buyers remain visible in your
+            orders panel for delivery completion.
           </p>
 
           <div
@@ -349,8 +372,8 @@ export function SellerApprovalNotice({ status: explicitStatus, reason, inline = 
               color: '#9f1239',
             }}
           >
-            To request account reactivation or inquire about your suspension, please
-            contact{' '}
+            To request account reactivation or inquire about your suspension,
+            please contact{' '}
             <a
               href="mailto:support@vegetablejoint.ng"
               style={{

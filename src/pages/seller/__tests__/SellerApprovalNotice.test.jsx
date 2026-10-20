@@ -6,7 +6,6 @@ import PropTypes from 'prop-types';
 import { AuthProvider, ToastProvider } from '../../../context';
 import { authService } from '../../../services/authService';
 import { mockStore } from '../../../data/mockStore.js';
-import { SellerApprovalNotice } from '../../../components/seller/SellerApprovalNotice.jsx';
 import { SellerStatusBadge } from '../../../components/seller/SellerStatusBadge.jsx';
 import { SellerOverview } from '../SellerOverview.jsx';
 import { SellerProducts } from '../SellerProducts.jsx';
@@ -50,8 +49,14 @@ function TestApp({
             >
               <Route path="/seller" element={<SellerOverview />} />
               <Route path="/seller/products" element={<SellerProducts />} />
-              <Route path="/seller/products/new" element={<SellerProductForm />} />
-              <Route path="/seller/products/:id/edit" element={<SellerProductForm />} />
+              <Route
+                path="/seller/products/new"
+                element={<SellerProductForm />}
+              />
+              <Route
+                path="/seller/products/:id/edit"
+                element={<SellerProductForm />}
+              />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -86,7 +91,9 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
         },
       };
 
-      render(<TestApp initialEntries={['/seller']} currentUser={pendingUser} />);
+      render(
+        <TestApp initialEntries={['/seller']} currentUser={pendingUser} />
+      );
 
       const notice = screen.getByTestId('seller-approval-notice');
       expect(notice).toBeInTheDocument();
@@ -116,7 +123,9 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
         },
       };
 
-      render(<TestApp initialEntries={['/seller']} currentUser={rejectedUser} />);
+      render(
+        <TestApp initialEntries={['/seller']} currentUser={rejectedUser} />
+      );
 
       const notice = screen.getByTestId('seller-approval-notice');
       expect(notice).toBeInTheDocument();
@@ -147,7 +156,9 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
         },
       };
 
-      render(<TestApp initialEntries={['/seller']} currentUser={suspendedUser} />);
+      render(
+        <TestApp initialEntries={['/seller']} currentUser={suspendedUser} />
+      );
 
       const notice = screen.getByTestId('seller-approval-notice');
       expect(notice).toBeInTheDocument();
@@ -178,9 +189,13 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
         },
       };
 
-      render(<TestApp initialEntries={['/seller']} currentUser={approvedUser} />);
+      render(
+        <TestApp initialEntries={['/seller']} currentUser={approvedUser} />
+      );
 
-      expect(screen.queryByTestId('seller-approval-notice')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('seller-approval-notice')
+      ).not.toBeInTheDocument();
     });
 
     it('renders accessible SellerStatusBadge with icons and labels (Figma Section 17)', () => {
@@ -211,21 +226,44 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
       await user.click(screen.getByTestId('register-role-seller-tab'));
 
       // Fill in registration details
-      await user.type(screen.getByTestId('register-name-input'), 'Kano Organic Veggies');
-      await user.type(screen.getByTestId('register-email-input'), 'kanoorganic@farm.ng');
-      await user.type(screen.getByTestId('register-phone-input'), '+2348039991122');
-      await user.type(screen.getByTestId('register-password-input'), 'SecurePass123');
-      await user.type(screen.getByTestId('register-confirm-password-input'), 'SecurePass123');
-      await user.type(screen.getByTestId('register-business-name-input'), 'Kano Organic Produce');
+      await user.type(
+        screen.getByTestId('register-name-input'),
+        'Kano Organic Veggies'
+      );
+      await user.type(
+        screen.getByTestId('register-email-input'),
+        'kanoorganic@farm.ng'
+      );
+      await user.type(
+        screen.getByTestId('register-phone-input'),
+        '+2348039991122'
+      );
+      await user.type(
+        screen.getByTestId('register-password-input'),
+        'SecurePass123'
+      );
+      await user.type(
+        screen.getByTestId('register-confirm-password-input'),
+        'SecurePass123'
+      );
+      await user.type(
+        screen.getByTestId('register-business-name-input'),
+        'Kano Organic Produce'
+      );
       await user.type(screen.getByTestId('register-location-input'), 'Kano');
-      await user.type(screen.getByTestId('register-description-input'), 'Fresh organic vegetables');
+      await user.type(
+        screen.getByTestId('register-description-input'),
+        'Fresh organic vegetables'
+      );
 
       // Submit registration
       await user.click(screen.getByTestId('register-submit-btn'));
 
       // Arrives at Seller Portal with Pending Approval notice
       await waitFor(() => {
-        expect(screen.getByTestId('seller-approval-notice')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('seller-approval-notice')
+        ).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('seller-approval-notice')).toHaveAttribute(
@@ -239,7 +277,9 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
       ).toBeInTheDocument();
 
       // Verify publishing is disabled on landing
-      expect(screen.getByTestId('add-vegetable-disabled-btn')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('add-vegetable-disabled-btn')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('add-vegetable-disabled-btn')).toBeDisabled();
     });
   });
@@ -255,9 +295,13 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
 
       // Redirects to /seller overview with pending notice
       await waitFor(() => {
-        expect(screen.getByTestId('seller-approval-notice')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('seller-approval-notice')
+        ).toBeInTheDocument();
       });
-      expect(screen.getByTestId('seller-status-badge')).toHaveTextContent(/Pending Approval/i);
+      expect(screen.getByTestId('seller-status-badge')).toHaveTextContent(
+        /Pending Approval/i
+      );
 
       // On Overview: "+ Add New Vegetable" is disabled
       const addVegBtn = screen.getByTestId('add-vegetable-disabled-btn');
@@ -274,7 +318,9 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-product-btn-disabled')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('add-product-btn-disabled')
+        ).toBeInTheDocument();
       });
       expect(screen.getByTestId('add-product-btn-disabled')).toBeDisabled();
       expect(
@@ -290,11 +336,15 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('save-product-submit-btn')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('save-product-submit-btn')
+        ).toBeInTheDocument();
       });
       const saveBtn = screen.getByTestId('save-product-submit-btn');
       expect(saveBtn).toBeDisabled();
-      expect(saveBtn).toHaveTextContent(/Publishing Disabled \(Pending Approval\)/i);
+      expect(saveBtn).toHaveTextContent(
+        /Publishing Disabled \(Pending Approval\)/i
+      );
     });
   });
 
@@ -302,10 +352,14 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
     it('shows suspended notice and disables publishing when suspended seller accesses dashboard', async () => {
       const suspendedUser = mockStore.users.find((u) => u.id === 10);
 
-      render(<TestApp initialEntries={['/seller']} currentUser={suspendedUser} />);
+      render(
+        <TestApp initialEntries={['/seller']} currentUser={suspendedUser} />
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('seller-approval-notice')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('seller-approval-notice')
+        ).toBeInTheDocument();
       });
       expect(screen.getByTestId('seller-approval-notice')).toHaveAttribute(
         'data-status',
@@ -313,9 +367,9 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
       );
 
       expect(screen.getByTestId('add-vegetable-disabled-btn')).toBeDisabled();
-      expect(screen.getByTestId('add-vegetable-disabled-btn')).toHaveTextContent(
-        /Publishing Disabled/i
-      );
+      expect(
+        screen.getByTestId('add-vegetable-disabled-btn')
+      ).toHaveTextContent(/Publishing Disabled/i);
     });
   });
 
@@ -323,18 +377,20 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
     it('shows rejected notice with reason and disables publishing', async () => {
       const rejectedUser = mockStore.users.find((u) => u.id === 9);
 
-      render(<TestApp initialEntries={['/seller']} currentUser={rejectedUser} />);
+      render(
+        <TestApp initialEntries={['/seller']} currentUser={rejectedUser} />
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('seller-approval-notice')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('seller-approval-notice')
+        ).toBeInTheDocument();
       });
       expect(screen.getByTestId('seller-approval-notice')).toHaveAttribute(
         'data-status',
         'rejected'
       );
-      expect(
-        screen.getByTestId('seller-rejection-reason')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('seller-rejection-reason')).toBeInTheDocument();
 
       expect(screen.getByTestId('add-vegetable-disabled-btn')).toBeDisabled();
     });
@@ -344,13 +400,19 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
     it('enables "+ Add New Vegetable" and "Save & Publish" for approved seller', async () => {
       const approvedUser = mockStore.users.find((u) => u.id === 2);
 
-      render(<TestApp initialEntries={['/seller']} currentUser={approvedUser} />);
+      render(
+        <TestApp initialEntries={['/seller']} currentUser={approvedUser} />
+      );
 
       await waitFor(() => {
         expect(screen.getByTestId('add-vegetable-link')).toBeInTheDocument();
       });
-      expect(screen.queryByTestId('seller-approval-notice')).not.toBeInTheDocument();
-      expect(screen.getByTestId('seller-status-badge')).toHaveTextContent(/Verified & Approved/i);
+      expect(
+        screen.queryByTestId('seller-approval-notice')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('seller-status-badge')).toHaveTextContent(
+        /Verified & Approved/i
+      );
 
       // On /seller/products/new
       render(
@@ -361,7 +423,9 @@ describe('Seller “Pending Approval” & Publishing Restrictions (FE-064 / AUTH
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('save-product-submit-btn')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('save-product-submit-btn')
+        ).toBeInTheDocument();
       });
       const saveBtn = screen.getByTestId('save-product-submit-btn');
       expect(saveBtn).not.toBeDisabled();
