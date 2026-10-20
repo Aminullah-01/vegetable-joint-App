@@ -46,7 +46,6 @@ export const authService = {
       const result = mockStore.loginUser(credentials);
       if (result?.token) {
         apiClient.setToken(result.token);
-        this was the 
         
       }
       return result;
