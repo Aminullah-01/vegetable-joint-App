@@ -1,34 +1,21 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import {
-  getSellerApprovalStatus,
   canSellerPublish,
-  getSellerStatusMeta,
-} from '../../utils/sellerStatus.js';
-import { SellerStatusBadge } from '../../components/seller/SellerStatusBadge.jsx';
+  getSellerApprovalStatus,
+} from '../../utils/sellerStatus';
 
 export function SellerOverview() {
   const { user } = useAuth();
-  const status = getSellerApprovalStatus(user);
   const canPublish = canSellerPublish(user);
-  const statusMeta = getSellerStatusMeta(status);
+  const approvalStatus = getSellerApprovalStatus(user);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
-            Seller Overview (SEL-13)
-          </h1>
-          <SellerStatusBadge user={user} />
-        </div>
+        <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
+          Seller Overview (SEL-13)
+        </h1>
         <p
           style={{
             color: '#64748b',
@@ -121,11 +108,17 @@ export function SellerOverview() {
         >
           Quick Actions
         </h2>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '1rem',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
           {canPublish ? (
             <Link
               to="/seller/products/new"
-              data-testid="add-vegetable-link"
               style={{
                 backgroundColor: '#15803d',
                 color: '#ffffff',
@@ -139,26 +132,43 @@ export function SellerOverview() {
               + Add New Vegetable
             </Link>
           ) : (
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              data-testid="add-vegetable-disabled-btn"
-              title={`Publishing disabled: seller account is ${statusMeta.label.toLowerCase()} (AUTH-03)`}
+            <div
               style={{
-                backgroundColor: '#94a3b8',
-                color: '#ffffff',
-                padding: '0.6rem 1.2rem',
-                borderRadius: '6px',
-                border: 'none',
-                fontWeight: '500',
-                fontSize: '0.9rem',
-                cursor: 'not-allowed',
-                opacity: 0.85,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
               }}
             >
-              + Add New Vegetable (Publishing Disabled)
-            </button>
+              <button
+                type="button"
+                disabled
+                data-testid="add-vegetable-disabled-btn"
+                title="Product publishing is disabled until your seller account is approved by an administrator."
+                style={{
+                  backgroundColor: '#f1f5f9',
+                  color: '#94a3b8',
+                  border: '1px solid #cbd5e1',
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '6px',
+                  fontWeight: '500',
+                  fontSize: '0.9rem',
+                  cursor: 'not-allowed',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span>🔒</span>
+                <span>+ Add New Vegetable (Publishing Disabled)</span>
+              </button>
+              <span
+                data-testid="overview-publishing-disabled-notice"
+                style={{ fontSize: '0.75rem', color: '#b45309' }}
+              >
+                ⚠️ Publishing disabled: account is{' '}
+                <strong>{approvalStatus}</strong> (AUTH-03)
+              </span>
+            </div>
           )}
           <Link
             to="/seller/orders"

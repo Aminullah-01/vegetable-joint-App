@@ -1,7 +1,17 @@
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import { STRINGS } from '../../constants';
 import { ROUTES } from '../../routes';
+
+function isProtectedPath(pathname) {
+  return (
+    pathname.startsWith('/seller') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/account') ||
+    pathname.startsWith('/checkout')
+  );
+}
 
 /**
  * Session Expired Modal Prompt
@@ -14,33 +24,40 @@ export function SessionExpiredModal() {
   const { isSessionExpired, dismissSessionExpired } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const isLeavingAsGuestRef = useRef(false);
+
+  // Resolve a "Continue as Guest" dismissal once the transition off the
+  // protected area has committed. Dismissing before the navigation would let
+  // the protected-route guard redirect the guest to /login instead.
+  useEffect(() => {
+    if (!isLeavingAsGuestRef.current) return;
+    if (!isProtectedPath(location.pathname)) {
+      isLeavingAsGuestRef.current = false;
+      dismissSessionExpired();
+    }
+  }, [location.pathname, dismissSessionExpired]);
 
   if (!isSessionExpired) {
     return null;
   }
 
   const handleSignInAgain = () => {
-    dismissSessionExpired();
     // Navigate to login with current location preserved in state.from
     navigate(ROUTES.LOGIN, {
       state: { from: location },
       replace: true,
     });
+    dismissSessionExpired();
   };
 
   const handleDismiss = () => {
-    dismissSessionExpired();
-    // If currently on a protected route, redirect to home as guest
-    const currentPath = location.pathname;
-    const isProtectedRoute =
-      currentPath.startsWith('/seller') ||
-      currentPath.startsWith('/admin') ||
-      currentPath.startsWith('/account') ||
-      currentPath.startsWith('/checkout');
-
-    if (isProtectedRoute) {
+    // If currently on a protected route, redirect to home as guest.
+    if (isProtectedPath(location.pathname)) {
+      isLeavingAsGuestRef.current = true;
       navigate(ROUTES.HOME, { replace: true });
+      return;
     }
+    dismissSessionExpired();
   };
 
   return (

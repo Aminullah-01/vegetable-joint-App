@@ -17,6 +17,7 @@ export const ROUTES = {
   // Guest / Auth
   LOGIN: '/login',
   REGISTER: '/register',
+  REGISTER_SELLER: '/register/seller',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
 

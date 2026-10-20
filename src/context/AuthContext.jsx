@@ -90,6 +90,7 @@ export function AuthProvider({ children }) {
     } finally {
       persistToken(null);
       persistUser(null);
+      setIsSessionExpired(false);
       setError(null);
     }
   }, [persistToken, persistUser]);
@@ -197,6 +198,7 @@ export function AuthProvider({ children }) {
     async (payload) => {
       setIsLoading(true);
       setError(null);
+      setIsSessionExpired(false);
       try {
         const response = await authService.register(payload);
         if (response?.token) {
@@ -224,7 +226,6 @@ export function AuthProvider({ children }) {
    */
   const updateProfile = useCallback(
     async (data) => {
-      setIsLoading(true);
       setError(null);
       try {
         const updated = await authService.updateProfile(data);
@@ -235,12 +236,20 @@ export function AuthProvider({ children }) {
       } catch (err) {
         setError(err);
         throw err;
-      } finally {
-        setIsLoading(false);
       }
     },
     [persistUser, user]
   );
+
+  /**
+   * Change the authenticated user's password (SRS AUTH-11).
+   *
+   * @param {Object} payload
+   * @returns {Promise<{ message: string }>}
+   */
+  const changePassword = useCallback(async (payload) => {
+    return authService.changePassword(payload);
+  }, []);
 
   const role = user?.role || null;
   const isAuthenticated = Boolean(user && token);
@@ -260,6 +269,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
       updateProfile,
+      changePassword,
       isBuyer: role === 'buyer',
       isSeller: role === 'seller',
       isAdmin: role === 'admin',
@@ -278,6 +288,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
       updateProfile,
+      changePassword,
     ]
   );
 

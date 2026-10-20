@@ -22,7 +22,7 @@ export const authService = {
       }
       return result;
     }
-    
+
     const response = await apiClient.post('/auth/register', payload, {
       skipAuth: true,
     });
@@ -31,7 +31,6 @@ export const authService = {
       apiClient.setToken(response.data.token);
     }
     return response.data;
-    
   },
 
   /**
@@ -46,7 +45,6 @@ export const authService = {
       const result = mockStore.loginUser(credentials);
       if (result?.token) {
         apiClient.setToken(result.token);
-        
       }
       return result;
     }
@@ -89,7 +87,7 @@ export const authService = {
    */
   async forgotPassword(data) {
     if (isMockMode()) {
-      return { message: 'Password reset link sent to your email.' };
+      return mockStore.forgotPassword(data);
     }
 
     const response = await apiClient.post('/auth/forgot-password', data, {
@@ -107,7 +105,7 @@ export const authService = {
    */
   async resetPassword(data) {
     if (isMockMode()) {
-      return { message: 'Password has been reset successfully.' };
+      return mockStore.resetPassword(data);
     }
 
     const response = await apiClient.post('/auth/reset-password', data, {
@@ -144,6 +142,22 @@ export const authService = {
     }
 
     const response = await apiClient.put('/profile', data);
+    return response.data;
+  },
+
+  /**
+   * Change the authenticated user's password (SRS AUTH-11).
+   * Endpoint: POST /auth/change-password
+   *
+   * @param {{ current_password: string, password: string, password_confirmation: string }} payload
+   * @returns {Promise<{ message: string }>}
+   */
+  async changePassword(payload) {
+    if (isMockMode()) {
+      return mockStore.changePassword(payload);
+    }
+
+    const response = await apiClient.post('/auth/change-password', payload);
     return response.data;
   },
 };

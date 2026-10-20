@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useToast } from '../../hooks';
 import { STRINGS } from '../../constants';
 import { getPostLoginRedirect } from '../../routes';
+
+// SRS AUTH-12 / AUTH-09: classify thrown API errors for friendly messaging.
+function classifyAuthError(err) {
+  if (err?.status === 429) return 'rate-limited';
+  if (err?.status === 403) {
+    const msg = String(err?.message || '');
+    if (msg.toLowerCase().includes('deactivat')) return 'deactivated';
+    return 'suspended';
+  }
+  return 'invalid';
+}
 
 export function Login() {
   const { login } = useAuth();
@@ -14,6 +25,19 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  // SRS AUTH-12: title for account-status messages (suspended / deactivated).
+  const [errorTitle, setErrorTitle] = useState('');
+  // SRS AUTH-09 / NFR-SEC-07: seconds remaining on the login throttle cooldown.
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  // Countdown the throttle window down to zero (then re-enable the form).
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return undefined;
+    const id = setInterval(() => {
+      setCooldownSeconds((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldownSeconds]);
 
   // Check if user was redirected from a protected route or query param (CART-09, AUTH-07)
   const searchParams = new URLSearchParams(location.search);
@@ -49,6 +73,7 @@ export function Login() {
 
     setIsSubmitting(true);
     setErrorMessage('');
+    setErrorTitle('');
 
     try {
       const response = await login({ email, password });
@@ -58,8 +83,29 @@ export function Login() {
       const destination = getPostLoginRedirect(userRole, fromLocation);
       navigate(destination, { replace: true });
     } catch (err) {
-      const errText = err?.message || STRINGS.ERRORS.INVALID_CREDENTIALS;
-      setErrorMessage(errText);
+      const kind = classifyAuthError(err);
+      const errText =
+        err?.message ||
+        (kind === 'rate-limited'
+          ? STRINGS.AUTH.TOO_MANY_ATTEMPTS
+          : STRINGS.ERRORS.INVALID_CREDENTIALS);
+
+      if (kind === 'rate-limited') {
+        // SRS AUTH-09 / NFR-SEC-07: friendly cooldown before re-enabling submit.
+        setErrorMessage(
+          STRINGS.AUTH.TOO_MANY_ATTEMPTS_WAIT(err?.retryAfter || 60)
+        );
+        setCooldownSeconds(err?.retryAfter || 60);
+      } else {
+        setErrorMessage(errText);
+        setErrorTitle(
+          kind === 'suspended'
+            ? STRINGS.AUTH.ACCOUNT_SUSPENDED_TITLE
+            : kind === 'deactivated'
+              ? STRINGS.AUTH.ACCOUNT_DEACTIVATED_TITLE
+              : ''
+        );
+      }
       toast.error(errText);
     } finally {
       setIsSubmitting(false);
@@ -74,8 +120,12 @@ export function Login() {
     setEmail(demoEmail);
     setPassword(demoPassword);
     setErrorMessage('');
+    setErrorTitle('');
     toast.info(`Filled credentials for ${demoRole || demoEmail}`);
   };
+
+  const isRateLimited = cooldownSeconds > 0;
+  const isSubmitDisabled = isSubmitting || isRateLimited;
 
   return (
     <div style={{ maxWidth: '440px', margin: '2rem auto', width: '100%' }}>
@@ -166,25 +216,45 @@ export function Login() {
           </div>
         ) : null}
 
-        {/* Error Alert */}
+        {/* Error Alert (AUTH-04, AUTH-09, ERR-01: generic, non-enumerating) */}
         {errorMessage && (
           <div
             style={{
-              backgroundColor: '#fee2e2',
-              color: '#b91c1c',
-              border: '1px solid #fca5a5',
+              backgroundColor: isRateLimited ? '#fef3c7' : '#fee2e2',
+              color: isRateLimited ? '#92400e' : '#b91c1c',
+              border: `1px solid ${isRateLimited ? '#fde68a' : '#fca5a5'}`,
               borderRadius: '6px',
               padding: '0.75rem',
               fontSize: '0.85rem',
               marginBottom: '1.25rem',
             }}
             role="alert"
+            data-testid="login-error-message"
           >
-            {errorMessage}
+            {errorTitle && (
+              <div
+                style={{ fontWeight: 700, marginBottom: '0.25rem' }}
+                data-testid="login-error-title"
+              >
+                {errorTitle}
+              </div>
+            )}
+            <div>{errorMessage}</div>
+            {isRateLimited && (
+              <div
+                style={{ marginTop: '0.4rem', fontWeight: 600 }}
+                data-testid="login-cooldown-countdown"
+                role="status"
+              >
+                You can try again in {cooldownSeconds}{' '}
+                {cooldownSeconds === 1 ? 'second' : 'seconds'}.
+              </div>
+            )}
           </div>
         )}
 
         <form
+          noValidate
           style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
           onSubmit={handleSubmit}
         >
@@ -209,6 +279,8 @@ export function Login() {
               placeholder="e.g. buyer@example.com"
               required
               disabled={isSubmitting}
+              autoComplete="email"
+              data-testid="login-email-input"
               style={{
                 width: '100%',
                 padding: '0.65rem 0.8rem',
@@ -241,6 +313,8 @@ export function Login() {
               placeholder="••••••••"
               required
               disabled={isSubmitting}
+              autoComplete="current-password"
+              data-testid="login-password-input"
               style={{
                 width: '100%',
                 padding: '0.65rem 0.8rem',
@@ -261,6 +335,7 @@ export function Login() {
           >
             <Link
               to="/forgot-password"
+              data-testid="login-forgot-link"
               style={{ color: '#15803d', textDecoration: 'none' }}
             >
               Forgot password?
@@ -269,7 +344,8 @@ export function Login() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitDisabled}
+            data-testid="login-submit-btn"
             style={{
               backgroundColor: '#15803d',
               color: '#ffffff',
@@ -277,13 +353,17 @@ export function Login() {
               borderRadius: '6px',
               border: 'none',
               fontWeight: '600',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
               fontSize: '0.95rem',
-              opacity: isSubmitting ? 0.7 : 1,
+              opacity: isSubmitDisabled ? 0.7 : 1,
               transition: 'background-color 0.2s',
             }}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign In'}
+            {isRateLimited
+              ? `Retry in ${cooldownSeconds}s`
+              : isSubmitting
+                ? 'Signing in...'
+                : 'Sign In'}
           </button>
         </form>
 
@@ -354,7 +434,11 @@ export function Login() {
               type="button"
               data-testid="login-quick-fill-pending-seller"
               onClick={() =>
-                handleQuickFill('pending@newfarm.ng', 'password123', 'Pending Seller')
+                handleQuickFill(
+                  'pending@newfarm.ng',
+                  'password123',
+                  'Pending Seller'
+                )
               }
               style={{
                 fontSize: '0.75rem',
@@ -372,7 +456,11 @@ export function Login() {
               type="button"
               data-testid="login-quick-fill-suspended-seller"
               onClick={() =>
-                handleQuickFill('suspended@seller.ng', 'password123', 'Suspended Seller')
+                handleQuickFill(
+                  'suspended@seller.ng',
+                  'password123',
+                  'Suspended Seller'
+                )
               }
               style={{
                 fontSize: '0.75rem',
@@ -390,7 +478,11 @@ export function Login() {
               type="button"
               data-testid="login-quick-fill-rejected-seller"
               onClick={() =>
-                handleQuickFill('rejected@farm.ng', 'password123', 'Rejected Seller')
+                handleQuickFill(
+                  'rejected@farm.ng',
+                  'password123',
+                  'Rejected Seller'
+                )
               }
               style={{
                 fontSize: '0.75rem',

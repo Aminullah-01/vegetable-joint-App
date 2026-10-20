@@ -1,2 +1,1 @@
-export * from './SellerStatusBadge.jsx';
-export * from './SellerApprovalNotice.jsx';
+export * from './SellerStatusNotice';

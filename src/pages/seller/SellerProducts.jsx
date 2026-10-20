@@ -1,17 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks';
-import {
-  getSellerApprovalStatus,
-  canSellerPublish,
-  getSellerStatusMeta,
-} from '../../utils/sellerStatus.js';
-import { SellerStatusBadge } from '../../components/seller/SellerStatusBadge.jsx';
+import { canSellerPublish } from '../../utils/sellerStatus';
 
 export function SellerProducts() {
   const { user } = useAuth();
-  const status = getSellerApprovalStatus(user);
   const canPublish = canSellerPublish(user);
-  const statusMeta = getSellerStatusMeta(status);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -20,24 +13,12 @@ export function SellerProducts() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
         }}
       >
         <div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              flexWrap: 'wrap',
-            }}
-          >
-            <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
-              My Vegetables & Listings (SEL-02, SEL-03)
-            </h1>
-            <SellerStatusBadge user={user} />
-          </div>
+          <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
+            My Vegetables & Listings (SEL-02, SEL-03)
+          </h1>
           <p
             style={{
               color: '#64748b',
@@ -48,7 +29,6 @@ export function SellerProducts() {
             Manage and edit vegetables listed on the public marketplace.
           </p>
         </div>
-
         {canPublish ? (
           <Link
             to="/seller/products/new"
@@ -69,47 +49,46 @@ export function SellerProducts() {
           <button
             type="button"
             disabled
-            aria-disabled="true"
-            data-testid="add-product-btn-disabled"
-            title={`Publishing disabled: account is ${statusMeta.label.toLowerCase()} (AUTH-03)`}
+            data-testid="add-product-disabled-btn"
+            title="You cannot publish product listings until your seller account is approved by an administrator (AUTH-03)."
             style={{
-              backgroundColor: '#94a3b8',
-              color: '#ffffff',
+              backgroundColor: '#f1f5f9',
+              color: '#94a3b8',
+              border: '1px solid #cbd5e1',
               padding: '0.6rem 1.2rem',
               borderRadius: '6px',
-              border: 'none',
               fontWeight: '600',
               fontSize: '0.9rem',
               cursor: 'not-allowed',
-              opacity: 0.85,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
             }}
           >
-            + Add Product (Publishing Disabled)
+            <span aria-hidden="true">🔒</span>
+            <span>+ Add Product (Locked)</span>
           </button>
         )}
       </div>
 
+      {/* Publishing disabled notice (FE-064 / AUTH-03) */}
       {!canPublish && (
         <div
-          role="status"
-          data-testid="seller-products-restricted-notice"
+          data-testid="products-publishing-disabled-notice"
+          role="alert"
           style={{
             backgroundColor: '#fffbeb',
             border: '1px solid #fde68a',
+            color: '#92400e',
             borderRadius: '8px',
             padding: '0.75rem 1rem',
             fontSize: '0.85rem',
-            color: '#92400e',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
+            lineHeight: 1.5,
           }}
         >
-          <span aria-hidden="true">⚠️</span>
-          <span>
-            <strong>Publishing Notice:</strong> While your account is {statusMeta.label.toLowerCase()},
-            new listings cannot be published to the marketplace and existing products will not be visible to buyers (AUTH-03, BR-11).
-          </span>
+          ⚠️ <strong>Publishing disabled:</strong> You cannot create new product
+          listings until an administrator approves your seller account
+          (AUTH-03). Existing listings below remain visible only to you.
         </div>
       )}
 

@@ -18,7 +18,7 @@ import { Spinner } from '../components/common/Spinner.jsx';
  * @param {React.ReactNode} [props.children] - Child components or Outlet
  */
 export function ProtectedRoute({ allowedRoles, redirectPath, children }) {
-  const { isAuthenticated, role, isLoading } = useAuth();
+  const { isAuthenticated, role, isLoading, isSessionExpired } = useAuth();
   const location = useLocation();
 
   // Wait for session verification on mount/refresh
@@ -26,8 +26,15 @@ export function ProtectedRoute({ allowedRoles, redirectPath, children }) {
     return <Spinner size="lg" center text="Verifying authorization..." />;
   }
 
-  // 1. Unauthenticated users: redirect to login and preserve origin
+  // 1. Unauthenticated users: redirect to login and preserve origin.
+  // ERR-04: while the session-expired prompt is active we deliberately render
+  // nothing instead of redirecting, so the prompt (not an immediate <Navigate>)
+  // guides the user to login with the original destination intact. Without this
+  // guard the redirect would race the prompt and overwrite the return path.
   if (!isAuthenticated) {
+    if (isSessionExpired) {
+      return null;
+    }
     return (
       <Navigate
         to={redirectPath || ROUTES.LOGIN}

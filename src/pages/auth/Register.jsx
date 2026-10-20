@@ -1,5 +1,6 @@
 import { useState, useId } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import { useAuth, useToast } from '../../hooks';
 import { STRINGS } from '../../constants';
 import { getPostLoginRedirect } from '../../routes';
@@ -11,6 +12,9 @@ import {
   validatePassword,
   getPasswordCriteria,
   validateConfirmPassword,
+  validateBusinessName,
+  validateLocation,
+  validateDescription,
 } from '../../utils/validation';
 
 /**
@@ -19,12 +23,13 @@ import {
  * SRS References:
  * - AUTH-01: Guest registration as a Buyer (Name, email address, phone number, password).
  * - AUTH-02: Guest registration as a Seller (Buyer fields + business name, location, description).
+ * - AUTH-03: Newly registered seller account has status "Pending approval".
  * - AUTH-08: Enforce unique email addresses and minimum password length of 8 characters containing letters and digits.
  * - CART-09 & TC-12: Guest proceeding to checkout is prompted to log in/register and retains cart.
  * - UI-05: Simple forms with inline validation, helpful error messages, and disabled state during submission.
  * - NFR-USAB-02 / NFR-USAB-03: Accessible labels, inline error alerts, touch targets ≥ 44px.
  */
-export function Register() {
+export function Register({ defaultRole } = {}) {
   const { register } = useAuth();
   const toast = useToast();
   const location = useLocation();
@@ -47,9 +52,12 @@ export function Register() {
     fromPath && fromPath.startsWith('/checkout')
   );
 
-  const [role, setRole] = useState(() =>
-    roleParam === 'seller' ? 'seller' : 'buyer'
-  );
+  const [role, setRole] = useState(() => {
+    if (defaultRole === 'seller' || defaultRole === 'buyer') {
+      return defaultRole;
+    }
+    return roleParam === 'seller' ? 'seller' : 'buyer';
+  });
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -108,6 +116,21 @@ export function Register() {
           error = validateConfirmPassword(password, confirmPassword);
         }
         break;
+      case 'businessName':
+        if (role === 'seller') {
+          error = validateBusinessName(businessName);
+        }
+        break;
+      case 'sellerLocation':
+        if (role === 'seller') {
+          error = validateLocation(sellerLocation);
+        }
+        break;
+      case 'description':
+        if (role === 'seller') {
+          error = validateDescription(description);
+        }
+        break;
       default:
         break;
     }
@@ -135,6 +158,9 @@ export function Register() {
       phone: true,
       password: true,
       confirmPassword: true,
+      businessName: role === 'seller',
+      sellerLocation: role === 'seller',
+      description: role === 'seller',
     });
 
     // Validate fields
@@ -158,8 +184,15 @@ export function Register() {
         STRINGS.AUTH.PASSWORDS_DONT_MATCH || 'Passwords do not match.';
     }
 
-    if (role === 'seller' && !businessName.trim()) {
-      errors.businessName = 'Business or Farm name is required.';
+    if (role === 'seller') {
+      const bErr = validateBusinessName(businessName);
+      if (bErr) errors.businessName = bErr;
+
+      const locErr = validateLocation(sellerLocation);
+      if (locErr) errors.sellerLocation = locErr;
+
+      const descErr = validateDescription(description);
+      if (descErr) errors.description = descErr;
     }
 
     if (Object.keys(errors).length > 0) {
@@ -184,33 +217,26 @@ export function Register() {
       };
 
       if (role === 'seller') {
-        payload.business_name =
-          businessName.trim() || `${name.trim()}'s Farm Produce`;
-        payload.location = sellerLocation.trim() || 'Lagos';
-        payload.description =
-          description.trim() || 'Verified vegetable farm seller';
+        payload.business_name = businessName.trim();
+        payload.location = sellerLocation.trim();
+        payload.description = description.trim();
       }
 
       const response = await register(payload);
       const userRole = response?.user?.role || role;
       const registeredName = response?.user?.name || name.trim();
-
-      if (userRole === 'seller') {
-        const pendingMsg =
-          STRINGS.AUTH.SELLER_PENDING_APPROVAL ||
-          'Your seller account is pending approval. An administrator will review your registration.';
-        setSuccessMessage(pendingMsg);
-        toast.info(pendingMsg);
-      } else {
-        const welcomeMsg =
-          typeof STRINGS.AUTH.BUYER_REGISTRATION_SUCCESS === 'function'
+      const welcomeMsg =
+        userRole === 'seller'
+          ? STRINGS.AUTH.SELLER_REGISTRATION_SUCCESS ||
+            'Registration successful! Your seller account is pending approval.'
+          : typeof STRINGS.AUTH.BUYER_REGISTRATION_SUCCESS === 'function'
             ? STRINGS.AUTH.BUYER_REGISTRATION_SUCCESS(registeredName)
             : `Welcome to Vegetable Joint, ${registeredName}!`;
-        setSuccessMessage(welcomeMsg);
-        toast.success(welcomeMsg);
-      }
 
-      // Post-registration redirect logic (CART-09 preserves cart and returns to /checkout)
+      setSuccessMessage(welcomeMsg);
+      toast.success(welcomeMsg);
+
+      // Post-registration redirect logic (AUTH-13: seller goes to /seller, buyer returns or /)
       const destination = getPostLoginRedirect(userRole, fromLocation);
       navigate(destination, { replace: true });
     } catch (err) {
@@ -219,10 +245,12 @@ export function Register() {
         setFieldErrors((prev) => ({
           ...prev,
           ...Object.fromEntries(
-            Object.entries(err.errors).map(([k, v]) => [
-              k,
-              Array.isArray(v) ? v[0] : v,
-            ])
+            Object.entries(err.errors).map(([k, v]) => {
+              let key = k;
+              if (k === 'business_name') key = 'businessName';
+              if (k === 'location') key = 'sellerLocation';
+              return [key, Array.isArray(v) ? v[0] : v];
+            })
           ),
         }));
       }
@@ -262,14 +290,16 @@ export function Register() {
   const handleQuickFillSeller = () => {
     const timestamp = Date.now().toString().slice(-4);
     setName(`Seller User ${timestamp}`);
-    setEmail(`newseller${timestamp}@farm.ng`);
+    setEmail(`newseller${timestamp}@example.ng`);
     setPhone('+2348039876543');
     setRole('seller');
-    setBusinessName(`Fresh Valley Farms ${timestamp}`);
-    setSellerLocation('Kano');
-    setDescription('Direct farm produce supplier of tomatoes and peppers');
     setPassword('password123');
     setConfirmPassword('password123');
+    setBusinessName(`Arewa Green Farms ${timestamp}`);
+    setSellerLocation('Mile 12 Market, Lagos');
+    setDescription(
+      'Specializing in farm-fresh tomatoes, bell peppers, carrots, and organic leafy vegetables direct from local farms.'
+    );
     setFieldErrors({});
     setErrorMessage('');
     toast.info('Filled quick seller registration details');
@@ -286,7 +316,7 @@ export function Register() {
           boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.06)',
         }}
       >
-        {/* Header (Figma Section 8 / AUTH-01) */}
+        {/* Header (Figma Section 8 / AUTH-01 / AUTH-02) */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <span
             style={{ fontSize: '2.5rem', display: 'inline-block' }}
@@ -304,7 +334,10 @@ export function Register() {
               lineHeight: 1.25,
             }}
           >
-            {STRINGS.AUTH.REGISTER_TITLE || 'Join Vegetable Joint'}
+            {role === 'seller'
+              ? STRINGS.AUTH.REGISTER_SELLER_TITLE ||
+                'Register as Vegetable Seller'
+              : STRINGS.AUTH.REGISTER_TITLE || 'Join Vegetable Joint'}
           </h1>
           <p
             style={{
@@ -729,22 +762,57 @@ export function Register() {
           {/* 6. Seller Fields (AUTH-02) */}
           {role === 'seller' && (
             <div
+              data-testid="seller-registration-fields"
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1rem',
-                paddingTop: '0.5rem',
+                paddingTop: '0.75rem',
                 borderTop: '1px dashed #e2e8f0',
               }}
             >
+              {/* Approval status info notice (AUTH-03) */}
+              <div
+                data-testid="seller-approval-notice"
+                style={{
+                  backgroundColor: '#fefce8',
+                  border: '1px solid #fef08a',
+                  color: '#854d0e',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.8125rem',
+                  lineHeight: 1.45,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem',
+                }}
+              >
+                <span aria-hidden="true">ℹ️</span>
+                <div>
+                  <strong>Seller Account Verification:</strong> Newly registered
+                  seller accounts have a status of “Pending approval” (AUTH-03).
+                  You will be able to manage your store and publish listings
+                  once an administrator reviews and approves your account.
+                </div>
+              </div>
+
               <Input
                 id={businessNameInputId}
                 name="businessName"
                 type="text"
-                label="Business / Farm Name"
-                placeholder="e.g. Arewa Fresh Farms Ltd"
+                label={
+                  STRINGS.AUTH.BUSINESS_NAME_LABEL || 'Business / Farm Name'
+                }
+                placeholder={
+                  STRINGS.AUTH.BUSINESS_NAME_PLACEHOLDER ||
+                  'e.g. Arewa Fresh Farms Ltd'
+                }
                 value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
+                onChange={(e) => {
+                  setBusinessName(e.target.value);
+                  if (fieldErrors.businessName) validateField('businessName');
+                }}
+                onBlur={() => handleBlur('businessName')}
                 error={fieldErrors.businessName}
                 required
                 disabled={isSubmitting}
@@ -755,10 +823,20 @@ export function Register() {
                 id={locationInputId}
                 name="sellerLocation"
                 type="text"
-                label="Farm / Stall Location"
-                placeholder="e.g. Kano, Nigeria"
+                label={STRINGS.AUTH.LOCATION_LABEL || 'Farm / Stall Location'}
+                placeholder={
+                  STRINGS.AUTH.LOCATION_PLACEHOLDER ||
+                  'e.g. Ketu Market, Lagos or Kano, Nigeria'
+                }
                 value={sellerLocation}
-                onChange={(e) => setSellerLocation(e.target.value)}
+                onChange={(e) => {
+                  setSellerLocation(e.target.value);
+                  if (fieldErrors.sellerLocation)
+                    validateField('sellerLocation');
+                }}
+                onBlur={() => handleBlur('sellerLocation')}
+                error={fieldErrors.sellerLocation}
+                required
                 disabled={isSubmitting}
                 data-testid="register-location-input"
               />
@@ -774,28 +852,60 @@ export function Register() {
                     marginBottom: '0.375rem',
                   }}
                 >
-                  Farm / Seller Description
+                  {STRINGS.AUTH.DESCRIPTION_LABEL ||
+                    'Farm / Seller Description'}{' '}
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 400,
+                      color: '#64748b',
+                    }}
+                  >
+                    (Optional)
+                  </span>
                 </label>
                 <textarea
                   id={descriptionInputId}
                   name="description"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows="2"
-                  placeholder="Briefly describe the vegetables you grow or sell..."
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (fieldErrors.description) validateField('description');
+                  }}
+                  onBlur={() => handleBlur('description')}
+                  rows="3"
+                  placeholder={
+                    STRINGS.AUTH.DESCRIPTION_PLACEHOLDER ||
+                    'Briefly describe the vegetables you grow or sell...'
+                  }
                   disabled={isSubmitting}
                   data-testid="register-description-input"
                   style={{
                     width: '100%',
                     padding: '0.625rem 0.875rem',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
+                    border: fieldErrors.description
+                      ? '1px solid #ef4444'
+                      : '1px solid #cbd5e1',
                     fontSize: '0.875rem',
                     boxSizing: 'border-box',
                     resize: 'vertical',
                     fontFamily: 'inherit',
                   }}
                 />
+                {fieldErrors.description && (
+                  <p
+                    data-testid="register-description-error"
+                    style={{
+                      color: '#ef4444',
+                      fontSize: '0.75rem',
+                      marginTop: '0.25rem',
+                      margin: '0.25rem 0 0 0',
+                    }}
+                  >
+                    {fieldErrors.description}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -845,9 +955,10 @@ export function Register() {
             marginTop: '1.5rem',
             paddingTop: '0.85rem',
             borderTop: '1px dashed #e2e8f0',
+            textAlign: 'center',
             display: 'flex',
-            gap: '0.5rem',
             justifyContent: 'center',
+            gap: '0.75rem',
             flexWrap: 'wrap',
           }}
         >
@@ -892,7 +1003,7 @@ export function Register() {
               gap: '0.35rem',
             }}
           >
-            <span>🌾</span>
+            <span>⚡</span>
             <span>Quick Fill Seller</span>
           </button>
         </div>
@@ -931,5 +1042,9 @@ export function Register() {
     </div>
   );
 }
+
+Register.propTypes = {
+  defaultRole: PropTypes.oneOf(['buyer', 'seller']),
+};
 
 export default Register;

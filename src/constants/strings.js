@@ -264,10 +264,29 @@ export const STRINGS = {
   CHECKOUT: {
     TITLE: 'Checkout & Delivery Details',
     DELIVERY_INFO_HEADING: 'Delivery Information',
+    DELIVERY_INFO_HINT:
+      'Confirm your delivery details below. Your name and phone number are pre-filled from your profile.',
     CONTACT_NAME: 'Contact Name',
+    RECIPIENT_NAME_LABEL: 'Recipient Name',
+    RECIPIENT_NAME_PLACEHOLDER:
+      'Full name of the person receiving the delivery',
     PHONE_NUMBER: 'Phone Number',
+    PHONE_NUMBER_PLACEHOLDER: 'e.g. 08012345678 or +2348012345678',
+    STREET_LABEL: 'Street / Landmark',
+    STREET_PLACEHOLDER: 'e.g. 12 Adeola Street, opposite Obalende Market',
+    TOWN_LABEL: 'Town / Area',
+    TOWN_PLACEHOLDER: 'e.g. Ikeja, Surulere, Nsukka',
+    STATE_LABEL: 'State',
+    STATE_PLACEHOLDER: 'Select state',
+    DELIVERY_NOTES_LABEL: 'Delivery Notes',
+    DELIVERY_NOTES_PLACEHOLDER:
+      'Optional instructions for the seller (e.g. call on arrival, gate colour)',
+    DELIVERY_NOTES_HINT: 'Optional — up to 500 characters.',
     DELIVERY_ADDRESS: 'Delivery Address',
     STATE_CITY: 'State / City',
+    CONTINUE_TO_REVIEW_BTN: 'Continue to Review →',
+    DELIVERY_SAVED:
+      'Delivery details saved. Please review your order before placing it.',
     ORDER_SUMMARY_HEADING: 'Order Summary',
     ITEMS_LABEL: 'Items',
     DELIVERY_FEE_LABEL: 'Estimated Delivery',
@@ -308,9 +327,8 @@ export const STRINGS = {
   },
 
   // Authentication & Accounts
-
   AUTH: {
-    SIGN_IN_TITLE: 'Sign In to Vegetable Joint', 
+    SIGN_IN_TITLE: 'Sign In to Vegetable Joint',
     SIGN_IN_SUBTITLE: 'Access buyer or seller dashboard',
     REGISTER_TITLE: 'Join Vegetable Joint',
     REGISTER_BUYER_TITLE: 'Create a Buyer Account',
@@ -346,7 +364,15 @@ export const STRINGS = {
     SIGN_IN_BTN: 'Sign In',
     REGISTER_BTN: 'Create Account',
     REGISTER_BUYER_BTN: 'Create Buyer Account',
+    REGISTER_SELLER_BTN: 'Register as Seller',
     SUBMITTING_BTN: 'Creating Account...',
+    BUSINESS_NAME_LABEL: 'Business / Farm Name',
+    BUSINESS_NAME_PLACEHOLDER: 'e.g. Arewa Fresh Farms Ltd',
+    LOCATION_LABEL: 'Farm / Stall Location',
+    LOCATION_PLACEHOLDER: 'e.g. Ketu Market, Lagos or Kano, Nigeria',
+    DESCRIPTION_LABEL: 'Farm / Seller Description',
+    DESCRIPTION_PLACEHOLDER:
+      'Briefly describe the vegetables you grow or sell (e.g. organic leafy greens, fresh tomatoes, bulk peppers)...',
     NO_ACCOUNT_PROMPT: "Don't have an account?",
     REGISTER_NOW_LINK: 'Register now',
     HAVE_ACCOUNT_PROMPT: 'Already have an account?',
@@ -354,24 +380,93 @@ export const STRINGS = {
     FORGOT_TITLE: 'Reset Password',
     FORGOT_SUBTITLE: 'Enter your email to receive a password reset link',
     SEND_RESET_LINK_BTN: 'Send Reset Link',
+    SENDING_RESET_LINK_BTN: 'Sending...',
     RESET_TITLE: 'Set New Password',
     RESET_SUBTITLE: 'Enter your new password below',
     UPDATE_PASSWORD_BTN: 'Update Password',
+    UPDATING_PASSWORD_BTN: 'Updating...',
     BACK_TO_SIGN_IN: '← Back to Sign In',
+    // SRS AUTH-06: forgot/reset password flow messages
+    FORGOT_SUCCESS:
+      "If an account exists for that email, we've sent a password reset link. Please check your inbox and spam folder.",
+    FORGOT_MOCK_LINK_NOTE:
+      'Mock mode: no email is sent. Use this simulated link to reset the password.',
+    FORGOT_OPEN_RESET_LINK: 'Open password reset link',
+    RESET_TOKEN_MISSING:
+      'This password reset link is missing or invalid. Please request a new link.',
+    RESET_TOKEN_INVALID:
+      'This password reset link is invalid. Please request a new one.',
+    RESET_TOKEN_EXPIRED:
+      'This password reset link has expired. Please request a new one.',
+    RESET_TOKEN_USED:
+      'This password reset link has already been used. Please request a new one.',
+    RESET_REQUEST_NEW_LINK: 'Request a new reset link',
+    RESET_SUCCESS:
+      'Your password has been reset successfully. You can now sign in with your new password.',
+    RESET_REDIRECTING: 'Redirecting you to sign in…',
+    RESET_SHOW_PASSWORD: 'Show password',
+    RESET_HIDE_PASSWORD: 'Hide password',
     SELLER_PENDING_APPROVAL:
       'Your seller registration is currently under review by administrators. You will receive access once approved.',
+    SELLER_REGISTRATION_SUCCESS:
+      'Registration successful! Your seller account is pending approval.',
     BUYER_REGISTRATION_SUCCESS: (name) =>
       `Welcome to Vegetable Joint, ${name}! Your account is ready.`,
     EMAIL_ALREADY_EXISTS:
       'This email has already been taken. Please sign in or use another email.',
     PASSWORDS_DONT_MATCH: 'Passwords do not match.',
+    // SRS AUTH-12: friendly suspension message shown after login attempt
+    ACCOUNT_SUSPENDED_TITLE: 'Account Suspended',
+    ACCOUNT_SUSPENDED_MESSAGE:
+      'Your account has been suspended and you cannot sign in right now. Please contact support if you believe this is a mistake.',
+    SELLER_ACCOUNT_SUSPENDED_TITLE: 'Seller Account Suspended',
+    SELLER_ACCOUNT_SUSPENDED_MESSAGE:
+      'Your seller account has been suspended and you cannot sign in right now. Please contact support for assistance.',
+    ACCOUNT_DEACTIVATED_TITLE: 'Account Deactivated',
+    ACCOUNT_DEACTIVATED_MESSAGE:
+      'Your account has been deactivated and you cannot sign in. Please contact support for assistance.',
+    // SRS AUTH-09 / NFR-SEC-07: friendly throttle (HTTP 429)
+    TOO_MANY_ATTEMPTS_TITLE: 'Too Many Attempts',
+    TOO_MANY_ATTEMPTS:
+      'Too many login attempts. Please wait a moment and try again.',
+    TOO_MANY_ATTEMPTS_WAIT: (seconds) =>
+      `Too many login attempts. Please try again in ${seconds} ${
+        Number(seconds) === 1 ? 'second' : 'seconds'
+      }.`,
     CHECKOUT_REDIRECT_HEADING: 'Ready to complete your order?',
     CHECKOUT_REDIRECT_TEXT:
       'Create an account to complete your checkout. Your shopping cart has been preserved and will remain intact.',
   },
-  
+
+  // Account Profile (SRS AUTH-11 — view/update name, phone & seller business
+  // details; change password)
+  PROFILE: {
+    TITLE: 'My Profile',
+    SUBTITLE: 'Manage your account details and password (AUTH-11)',
+    ACCOUNT_SECTION: 'Account Details',
+    BUSINESS_SECTION: 'Business Details',
+    PASSWORD_SECTION: 'Change Password',
+    EMAIL_READONLY_HINT:
+      'Your email address cannot be changed here. Please contact support if you need to update it.',
+    SAVE_BTN: 'Save Changes',
+    SAVING_BTN: 'Saving...',
+    SAVE_SUCCESS: 'Your profile has been updated successfully.',
+    CURRENT_PASSWORD_LABEL: 'Current Password',
+    CURRENT_PASSWORD_PLACEHOLDER: 'Enter your current password',
+    NEW_PASSWORD_LABEL: 'New Password',
+    CONFIRM_PASSWORD_LABEL: 'Confirm New Password',
+    UPDATE_PASSWORD_BTN: 'Update Password',
+    UPDATING_PASSWORD_BTN: 'Updating...',
+    PASSWORD_SUCCESS: 'Your password has been changed successfully.',
+    PASSWORD_SHOW: 'Show passwords',
+    PASSWORD_HIDE: 'Hide passwords',
+    CURRENT_PASSWORD_REQUIRED: 'Current password is required.',
+    CURRENT_PASSWORD_INCORRECT: 'Your current password is incorrect.',
+    PASSWORD_SAME_AS_CURRENT:
+      'New password must be different from the current password.',
+  },
+
   // Public Seller Discovery (MKT-01 featured sellers, MKT-07 seller profile)
-  
   SELLERS: {
     FEATURED_TITLE: 'Featured Sellers',
     FEATURED_SUBTITLE:
@@ -402,25 +497,21 @@ export const STRINGS = {
     UPDATE_STOCK: 'Update Stock',
     CONFIRM_ORDER: 'Confirm Order',
     STATUS: {
-      PENDING_LABEL: 'Pending Approval',
-      APPROVED_LABEL: 'Approved',
-      REJECTED_LABEL: 'Rejected',
-      SUSPENDED_LABEL: 'Suspended',
-      PENDING_TITLE: 'Seller Account Pending Approval (AUTH-03)',
+      PENDING: 'Pending Approval',
+      APPROVED: 'Approved',
+      REJECTED: 'Application Rejected',
+      SUSPENDED: 'Account Suspended',
+      PENDING_HEADING: 'Your seller account is pending approval.',
       PENDING_MESSAGE:
-        'Your seller account registration has been received and is currently awaiting administrator approval. While your account is pending, you cannot publish listings to the public marketplace.',
-      REJECTED_TITLE: 'Seller Account Application Rejected (ADM-03)',
+        'Your seller registration is currently under review by platform administrators (AUTH-03). While your account is pending approval, product publishing is disabled and listings will not appear publicly on the marketplace.',
+      REJECTED_HEADING: 'Seller Account Application Not Approved',
       REJECTED_MESSAGE:
-        'Your seller account application was not approved by platform administrators. You cannot publish products to the marketplace.',
-      SUSPENDED_TITLE: 'Seller Account Suspended (AUTH-12, ADM-03)',
+        'Your seller registration application was reviewed and not approved by platform administrators (ADM-03). Product publishing is disabled.',
+      SUSPENDED_HEADING: 'Seller Account Suspended',
       SUSPENDED_MESSAGE:
-        'Your seller account has been suspended by an administrator. All your active listings have been hidden from the marketplace, and publishing new products is disabled.',
-      CANNOT_PUBLISH_NOTICE:
-        'Publishing listings is disabled until an administrator approves your seller account.',
-      PUBLISH_DISABLED_BTN: (status = 'Pending Approval') =>
-        `Publishing Disabled (${status})`,
-      SUPPORT_CONTACT:
-        'For verification support, please contact support@vegetablejoint.ng',
+        'Your seller account has been suspended by platform administrators (ADM-03, AUTH-12). Your products have been removed from the public marketplace and publishing new listings is disabled.',
+      CANNOT_PUBLISH_WARNING:
+        'You cannot publish product listings until your account has been approved by an administrator.',
     },
   },
 

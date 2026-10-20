@@ -7,6 +7,7 @@ import { Checkout } from '../../buyer/Checkout';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { CartContext } from '../../../context/cartContextDef.js';
 import { CartProvider } from '../../../context/CartContext.jsx';
+import { AuthProvider } from '../../../context/AuthContext.jsx';
 import { ToastProvider } from '../../../context/ToastContext.jsx';
 import { STRINGS } from '../../../constants';
 
@@ -59,13 +60,20 @@ function renderCheckoutWithState(cartValue = {}) {
 
   return render(
     <MemoryRouter initialEntries={['/checkout']}>
-      <CartContext.Provider value={defaultCartValue}>
-        <Routes>
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/products" element={<div>Marketplace Vegetables</div>} />
-          <Route path="/cart" element={<div>Cart Page</div>} />
-        </Routes>
-      </CartContext.Provider>
+      <ToastProvider>
+        <AuthProvider>
+          <CartContext.Provider value={defaultCartValue}>
+            <Routes>
+              <Route path="/checkout" element={<Checkout />} />
+              <Route
+                path="/products"
+                element={<div>Marketplace Vegetables</div>}
+              />
+              <Route path="/cart" element={<div>Cart Page</div>} />
+            </Routes>
+          </CartContext.Provider>
+        </AuthProvider>
+      </ToastProvider>
     </MemoryRouter>
   );
 }

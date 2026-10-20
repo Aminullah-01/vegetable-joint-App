@@ -1,15 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '../../hooks';
+import { useAuth, useCart, useToast } from '../../hooks';
 import { EmptyState, Button, Spinner } from '../../components/common';
 import { CartValidationNotices } from '../../components/cart';
-import { STRINGS } from '../../constants';
+import { DeliveryDetailsForm } from '../../components/checkout';
+import { STRINGS, DELIVERY_DETAILS_STORAGE_KEY } from '../../constants';
 import { formatCurrency } from '../../utils';
+
+/**
+ * Reads delivery details previously saved on this device (CHK-02).
+ *
+ * @returns {Object|null} Saved delivery details or null.
+ */
+function readSavedDeliveryDetails() {
+  try {
+    const raw = localStorage.getItem(DELIVERY_DETAILS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Checkout — Checkout & Delivery Details Page
  *
  * SRS References:
+ * - CHK-01: Checkout requires an authenticated buyer (enforced by route guard).
+ * - CHK-02: Collect recipient name, phone, delivery address (street/landmark,
+ *   town/area, state) and optional notes; pre-fill from the buyer's profile.
  * - CART-08: Before checkout completes, system re-validates cart lines against current
  *   price, stock, availability and seller status; tells buyer about any change before proceeding.
  * - CART-05, TC-11: Empty cart state prevents checkout.
@@ -17,7 +35,6 @@ import { formatCurrency } from '../../utils';
  *   new price applied only after acknowledgement.
  * - UC-02 Alternative flow 1a: Price/stock changed: system informs buyer; buyer accepts changes or edits cart.
  * - BR-02: Subtotal = sum of line subtotals. No delivery fee/tax/discount in 1.0.
- * - CHK-01 to CHK-04: Delivery details and order review.
  */
 export function Checkout() {
   const {
@@ -32,13 +49,37 @@ export function Checkout() {
     acknowledgeValidation,
   } = useCart();
 
+  const { user } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [isValidating, setIsValidating] = useState(true);
   const [validationError, setValidationError] = useState(null);
   const [pendingChanges, setPendingChanges] = useState([]);
   const [hasAcknowledgedChanges, setHasAcknowledgedChanges] = useState(false);
 
+  // Delivery details (CHK-02): profile name/phone take precedence, address is
+  // restored from this device when available.
+  const [deliveryDetails, setDeliveryDetails] = useState(() => {
+    const saved = readSavedDeliveryDetails();
+    return {
+      name: user?.name || '',
+      phone: user?.phone || '',
+      street: saved?.street || '',
+      town: saved?.town || '',
+      state: saved?.state || '',
+      notes: saved?.notes || '',
+    };
+  });
+
   const isCartEmpty = isEmpty || !items || items.length === 0;
+
+  // Name/phone always fall back to the authenticated profile so the form is
+  // pre-filled even if the session resolves after the first render (CHK-02).
+  const deliveryInitialValues = {
+    ...deliveryDetails,
+    name: deliveryDetails.name || user?.name || '',
+    phone: deliveryDetails.phone || user?.phone || '',
+  };
 
   // On mount / checkout load: re-validate cart lines against current price, stock, and seller status (CART-08)
   useEffect(() => {
@@ -94,6 +135,19 @@ export function Checkout() {
 
   const handleReviewInCart = () => {
     navigate('/cart');
+  };
+
+  const handleDeliverySubmit = (values) => {
+    try {
+      localStorage.setItem(
+        DELIVERY_DETAILS_STORAGE_KEY,
+        JSON.stringify(values)
+      );
+    } catch {
+      // Ignore storage failures (private mode / quota) — details remain in state.
+    }
+    setDeliveryDetails(values);
+    toast.success(STRINGS.CHECKOUT.DELIVERY_SAVED);
   };
 
   // 1. Empty Cart Guard (CART-05 & TC-11)
@@ -232,7 +286,7 @@ export function Checkout() {
           gap: '1.5rem',
         }}
       >
-        {/* Delivery Form */}
+        {/* Delivery Details Form (CHK-02) */}
         <div
           style={{
             backgroundColor: '#ffffff',
@@ -240,125 +294,17 @@ export function Checkout() {
             border: '1px solid #e2e8f0',
             padding: '1.5rem',
           }}
+          data-testid="checkout-delivery-section"
         >
-          <h2
-            style={{
-              fontSize: '1.15rem',
-              color: '#1e293b',
-              marginBottom: '1rem',
-            }}
-          >
-            Delivery Information
-          </h2>
-          <form
-            style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <div>
-              <label
-                htmlFor="checkout-name"
-                style={{
-                  display: 'block',
-                  fontSize: '0.85rem',
-                  fontWeight: '500',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                Contact Name
-              </label>
-              <input
-                id="checkout-name"
-                type="text"
-                placeholder="Receiver name"
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="checkout-phone"
-                style={{
-                  display: 'block',
-                  fontSize: '0.85rem',
-                  fontWeight: '500',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                Phone Number
-              </label>
-              <input
-                id="checkout-phone"
-                type="tel"
-                placeholder="e.g. 08012345678"
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="checkout-address"
-                style={{
-                  display: 'block',
-                  fontSize: '0.85rem',
-                  fontWeight: '500',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                Delivery Address
-              </label>
-              <textarea
-                id="checkout-address"
-                rows={3}
-                placeholder="Street address, apartment/suite, area"
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="checkout-city"
-                style={{
-                  display: 'block',
-                  fontSize: '0.85rem',
-                  fontWeight: '500',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                State / City
-              </label>
-              <select
-                id="checkout-city"
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#fff',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <option value="lagos">Lagos State</option>
-                <option value="abuja">Abuja (FCT)</option>
-                <option value="oyo">Oyo State (Ibadan)</option>
-                <option value="kano">Kano State</option>
-              </select>
-            </div>
-          </form>
+          <DeliveryDetailsForm
+            key={user?.id || 'guest'}
+            initialValues={deliveryInitialValues}
+            onChange={setDeliveryDetails}
+            onSubmit={handleDeliverySubmit}
+            disabled={needsAcknowledgement || isValidating}
+            title={STRINGS.CHECKOUT.DELIVERY_INFO_HEADING}
+            hint={STRINGS.CHECKOUT.DELIVERY_INFO_HINT}
+          />
         </div>
 
         {/* Order Summary & Place Order */}

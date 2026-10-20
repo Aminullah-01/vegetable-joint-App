@@ -108,6 +108,14 @@ export function AppRoutes() {
           <Route element={<GuestRoute />}>
             <Route path={ROUTES.LOGIN} element={<Login />} />
             <Route path={ROUTES.REGISTER} element={<Register />} />
+            <Route
+              path={ROUTES.REGISTER_SELLER}
+              element={<Register defaultRole="seller" />}
+            />
+            <Route
+              path="/seller/register"
+              element={<Register defaultRole="seller" />}
+            />
             <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
             <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
           </Route>
@@ -156,21 +164,15 @@ export function AppRoutes() {
             path={ROUTES.SELLER_EDIT_PRODUCT}
             element={<SellerProductForm />}
           />
-          <Route 
-            path={ROUTES.SELLER_ORDERS} 
-            element={<SellerOrders />} />
+          <Route path={ROUTES.SELLER_ORDERS} element={<SellerOrders />} />
           <Route
             path={ROUTES.SELLER_ORDER_DETAIL}
             element={<SellerOrderDetail />}
           />
-          <Route 
-            path={ROUTES.SELLER_INVENTORY} 
-            element={<SellerInventory />} />
+          <Route path={ROUTES.SELLER_INVENTORY} element={<SellerInventory />} />
 
-          <Route 
-            path={ROUTES.SELLER_SALES} 
-            element={<SellerSales />} />
-          </Route>
+          <Route path={ROUTES.SELLER_SALES} element={<SellerSales />} />
+        </Route>
 
         {/* Admin Dashboard Routes (Protected: admin role only) */}
         <Route
