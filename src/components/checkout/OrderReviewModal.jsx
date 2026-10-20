@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
+import { CheckoutStepper } from './CheckoutStepper';
 import { formatCurrency } from '../../utils';
 
 /**
@@ -114,6 +115,15 @@ export function OrderReviewModal({
           paddingRight: '0.25rem',
         }}
       >
+        {/* 4-Step Visual Stepper at Step 3: Review (CHK-10, Figma Section 10) */}
+        <CheckoutStepper
+          currentStep={3}
+          compact
+          onStepClick={(step) => {
+            if (step <= 2) onClose();
+          }}
+        />
+
         {/* Step 1: Delivery Information Review */}
         <section
           aria-labelledby="review-delivery-heading"

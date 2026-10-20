@@ -1,12 +1,24 @@
 import { useParams, Link } from 'react-router-dom';
+import { CheckoutStepper } from '../../components/checkout';
 
 export function OrderConfirmation() {
   const { ref } = useParams();
 
   return (
     <div
-      style={{ maxWidth: '600px', margin: '2rem auto', textAlign: 'center' }}
+      style={{
+        maxWidth: '680px',
+        margin: '2rem auto',
+        padding: '0 1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem',
+      }}
+      data-testid="order-confirmation-page"
     >
+      {/* 4-Step Visual Stepper at Step 4: Confirmation (CHK-10, Figma Section 10) */}
+      <CheckoutStepper currentStep={4} clickable={false} />
+
       <div
         style={{
           backgroundColor: '#ffffff',
@@ -14,6 +26,7 @@ export function OrderConfirmation() {
           border: '1px solid #e2e8f0',
           padding: '2.5rem',
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+          textAlign: 'center',
         }}
       >
         <span

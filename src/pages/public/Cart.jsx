@@ -7,6 +7,7 @@ import {
   CartSummary,
   CartValidationNotices,
 } from '../../components/cart';
+import { CheckoutStepper } from '../../components/checkout';
 import { EmptyState, Button, ConfirmDialog } from '../../components/common';
 import { STRINGS } from '../../constants';
 import { calculateSellerSubtotals, formatCurrency } from '../../utils';
@@ -76,6 +77,13 @@ export function Cart() {
       }}
       data-testid="cart-page"
     >
+      {/* 4-Step Visual Stepper at Step 1: Cart (CHK-10, Figma Section 10) */}
+      {!isEmpty && items && items.length > 0 && (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <CheckoutStepper currentStep={1} clickable={false} />
+        </div>
+      )}
+
       {/* Breadcrumbs Navigation */}
       <nav
         aria-label="Breadcrumb"
