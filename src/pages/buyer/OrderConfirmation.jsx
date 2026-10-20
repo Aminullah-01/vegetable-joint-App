@@ -1,5 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
-import { CheckoutStepper } from '../../components/checkout';
+import {
+  CheckoutStepper,
+  PaymentMethodDisplay,
+} from '../../components/checkout';
 
 export function OrderConfirmation() {
   const { ref } = useParams();
@@ -72,6 +75,12 @@ export function OrderConfirmation() {
             {ref || 'ORD-2026-001'}
           </strong>
         </div>
+
+        {/* Payment Method Notice (CHK-09, Figma Section 11) */}
+        <PaymentMethodDisplay
+          variant="inline"
+          style={{ marginBottom: '1.5rem', textAlign: 'left' }}
+        />
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
           <Link

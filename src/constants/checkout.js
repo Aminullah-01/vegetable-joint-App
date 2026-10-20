@@ -50,6 +50,18 @@ export const NIGERIAN_STATES = [
 export const DELIVERY_DETAILS_STORAGE_KEY = 'vegetable_joint_delivery_details';
 
 /**
+ * Canonical payment method details for Release 1.0 (CHK-09, A-07, OI-01).
+ */
+export const PAYMENT_METHOD_INFO = {
+  id: 'pay_on_delivery',
+  label: 'Pay on delivery / pay seller directly',
+  shortLabel: 'Pay on Delivery',
+  acceptedModes: ['Cash on delivery', 'Mobile bank transfer on delivery'],
+  disclaimer:
+    'Online payment is not processed through the platform in Release 1.0. Payment is made directly to the seller upon delivery and inspection of fresh produce.',
+};
+
+/**
  * Canonical 4-step checkout journey (CHK-10, Figma Section 10).
  * Cart → Delivery details → Review → Confirmation in no more than four steps.
  */
@@ -88,5 +100,6 @@ export const CHECKOUT_STEPS = [
 export default {
   NIGERIAN_STATES,
   DELIVERY_DETAILS_STORAGE_KEY,
+  PAYMENT_METHOD_INFO,
   CHECKOUT_STEPS,
 };

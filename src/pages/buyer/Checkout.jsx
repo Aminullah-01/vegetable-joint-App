@@ -8,6 +8,7 @@ import {
   OrderSummary,
   OrderReviewModal,
   CheckoutStepper,
+  PaymentMethodDisplay,
 } from '../../components/checkout';
 import { STRINGS, DELIVERY_DETAILS_STORAGE_KEY } from '../../constants';
 import { orderService } from '../../services/orderService';
@@ -417,25 +418,36 @@ export function Checkout() {
           alignItems: 'start',
         }}
       >
-        {/* Delivery Details Form (CHK-02) */}
+        {/* Left Column: Delivery Details Form (CHK-02) & Payment Method Display (CHK-09, FE-073) */}
         <div
           style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            border: '1px solid #e2e8f0',
-            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.5rem',
           }}
-          data-testid="checkout-delivery-section"
         >
-          <DeliveryDetailsForm
-            key={user?.id || 'guest'}
-            initialValues={deliveryInitialValues}
-            onChange={setDeliveryDetails}
-            onSubmit={handleDeliverySubmit}
-            disabled={needsAcknowledgement || isValidating}
-            title={STRINGS.CHECKOUT.DELIVERY_INFO_HEADING}
-            hint={STRINGS.CHECKOUT.DELIVERY_INFO_HINT}
-          />
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              padding: '1.5rem',
+            }}
+            data-testid="checkout-delivery-section"
+          >
+            <DeliveryDetailsForm
+              key={user?.id || 'guest'}
+              initialValues={deliveryInitialValues}
+              onChange={setDeliveryDetails}
+              onSubmit={handleDeliverySubmit}
+              disabled={needsAcknowledgement || isValidating}
+              title={STRINGS.CHECKOUT.DELIVERY_INFO_HEADING}
+              hint={STRINGS.CHECKOUT.DELIVERY_INFO_HINT}
+            />
+          </div>
+
+          {/* Payment Method Display (CHK-09, FE-073, OI-01, A-07) */}
+          <PaymentMethodDisplay variant="card" />
         </div>
 
         {/* Order Summary & Review CTA (CHK-03, CHK-05, CHK-09, BR-02) */}
