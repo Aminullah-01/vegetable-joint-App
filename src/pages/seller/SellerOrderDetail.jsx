@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { PaymentMethodDisplay } from '../../components/checkout';
 
 export function SellerOrderDetail() {
   const { id } = useParams();
@@ -125,6 +126,9 @@ export function SellerOrderDetail() {
             14 Alade Market Street, Ikeja, Lagos State
           </p>
         </div>
+
+        {/* Payment Method Notice (CHK-09, Figma Section 11 & 19) */}
+        <PaymentMethodDisplay variant="inline" style={{ textAlign: 'left' }} />
       </div>
     </div>
   );

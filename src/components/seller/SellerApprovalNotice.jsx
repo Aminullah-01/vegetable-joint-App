@@ -4,6 +4,7 @@ import {
   SELLER_STATUS,
   getSellerApprovalStatus,
   getSellerStatusMeta,
+  getSellerRejectionReason,
 } from '../../utils/sellerStatus.js';
 import { SellerStatusBadge } from './SellerStatusBadge.jsx';
 
@@ -40,11 +41,7 @@ export function SellerApprovalNotice({
   }
 
   const _meta = getSellerStatusMeta(status);
-  const rejectionReason =
-    reason ||
-    user?.seller_profile?.rejection_reason ||
-    user?.rejection_reason ||
-    null;
+  const rejectionReason = reason || getSellerRejectionReason(user);
 
   // 1. Pending Approval State (AUTH-03)
   if (status === SELLER_STATUS.PENDING) {
@@ -64,112 +61,120 @@ export function SellerApprovalNotice({
             : '0 2px 8px -2px rgba(245, 158, 11, 0.12)',
         }}
       >
-        <div
-          style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}
-        >
-          <span
+        <div data-testid="seller-status-notice" data-status="pending">
+          <div
             style={{
-              fontSize: inline ? '1.35rem' : '1.75rem',
-              lineHeight: 1,
-              marginTop: '0.1rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.85rem',
             }}
-            aria-hidden="true"
           >
-            ⏳
-          </span>
-          <div style={{ flex: 1 }}>
-            <div
+            <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                flexWrap: 'wrap',
-                marginBottom: '0.35rem',
+                fontSize: inline ? '1.35rem' : '1.75rem',
+                lineHeight: 1,
+                marginTop: '0.1rem',
               }}
+              aria-hidden="true"
             >
-              <h2
-                style={{
-                  fontSize: inline ? '0.95rem' : '1.1rem',
-                  fontWeight: 700,
-                  color: '#92400e',
-                  margin: 0,
-                  lineHeight: 1.3,
-                }}
-              >
-                Your seller account is pending approval (AUTH-03)
-              </h2>
-              <SellerStatusBadge status={status} size="sm" />
-            </div>
-
-            <p
-              style={{
-                color: '#78350f',
-                fontSize: '0.875rem',
-                margin: '0 0 0.5rem 0',
-                lineHeight: 1.5,
-              }}
-            >
-              Your seller registration was submitted successfully and is
-              currently under review by platform administrators. While your
-              account is pending approval,{' '}
-              <strong>
-                you cannot publish vegetable listings to the public marketplace
-              </strong>
-              .
-            </p>
-
-            {!inline && (
+              ⏳
+            </span>
+            <div style={{ flex: 1 }}>
               <div
                 style={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #fef3c7',
-                  borderRadius: '8px',
-                  padding: '0.75rem 1rem',
-                  fontSize: '0.8125rem',
-                  color: '#92400e',
-                  lineHeight: 1.45,
-                  marginTop: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '0.35rem',
                 }}
               >
-                <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>
-                  What happens next?
-                </div>
-                <div>
-                  • Administrator review typically completes within 24 to 48
-                  hours.
-                </div>
-                <div>
-                  • Once approved, the ability to add and publish vegetable
-                  listings will automatically unlock.
-                </div>
-                <div>
-                  • In the meantime, you can review inventory formats and
-                  platform guidelines.
-                </div>
+                <h2
+                  style={{
+                    fontSize: inline ? '0.95rem' : '1.1rem',
+                    fontWeight: 700,
+                    color: '#92400e',
+                    margin: 0,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  Your seller account is pending approval (AUTH-03)
+                </h2>
+                <SellerStatusBadge status={status} size="sm" />
               </div>
-            )}
 
-            <div
-              style={{
-                marginTop: '0.5rem',
-                fontSize: '0.75rem',
-                color: '#b45309',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-              }}
-            >
-              <span>Need expedited verification? Contact support:</span>
-              <a
-                href="mailto:support@vegetablejoint.ng"
+              <p
+                data-testid="seller-status-pending"
                 style={{
-                  color: '#92400e',
-                  fontWeight: 600,
-                  textDecoration: 'underline',
+                  color: '#78350f',
+                  fontSize: '0.875rem',
+                  margin: '0 0 0.5rem 0',
+                  lineHeight: 1.5,
                 }}
               >
-                support@vegetablejoint.ng
-              </a>
+                Your seller registration was submitted successfully and is
+                currently under review by platform administrators. While your
+                account is pending approval,{' '}
+                <strong>
+                  you cannot publish vegetable listings to the public
+                  marketplace
+                </strong>
+                . You cannot create or publish new listings until verified.
+              </p>
+
+              {!inline && (
+                <div
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #fef3c7',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.8125rem',
+                    color: '#92400e',
+                    lineHeight: 1.45,
+                    marginTop: '0.5rem',
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>
+                    What happens next?
+                  </div>
+                  <div>
+                    • Administrator review typically completes within 24 to 48
+                    hours.
+                  </div>
+                  <div>
+                    • Once approved, the ability to add and publish vegetable
+                    listings will automatically unlock.
+                  </div>
+                  <div>
+                    • In the meantime, you can review inventory formats and
+                    platform guidelines.
+                  </div>
+                </div>
+              )}
+
+              <div
+                style={{
+                  marginTop: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#b45309',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span>Need expedited verification? Contact support:</span>
+                <a
+                  href="mailto:support@vegetablejoint.ng"
+                  style={{
+                    color: '#92400e',
+                    fontWeight: 600,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  support@vegetablejoint.ng
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -193,95 +198,101 @@ export function SellerApprovalNotice({
           boxShadow: inline ? 'none' : '0 2px 8px -2px rgba(220, 38, 38, 0.12)',
         }}
       >
-        <div
-          style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}
-        >
-          <span
+        <div data-testid="seller-status-notice" data-status="rejected">
+          <div
             style={{
-              fontSize: inline ? '1.35rem' : '1.75rem',
-              lineHeight: 1,
-              marginTop: '0.1rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.85rem',
             }}
-            aria-hidden="true"
           >
-            ⚠️
-          </span>
-          <div style={{ flex: 1 }}>
-            <div
+            <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                flexWrap: 'wrap',
-                marginBottom: '0.35rem',
+                fontSize: inline ? '1.35rem' : '1.75rem',
+                lineHeight: 1,
+                marginTop: '0.1rem',
               }}
+              aria-hidden="true"
             >
-              <h2
-                style={{
-                  fontSize: inline ? '0.95rem' : '1.1rem',
-                  fontWeight: 700,
-                  color: '#991b1b',
-                  margin: 0,
-                  lineHeight: 1.3,
-                }}
-              >
-                Seller Account Application Rejected (ADM-03)
-              </h2>
-              <SellerStatusBadge status={status} size="sm" />
-            </div>
-
-            <p
-              style={{
-                color: '#7f1d1d',
-                fontSize: '0.875rem',
-                margin: '0 0 0.5rem 0',
-                lineHeight: 1.5,
-              }}
-            >
-              Your seller account application was not approved by platform
-              administrators.{' '}
-              <strong>
-                You cannot publish vegetable listings or receive buyer orders.
-              </strong>
-            </p>
-
-            {rejectionReason && (
+              ⚠️
+            </span>
+            <div style={{ flex: 1 }}>
               <div
-                data-testid="seller-rejection-reason"
                 style={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #fee2e2',
-                  borderRadius: '8px',
-                  padding: '0.65rem 0.85rem',
-                  fontSize: '0.8125rem',
-                  color: '#991b1b',
-                  margin: '0.5rem 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '0.35rem',
                 }}
               >
-                <strong>Reason provided:</strong> {rejectionReason}
+                <h2
+                  style={{
+                    fontSize: inline ? '0.95rem' : '1.1rem',
+                    fontWeight: 700,
+                    color: '#991b1b',
+                    margin: 0,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  Seller Account Application Rejected (ADM-03)
+                </h2>
+                <SellerStatusBadge status={status} size="sm" />
               </div>
-            )}
 
-            <div
-              style={{
-                marginTop: '0.5rem',
-                fontSize: '0.75rem',
-                color: '#991b1b',
-              }}
-            >
-              If you have updated business credentials or wish to appeal this
-              decision, please reach out to{' '}
-              <a
-                href="mailto:support@vegetablejoint.ng"
+              <p
                 style={{
                   color: '#7f1d1d',
-                  fontWeight: 600,
-                  textDecoration: 'underline',
+                  fontSize: '0.875rem',
+                  margin: '0 0 0.5rem 0',
+                  lineHeight: 1.5,
                 }}
               >
-                support@vegetablejoint.ng
-              </a>
-              .
+                Your seller account application was not approved by platform
+                administrators.{' '}
+                <strong>
+                  You cannot publish vegetable listings or receive buyer orders.
+                </strong>
+              </p>
+
+              {rejectionReason && (
+                <div
+                  data-testid="seller-rejection-reason"
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #fee2e2',
+                    borderRadius: '8px',
+                    padding: '0.65rem 0.85rem',
+                    fontSize: '0.8125rem',
+                    color: '#991b1b',
+                    margin: '0.5rem 0',
+                  }}
+                >
+                  <strong>Reason provided:</strong> {rejectionReason}
+                </div>
+              )}
+
+              <div
+                style={{
+                  marginTop: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#991b1b',
+                }}
+              >
+                If you have updated business credentials or wish to appeal this
+                decision, please reach out to{' '}
+                <a
+                  href="mailto:support@vegetablejoint.ng"
+                  style={{
+                    color: '#7f1d1d',
+                    fontWeight: 600,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  support@vegetablejoint.ng
+                </a>
+                .
+              </div>
             </div>
           </div>
         </div>
@@ -304,87 +315,90 @@ export function SellerApprovalNotice({
         boxShadow: inline ? 'none' : '0 2px 8px -2px rgba(225, 29, 72, 0.12)',
       }}
     >
-      <div
-        style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}
-      >
-        <span
-          style={{
-            fontSize: inline ? '1.35rem' : '1.75rem',
-            lineHeight: 1,
-            marginTop: '0.1rem',
-          }}
-          aria-hidden="true"
+      <div data-testid="seller-status-notice" data-status="suspended">
+        <div
+          style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}
         >
-          🚫
-        </span>
-        <div style={{ flex: 1 }}>
-          <div
+          <span
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem',
-              flexWrap: 'wrap',
-              marginBottom: '0.35rem',
+              fontSize: inline ? '1.35rem' : '1.75rem',
+              lineHeight: 1,
+              marginTop: '0.1rem',
             }}
+            aria-hidden="true"
           >
-            <h2
+            🚫
+          </span>
+          <div style={{ flex: 1 }}>
+            <div
               style={{
-                fontSize: inline ? '0.95rem' : '1.1rem',
-                fontWeight: 700,
-                color: '#b91c1c',
-                margin: 0,
-                lineHeight: 1.3,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                flexWrap: 'wrap',
+                marginBottom: '0.35rem',
               }}
             >
-              Seller Account Suspended (AUTH-12, ADM-03)
-            </h2>
-            <SellerStatusBadge status={status} size="sm" />
-          </div>
+              <h2
+                style={{
+                  fontSize: inline ? '0.95rem' : '1.1rem',
+                  fontWeight: 700,
+                  color: '#b91c1c',
+                  margin: 0,
+                  lineHeight: 1.3,
+                }}
+              >
+                Seller Account Suspended (AUTH-12, ADM-03)
+              </h2>
+              <SellerStatusBadge status={status} size="sm" />
+            </div>
 
-          <p
-            style={{
-              color: '#881337',
-              fontSize: '0.875rem',
-              margin: '0 0 0.5rem 0',
-              lineHeight: 1.5,
-            }}
-          >
-            Your seller privileges have been suspended by an administrator
-            (ADM-03). All of your product listings are hidden from the
-            marketplace, and{' '}
-            <strong>publishing new listings is disabled</strong>.
-          </p>
-
-          <p
-            style={{
-              color: '#9f1239',
-              fontSize: '0.8125rem',
-              margin: '0 0 0.5rem 0',
-            }}
-          >
-            Note: Open orders previously placed by buyers remain visible in your
-            orders panel for delivery completion.
-          </p>
-
-          <div
-            style={{
-              fontSize: '0.75rem',
-              color: '#9f1239',
-            }}
-          >
-            To request account reactivation or inquire about your suspension,
-            please contact{' '}
-            <a
-              href="mailto:support@vegetablejoint.ng"
+            <p
+              data-testid="seller-status-suspended"
               style={{
                 color: '#881337',
-                fontWeight: 600,
-                textDecoration: 'underline',
+                fontSize: '0.875rem',
+                margin: '0 0 0.5rem 0',
+                lineHeight: 1.5,
               }}
             >
-              support@vegetablejoint.ng
-            </a>
-            .
+              Your seller privileges have been suspended by an administrator
+              (ADM-03). All of your product listings are hidden from buyers on
+              the marketplace, and{' '}
+              <strong>publishing new listings is disabled</strong>.
+            </p>
+
+            <p
+              style={{
+                color: '#9f1239',
+                fontSize: '0.8125rem',
+                margin: '0 0 0.5rem 0',
+              }}
+            >
+              Note: Open orders previously placed by buyers remain visible in
+              your orders panel for delivery completion.
+            </p>
+
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color: '#9f1239',
+              }}
+            >
+              To request account reactivation or inquire about your suspension,
+              please contact{' '}
+              <a
+                href="mailto:support@vegetablejoint.ng"
+                style={{
+                  color: '#881337',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                }}
+              >
+                support@vegetablejoint.ng
+              </a>
+              .
+            </div>
           </div>
         </div>
       </div>

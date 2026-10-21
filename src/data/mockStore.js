@@ -769,8 +769,19 @@ class MockStore {
       this.sellers.find((s) => s.id === sellerId) || this.sellers[0];
 
     if (seller && seller.approval_status !== 'approved') {
+      let detail = `seller account status is ${seller.approval_status}`;
+      if (seller.approval_status === 'pending') {
+        detail =
+          'seller account status is pending: pending administrator approval (AUTH-03)';
+      } else if (seller.approval_status === 'rejected') {
+        detail =
+          'seller account status is rejected: seller application was rejected (ADM-03)';
+      } else if (seller.approval_status === 'suspended') {
+        detail =
+          'seller account status is suspended: seller account is suspended (ADM-03)';
+      }
       throw new ApiError({
-        message: `Cannot publish product: seller account status is ${seller.approval_status} (AUTH-03).`,
+        message: `Cannot publish product: ${detail}.`,
         status: 403,
         code: 'FORBIDDEN',
       });

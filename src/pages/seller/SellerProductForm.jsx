@@ -74,6 +74,24 @@ export function SellerProductForm() {
             (AUTH-03, ADM-03). Product publishing becomes available as soon as a
             platform administrator approves your account.
           </p>
+          <button
+            type="button"
+            disabled
+            data-testid="save-product-submit-btn"
+            style={{
+              alignSelf: 'flex-start',
+              backgroundColor: '#f1f5f9',
+              color: '#94a3b8',
+              border: '1px solid #cbd5e1',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '6px',
+              cursor: 'not-allowed',
+              fontWeight: '600',
+              fontSize: '0.9rem',
+            }}
+          >
+            🔒 Publishing Disabled (Pending Approval)
+          </button>
           <Link
             to="/seller"
             data-testid="product-form-blocked-back-link"
@@ -262,6 +280,7 @@ export function SellerProductForm() {
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button
               type="submit"
+              data-testid="save-product-submit-btn"
               style={{
                 backgroundColor: '#15803d',
                 color: '#ffffff',

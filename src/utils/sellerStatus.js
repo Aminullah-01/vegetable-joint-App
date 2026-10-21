@@ -3,6 +3,8 @@
  * SRS References: AUTH-03, ADM-03, BR-11, Figma Section 8 & 13
  */
 
+import { mockSellers } from '../data/mockSellers.js';
+
 export const SELLER_APPROVAL_STATUSES = {
   PENDING: 'pending',
   APPROVED: 'approved',
@@ -94,11 +96,19 @@ export function getSellerApprovalStatus(user) {
     return SELLER_APPROVAL_STATUSES.SUSPENDED;
   }
 
-  const rawStatus =
+  let rawStatus =
     user?.seller_profile?.approval_status ||
     user?.seller_profile?.approvalStatus ||
     user?.approval_status ||
     user?.approvalStatus;
+
+  // Fallback: If not directly on user, resolve from mockStore or mockSellers
+  if (!rawStatus && user?.id && user?.role === 'seller') {
+    const seller = mockSellers.find((s) => s.user_id === user.id);
+    if (seller) {
+      rawStatus = seller.approval_status;
+    }
+  }
 
   if (typeof rawStatus === 'string') {
     const clean = rawStatus.trim().toLowerCase();
@@ -141,12 +151,20 @@ export function canSellerPublish(user) {
  * @returns {string|null}
  */
 export function getSellerRejectionReason(user) {
-  return (
+  let reason =
     user?.seller_profile?.rejection_reason ||
     user?.rejection_reason ||
     user?.rejectionReason ||
-    null
-  );
+    null;
+
+  if (!reason && user?.id && user?.role === 'seller') {
+    const seller = mockSellers.find((s) => s.user_id === user.id);
+    if (seller?.rejection_reason) {
+      reason = seller.rejection_reason;
+    }
+  }
+
+  return reason;
 }
 
 /**

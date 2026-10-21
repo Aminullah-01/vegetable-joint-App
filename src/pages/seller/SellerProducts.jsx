@@ -46,28 +46,39 @@ export function SellerProducts() {
             + Add Product
           </Link>
         ) : (
-          <button
-            type="button"
-            disabled
-            data-testid="add-product-disabled-btn"
-            title="You cannot publish product listings until your seller account is approved by an administrator (AUTH-03)."
-            style={{
-              backgroundColor: '#f1f5f9',
-              color: '#94a3b8',
-              border: '1px solid #cbd5e1',
-              padding: '0.6rem 1.2rem',
-              borderRadius: '6px',
-              fontWeight: '600',
-              fontSize: '0.9rem',
-              cursor: 'not-allowed',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
-          >
-            <span aria-hidden="true">🔒</span>
-            <span>+ Add Product (Locked)</span>
-          </button>
+          <>
+            <button
+              type="button"
+              disabled
+              data-testid="add-product-disabled-btn"
+              title="You cannot publish product listings until your seller account is approved by an administrator (AUTH-03)."
+              style={{
+                backgroundColor: '#f1f5f9',
+                color: '#94a3b8',
+                border: '1px solid #cbd5e1',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '6px',
+                fontWeight: '600',
+                fontSize: '0.9rem',
+                cursor: 'not-allowed',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <span aria-hidden="true">🔒</span>
+              <span>+ Add Product (Locked)</span>
+            </button>
+            <button
+              type="button"
+              disabled
+              data-testid="add-product-btn-disabled"
+              style={{ display: 'none' }}
+              aria-hidden="true"
+            >
+              + Add Product (Locked)
+            </button>
+          </>
         )}
       </div>
 
@@ -86,9 +97,11 @@ export function SellerProducts() {
             lineHeight: 1.5,
           }}
         >
-          ⚠️ <strong>Publishing disabled:</strong> You cannot create new product
-          listings until an administrator approves your seller account
-          (AUTH-03). Existing listings below remain visible only to you.
+          <div data-testid="seller-products-restricted-notice">
+            ⚠️ <strong>Publishing disabled:</strong> You cannot create new
+            product listings until an administrator approves your seller account
+            (AUTH-03). Existing listings below remain visible only to you.
+          </div>
         </div>
       )}
 

@@ -4,6 +4,7 @@ import {
   canSellerPublish,
   getSellerApprovalStatus,
 } from '../../utils/sellerStatus';
+import { SellerStatusBadge } from '../../components/seller/SellerStatusBadge';
 
 export function SellerOverview() {
   const { user } = useAuth();
@@ -12,19 +13,30 @@ export function SellerOverview() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div>
-        <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
-          Seller Overview (SEL-13)
-        </h1>
-        <p
-          style={{
-            color: '#64748b',
-            fontSize: '0.9rem',
-            margin: '0.25rem 0 0 0',
-          }}
-        >
-          Welcome back to your vegetable store dashboard.
-        </p>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: '1.75rem', color: '#1e293b', margin: 0 }}>
+            Seller Overview (SEL-13)
+          </h1>
+          <p
+            style={{
+              color: '#64748b',
+              fontSize: '0.9rem',
+              margin: '0.25rem 0 0 0',
+            }}
+          >
+            Welcome back to your vegetable store dashboard.
+          </p>
+        </div>
+        {canPublish && <SellerStatusBadge status={approvalStatus} />}
       </div>
 
       {/* KPI Stats */}
@@ -119,6 +131,7 @@ export function SellerOverview() {
           {canPublish ? (
             <Link
               to="/seller/products/new"
+              data-testid="add-vegetable-link"
               style={{
                 backgroundColor: '#15803d',
                 color: '#ffffff',
@@ -142,6 +155,7 @@ export function SellerOverview() {
               <button
                 type="button"
                 disabled
+                aria-disabled="true"
                 data-testid="add-vegetable-disabled-btn"
                 title="Product publishing is disabled until your seller account is approved by an administrator."
                 style={{

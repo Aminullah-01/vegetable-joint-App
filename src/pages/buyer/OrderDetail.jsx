@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { PaymentMethodDisplay } from '../../components/checkout';
 
 export function OrderDetail() {
   const { id } = useParams();
@@ -59,7 +60,7 @@ export function OrderDetail() {
                 color: '#64748b',
               }}
             >
-              SRS ref: ORD-02, ORD-07
+              SRS ref: ORD-02, ORD-07, CHK-09
             </p>
           </div>
           <span
@@ -101,18 +102,6 @@ export function OrderDetail() {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              padding: '0.5rem 0',
-              fontSize: '0.9rem',
-              color: '#64748b',
-            }}
-          >
-            <span>Delivery Fee</span>
-            <span>₦1,000</span>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
               padding: '0.75rem 0',
               borderTop: '1px solid #f1f5f9',
               fontWeight: '700',
@@ -121,7 +110,7 @@ export function OrderDetail() {
             }}
           >
             <span>Total</span>
-            <span>₦3,400</span>
+            <span>₦2,400</span>
           </div>
         </div>
 
@@ -140,6 +129,9 @@ export function OrderDetail() {
             14 Alade Market Street, Ikeja, Lagos State (Phone: 08012345678)
           </p>
         </div>
+
+        {/* Payment Method Notice (CHK-09, Figma Section 11 & 19) */}
+        <PaymentMethodDisplay variant="inline" style={{ textAlign: 'left' }} />
       </div>
     </div>
   );

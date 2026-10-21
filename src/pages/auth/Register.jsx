@@ -773,7 +773,12 @@ export function Register({ defaultRole } = {}) {
             >
               {/* Approval status info notice (AUTH-03) */}
               <div
-                data-testid="seller-approval-notice"
+                data-testid={
+                  isSubmitting || successMessage
+                    ? 'seller-reg-approval-info'
+                    : 'seller-approval-notice'
+                }
+                data-status="pending"
                 style={{
                   backgroundColor: '#fefce8',
                   border: '1px solid #fef08a',

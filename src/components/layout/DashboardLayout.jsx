@@ -9,7 +9,7 @@ import {
   SELLER_STATUS_CONFIG,
   canSellerPublish,
 } from '../../utils/sellerStatus';
-import { SellerStatusNotice } from '../seller/SellerStatusNotice';
+import { SellerApprovalNotice } from '../seller/SellerApprovalNotice';
 
 export function DashboardLayout({ title, role, navItems }) {
   const { user, logout } = useAuth();
@@ -301,7 +301,7 @@ export function DashboardLayout({ title, role, navItems }) {
             boxSizing: 'border-box',
           }}
         >
-          {role === 'seller' && <SellerStatusNotice user={user} />}
+          {role === 'seller' && <SellerApprovalNotice />}
           <Suspense
             fallback={
               <Spinner size="lg" center text="Loading dashboard page..." />
