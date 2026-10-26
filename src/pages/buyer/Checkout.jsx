@@ -12,6 +12,7 @@ import {
 } from '../../components/checkout';
 import { STRINGS, DELIVERY_DETAILS_STORAGE_KEY } from '../../constants';
 import { orderService } from '../../services/orderService';
+import { parseCheckoutError } from '../../utils';
 
 /**
  * Reads delivery details previously saved on this device (CHK-02).
@@ -74,6 +75,7 @@ export function Checkout() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
+  const [submissionFailure, setSubmissionFailure] = useState(null);
 
   // Delivery details (CHK-02): profile name/phone take precedence, address is
   // restored from this device when available.
@@ -149,6 +151,8 @@ export function Checkout() {
     acknowledgeValidation();
     setHasAcknowledgedChanges(true);
     setPendingChanges([]);
+    setSubmissionError(null);
+    setSubmissionFailure(null);
   };
 
   const handleReviewInCart = () => {
@@ -229,6 +233,7 @@ export function Checkout() {
     try {
       setIsSubmitting(true);
       setSubmissionError(null);
+      setSubmissionFailure(null);
 
       const result = await orderService.createOrder(payload);
 
@@ -247,12 +252,25 @@ export function Checkout() {
 
       navigate(`/checkout/confirmation/${orderRef}`);
     } catch (err) {
-      const errMsg =
-        err?.data?.message ||
-        err?.message ||
-        'Failed to place order. Please review your cart and try again.';
+      const parsed = parseCheckoutError(err, items);
+      const errMsg = parsed.message;
       setSubmissionError(errMsg);
+      setSubmissionFailure(parsed);
       toast.error(errMsg);
+
+      // Close review modal so user sees the checkout page with error breakdown (CHK-04, ERR-01)
+      setIsReviewModalOpen(false);
+
+      // If changes were detected (e.g. stock reduced or price updated), populate pending changes
+      if (parsed.changes && parsed.changes.length > 0) {
+        setPendingChanges(parsed.changes);
+        setHasAcknowledgedChanges(false);
+      }
+
+      // Re-validate cart with server if 409 or 422 occurred
+      if (parsed.is409 || parsed.is422) {
+        validateCart().catch(() => {});
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -376,7 +394,7 @@ export function Checkout() {
         </div>
       )}
 
-      {/* Submission Error banner */}
+      {/* Submission Error Banner & Per-Item Failure Breakdown (FE-074 / CHK-04, ERR-01) */}
       {submissionError && (
         <div
           role="alert"
@@ -384,13 +402,159 @@ export function Checkout() {
             backgroundColor: '#fef2f2',
             border: '1px solid #fecaca',
             color: '#991b1b',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
+            padding: '1.25rem',
+            borderRadius: '12px',
             fontSize: '0.875rem',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.875rem',
           }}
           data-testid="checkout-submission-error"
         >
-          <strong>Order Error:</strong> {submissionError}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem',
+            }}
+          >
+            <span
+              style={{ fontSize: '1.35rem', lineHeight: 1 }}
+              aria-hidden="true"
+            >
+              ⚠️
+            </span>
+            <div style={{ flex: 1 }}>
+              <strong
+                style={{
+                  fontSize: '1rem',
+                  display: 'block',
+                  marginBottom: '0.25rem',
+                  color: '#991b1b',
+                }}
+                data-testid="checkout-error-title"
+              >
+                {submissionFailure?.title || 'Order Placement Error'}
+              </strong>
+              <div
+                style={{ lineHeight: 1.45, color: '#7f1d1d' }}
+                data-testid="checkout-error-message"
+              >
+                <strong>Order Error:</strong> {submissionError}
+              </div>
+            </div>
+          </div>
+
+          {/* Per-Item Error Messages Breakdown (FE-074, CHK-04, ERR-01) */}
+          {submissionFailure?.itemErrors?.length > 0 && (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #fee2e2',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.625rem',
+              }}
+              data-testid="checkout-failure-item-list"
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  color: '#7f1d1d',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Affected Items & Specific Issues:
+              </div>
+              {submissionFailure.itemErrors.map((itemErr, idx) => {
+                const itemId = itemErr.productId || idx;
+                const isPrice = itemErr.type === 'price_changed';
+                return (
+                  <div
+                    key={`fail-item-${itemId}`}
+                    data-testid={`checkout-failure-item-${itemId}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: '0.5rem',
+                      fontSize: '0.85rem',
+                      color: '#991b1b',
+                      padding: '0.35rem 0',
+                      borderBottom:
+                        idx < submissionFailure.itemErrors.length - 1
+                          ? '1px dashed #fecaca'
+                          : 'none',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span
+                      style={{
+                        backgroundColor: isPrice ? '#fef3c7' : '#fee2e2',
+                        color: isPrice ? '#92400e' : '#b91c1c',
+                        fontSize: '0.725rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '4px',
+                        textTransform: 'uppercase',
+                      }}
+                      data-testid={`checkout-failure-badge-${itemId}`}
+                    >
+                      {itemErr.badgeText ||
+                        (isPrice ? 'Price Changed' : 'Insufficient Stock')}
+                    </span>
+                    <strong
+                      style={{ color: '#1e293b' }}
+                      data-testid={`checkout-failure-item-name-${itemId}`}
+                    >
+                      {itemErr.name}:
+                    </strong>
+                    <span
+                      style={{ flex: 1, color: '#7f1d1d' }}
+                      data-testid={`checkout-failure-item-detail-${itemId}`}
+                    >
+                      {itemErr.message}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action CTAs to resolve order conflicts */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+              marginTop: '0.25rem',
+            }}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleReviewInCart}
+              data-testid="checkout-failure-review-cart-btn"
+            >
+              ← Review & Edit Cart
+            </Button>
+            {submissionFailure?.changes?.length > 0 && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleAcceptChanges}
+                data-testid="checkout-failure-accept-changes-btn"
+              >
+                Accept Updated Items & Proceed
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

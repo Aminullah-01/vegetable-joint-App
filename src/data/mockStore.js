@@ -1123,6 +1123,162 @@ class MockStore {
     const checkoutRef = `chk_${Date.now()}`;
     const buyer = this.currentUser || this.users.find((u) => u.id === 6);
 
+    // CHK-04: Validate checkout delivery fields server-side
+    const deliveryName = (payload.delivery_name ?? buyer?.name ?? '').trim();
+    const deliveryPhone = (payload.delivery_phone ?? buyer?.phone ?? '').trim();
+    const deliveryAddress = (
+      payload.delivery_address ?? 'Lagos, Nigeria'
+    ).trim();
+
+    if (!deliveryName || !deliveryPhone || !deliveryAddress) {
+      const fieldErrors = {};
+      if (!deliveryName)
+        fieldErrors.delivery_name = ['The recipient name is required.'];
+      if (!deliveryPhone)
+        fieldErrors.delivery_phone = ['The delivery phone number is required.'];
+      if (!deliveryAddress)
+        fieldErrors.delivery_address = ['The delivery address is required.'];
+
+      throw new ApiError({
+        message:
+          'Please complete all required delivery details before placing your order.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: fieldErrors,
+      });
+    }
+
+    // CHK-04 & TC-17 & TC-18: Validate product stock and prices server-side
+    const stockErrors = {};
+    const priceErrors = {};
+    const changes = [];
+    const failedItems = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const productId = Number(item.product_id ?? item.id);
+      const product = this.products.find((p) => p.id === productId);
+      const itemKey = `items.${i}`;
+      const itemName = item.name || product?.name || `Product #${productId}`;
+
+      if (
+        !product ||
+        product.deleted_at ||
+        product.is_active === false ||
+        product.availability === 'unavailable'
+      ) {
+        const msg = `"${itemName}" is currently unavailable.`;
+        stockErrors[itemKey] = [msg];
+        failedItems.push({
+          product_id: productId,
+          name: itemName,
+          type: 'unavailable',
+          message: msg,
+        });
+        changes.push({
+          product_id: productId,
+          name: itemName,
+          type: 'unavailable',
+          message: msg,
+        });
+      } else {
+        const availableStock =
+          typeof product.quantity === 'number' ? product.quantity : 0;
+        if (availableStock <= 0 || product.availability === 'out_of_stock') {
+          const msg = `"${product.name}" is out of stock.`;
+          stockErrors[itemKey] = [msg];
+          failedItems.push({
+            product_id: productId,
+            name: product.name,
+            type: 'out_of_stock',
+            available_stock: 0,
+            requested_quantity: item.quantity,
+            message: msg,
+          });
+          changes.push({
+            product_id: productId,
+            name: product.name,
+            type: 'unavailable',
+            message: msg,
+          });
+        } else if (availableStock < Number(item.quantity)) {
+          const msg = `Insufficient stock for "${product.name}". Only ${availableStock} ${product.unit || 'unit'}${availableStock === 1 ? '' : 's'} available (requested ${item.quantity}).`;
+          stockErrors[itemKey] = [msg];
+          failedItems.push({
+            product_id: productId,
+            name: product.name,
+            type: 'insufficient_stock',
+            available_stock: availableStock,
+            requested_quantity: item.quantity,
+            message: msg,
+          });
+          changes.push({
+            product_id: productId,
+            name: product.name,
+            type: 'stock_reduced',
+            old_quantity: Number(item.quantity),
+            new_quantity: availableStock,
+            message: msg,
+          });
+        }
+
+        // Price check (TC-18 / CART-08)
+        if (
+          item.price !== undefined &&
+          Number(product.price) !== Number(item.price)
+        ) {
+          const msg = `Price for "${product.name}" changed from ₦${Number(item.price).toLocaleString()} to ₦${Number(product.price).toLocaleString()}.`;
+          priceErrors[itemKey] = [msg];
+          failedItems.push({
+            product_id: productId,
+            name: product.name,
+            type: 'price_changed',
+            old_price: Number(item.price),
+            new_price: Number(product.price),
+            message: msg,
+          });
+          changes.push({
+            product_id: productId,
+            name: product.name,
+            type: 'price_changed',
+            old_price: Number(item.price),
+            new_price: Number(product.price),
+            message: msg,
+          });
+        }
+      }
+    }
+
+    // Reject on stock/availability conflicts (CHK-04, TC-17, UC-02 4a) -> HTTP 409 CONFLICT
+    if (Object.keys(stockErrors).length > 0) {
+      throw new ApiError({
+        message:
+          'One or more items in your cart have insufficient stock or are unavailable.',
+        status: 409,
+        code: 'CONFLICT',
+        errors: stockErrors,
+        data: {
+          changes,
+          failed_items: failedItems,
+        },
+      });
+    }
+
+    // Reject on price changes (TC-18, CART-08, UC-02 1a) -> HTTP 422 VALIDATION_ERROR
+    if (Object.keys(priceErrors).length > 0) {
+      throw new ApiError({
+        message:
+          'Price for one or more items has changed since you added them to your cart.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: priceErrors,
+        data: {
+          changes,
+          failed_items: failedItems,
+        },
+      });
+    }
+
     // Group items by seller (CHK-05: one order per seller)
     const itemsBySeller = new Map();
     for (const item of items) {
