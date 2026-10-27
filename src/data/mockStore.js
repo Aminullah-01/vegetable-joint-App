@@ -1081,9 +1081,18 @@ class MockStore {
       const term = search.trim().toLowerCase();
       results = results.filter(
         (o) =>
-          o.order_number.toLowerCase().includes(term) ||
-          o.checkout_ref.toLowerCase().includes(term) ||
-          o.delivery_name.toLowerCase().includes(term)
+          (o.order_number && o.order_number.toLowerCase().includes(term)) ||
+          (o.checkout_ref && o.checkout_ref.toLowerCase().includes(term)) ||
+          (o.delivery_name && o.delivery_name.toLowerCase().includes(term)) ||
+          (o.seller?.business_name &&
+            o.seller.business_name.toLowerCase().includes(term)) ||
+          (Array.isArray(o.items) &&
+            o.items.some(
+              (it) =>
+                (it.product_name &&
+                  it.product_name.toLowerCase().includes(term)) ||
+                (it.name && it.name.toLowerCase().includes(term))
+            ))
       );
     }
 
