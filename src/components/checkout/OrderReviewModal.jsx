@@ -88,7 +88,10 @@ export function OrderReviewModal({
 
       <Button
         variant="primary"
-        onClick={onConfirmOrder}
+        onClick={() => {
+          if (isSubmitting || !hasConfirmed) return;
+          onConfirmOrder();
+        }}
         disabled={!hasConfirmed || isSubmitting}
         loading={isSubmitting}
         loadingText="Placing Order..."
@@ -130,7 +133,7 @@ export function OrderReviewModal({
           }}
         />
 
-        {/* Order Placement Failure / Conflict Notice (FE-074, CHK-04, ERR-01) */}
+        {/* Order Placement Failure / Conflict Notice (FE-074, CHK-04, ERR-01, FE-075) */}
         {(orderFailure || submissionError) && (
           <div data-testid="review-order-error">
             <OrderFailureNotice
@@ -141,6 +144,8 @@ export function OrderReviewModal({
               status={orderFailure?.status}
               itemErrors={orderFailure?.itemErrors || []}
               fieldErrors={orderFailure?.fieldErrors || {}}
+              onRetry={onConfirmOrder}
+              isRetrying={isSubmitting}
               onReviewCart={() => {
                 onClose();
                 if (onReviewCart) onReviewCart();

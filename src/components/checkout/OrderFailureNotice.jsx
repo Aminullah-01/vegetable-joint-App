@@ -25,8 +25,10 @@ export function OrderFailureNotice({
   fieldErrors = {},
   onReviewCart,
   onRevalidate,
+  onRetry,
   onDismiss,
   compact = false,
+  isRetrying = false,
   showActions = true,
   testId = 'order-failure-notice',
   testIdPrefix = '',
@@ -450,8 +452,22 @@ export function OrderFailureNotice({
             marginTop: '0.35rem',
           }}
         >
+          {onRetry && (
+            <Button
+              variant="primary"
+              size={compact ? 'sm' : 'md'}
+              onClick={onRetry}
+              disabled={isRetrying}
+              loading={isRetrying}
+              loadingText="Retrying..."
+              data-testid={tid('order-failure-retry-btn')}
+            >
+              🔁 Retry Order Submission
+            </Button>
+          )}
+
           <Button
-            variant="primary"
+            variant={onRetry ? 'outline' : 'primary'}
             size={compact ? 'sm' : 'md'}
             onClick={handleGoToCart}
             data-testid={tid('order-failure-review-cart-btn')}
@@ -506,8 +522,10 @@ OrderFailureNotice.propTypes = {
   fieldErrors: PropTypes.object,
   onReviewCart: PropTypes.func,
   onRevalidate: PropTypes.func,
+  onRetry: PropTypes.func,
   onDismiss: PropTypes.func,
   compact: PropTypes.bool,
+  isRetrying: PropTypes.bool,
   showActions: PropTypes.bool,
   testId: PropTypes.string,
   testIdPrefix: PropTypes.string,

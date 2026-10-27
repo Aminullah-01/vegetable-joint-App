@@ -10,6 +10,7 @@ import { ApiError, ERROR_CODES } from '../services/apiErrors.js';
 import { STRINGS } from '../constants/index.js';
 import { hashPassword, verifyPassword } from '../utils/passwordHash.js';
 import { PHONE_REGEX } from '../utils/validation.js';
+import { generateUUID } from '../utils/uuid.js';
 
 /**
  * Shared demo password for every seeded mock account. It is hashed on load so
@@ -1121,7 +1122,25 @@ class MockStore {
     return order;
   }
 
-  createOrder(payload) {
+  createOrder(payload = {}) {
+    const checkoutRef = payload.checkout_ref || generateUUID();
+
+    // Idempotent retry check (NFR-REL-04, CHK-05, vegetable_joint_schema.sql 9.1):
+    // A duplicate (checkout_ref, seller_id) raises error 1062 in MySQL -> treated as an idempotent retry.
+    if (payload.checkout_ref) {
+      const existingOrders = this.orders.filter(
+        (o) => o.checkout_ref === payload.checkout_ref
+      );
+      if (existingOrders.length > 0) {
+        return {
+          checkout_ref: payload.checkout_ref,
+          orders: existingOrders,
+          idempotent: true,
+          is_duplicate: true,
+        };
+      }
+    }
+
     const items = payload.items || [];
     if (!items.length) {
       throw new ApiError({
@@ -1256,7 +1275,6 @@ class MockStore {
       });
     }
 
-    const checkoutRef = `chk_${Date.now()}`;
     const buyer = this.currentUser || this.users.find((u) => u.id === 6);
 
     // Group items by seller (CHK-05: one order per seller)

@@ -19,7 +19,14 @@ export const orderService = {
       return mockStore.createOrder(payload);
     }
 
-    const response = await apiClient.post('/orders', payload);
+    const headers = payload?.checkout_ref
+      ? {
+          'X-Idempotency-Key': payload.checkout_ref,
+          'X-Checkout-Reference': payload.checkout_ref,
+        }
+      : {};
+
+    const response = await apiClient.post('/orders', payload, { headers });
     return response.data;
   },
 

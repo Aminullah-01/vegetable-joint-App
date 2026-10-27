@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useCart, useToast } from '../../hooks';
 import { EmptyState, Button, Spinner } from '../../components/common';
@@ -12,6 +12,7 @@ import {
   OrderFailureNotice,
 } from '../../components/checkout';
 import { STRINGS, DELIVERY_DETAILS_STORAGE_KEY } from '../../constants';
+import { generateCheckoutRef } from '../../utils';
 import { orderService } from '../../services/orderService';
 
 /**
@@ -76,6 +77,11 @@ export function Checkout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
   const [orderFailure, setOrderFailure] = useState(null);
+
+  // Client-generated UUID checkout reference (CHK-05, NFR-REL-04, FE-075)
+  // Groups per-seller orders and ensures idempotent order submission.
+  const [checkoutRef, setCheckoutRef] = useState(() => generateCheckoutRef());
+  const isSubmittingRef = useRef(false);
 
   // Delivery details (CHK-02): profile name/phone take precedence, address is
   // restored from this device when available.
@@ -151,6 +157,7 @@ export function Checkout() {
     acknowledgeValidation();
     setHasAcknowledgedChanges(true);
     setPendingChanges([]);
+    setCheckoutRef(generateCheckoutRef());
   };
 
   const handleReviewInCart = () => {
@@ -198,8 +205,13 @@ export function Checkout() {
     setIsReviewModalOpen(true);
   };
 
-  // Submits the finalized order (CHK-03, CHK-05, CHK-07, CHK-08)
+  // Submits the finalized order (CHK-03, CHK-05, CHK-07, CHK-08, NFR-REL-04)
   const handleConfirmOrder = async () => {
+    // Disable submit after click (FE-075, NFR-REL-04): immediate double-click guard
+    if (isSubmittingRef.current || isSubmitting) {
+      return;
+    }
+
     if (!hasConfirmed) {
       toast.error('Please check the box to explicitly confirm your order.');
       return;
@@ -215,7 +227,14 @@ export function Checkout() {
       .filter(Boolean)
       .join(', ');
 
+    // Use current session checkoutRef (UUID), or generate if missing (CHK-05, NFR-REL-04)
+    const currentCheckoutRef = checkoutRef || generateCheckoutRef();
+    if (!checkoutRef) {
+      setCheckoutRef(currentCheckoutRef);
+    }
+
     const payload = {
+      checkout_ref: currentCheckoutRef,
       items: items.map((it) => ({
         product_id: it.product_id ?? it.id,
         quantity: it.quantity,
@@ -229,6 +248,7 @@ export function Checkout() {
     };
 
     try {
+      isSubmittingRef.current = true;
       setIsSubmitting(true);
       setSubmissionError(null);
       setOrderFailure(null);
@@ -245,6 +265,7 @@ export function Checkout() {
 
       const orderRef =
         result?.checkout_ref ||
+        currentCheckoutRef ||
         result?.orders?.[0]?.order_number ||
         'ORD-2026-001';
 
@@ -354,6 +375,7 @@ export function Checkout() {
         validateCart().catch(() => {});
       }
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -426,6 +448,7 @@ export function Checkout() {
         boxSizing: 'border-box',
       }}
       data-testid="checkout-page"
+      data-checkout-ref={checkoutRef}
     >
       {/* 4-Step Visual Stepper (CHK-10, Figma Section 10) */}
       <CheckoutStepper currentStep={2} />
@@ -485,6 +508,8 @@ export function Checkout() {
             status={orderFailure?.status}
             itemErrors={orderFailure?.itemErrors || []}
             fieldErrors={orderFailure?.fieldErrors || {}}
+            onRetry={handleConfirmOrder}
+            isRetrying={isSubmitting}
             onReviewCart={handleReviewInCart}
             onRevalidate={async () => {
               setIsValidating(true);
@@ -493,6 +518,7 @@ export function Checkout() {
                 if (res?.changes && res.changes.length > 0) {
                   setPendingChanges(res.changes);
                   setHasAcknowledgedChanges(false);
+                  setCheckoutRef(generateCheckoutRef());
                 }
                 setOrderFailure(null);
                 setSubmissionError(null);
