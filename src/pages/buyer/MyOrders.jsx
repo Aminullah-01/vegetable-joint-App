@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   OrderStatusBadge,
+  ConfirmDialog,
   Pagination,
   Spinner,
   Button,
@@ -60,6 +61,13 @@ export function MyOrders() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+
+  // FE-079 / ORD-03: Cancellation dialog state for pending orders
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelSuccess, setCancelSuccess] = useState(null);
+  const [cancelError, setCancelError] = useState(null);
 
   // Synchronize loading state when query parameters or retryCount changes
   const currentKey = `${pageParam}-${statusParam}-${queryParam}-${retryCount}`;
@@ -186,6 +194,53 @@ export function MyOrders() {
     setRetryCount((c) => c + 1);
   };
 
+  // FE-079 / ORD-03: Cancellation handlers
+  const handleOpenCancelDialog = (order) => {
+    setCancelError(null);
+    setOrderToCancel(order);
+    setIsCancelDialogOpen(true);
+  };
+
+  const handleConfirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+    setIsCancelling(true);
+    setCancelError(null);
+    try {
+      const cancelNote = 'Cancelled by buyer (ORD-03)';
+      const updated = await orderService.cancelOrder(
+        orderToCancel.id,
+        cancelNote
+      );
+      const nextStatus = updated?.status || 'cancelled';
+      const nextReason = updated?.cancel_reason || cancelNote;
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderToCancel.id
+            ? {
+                ...o,
+                ...updated,
+                status: nextStatus,
+                cancel_reason: nextReason,
+              }
+            : o
+        )
+      );
+
+      setCancelSuccess(
+        `Order #${orderToCancel.order_number || orderToCancel.id} has been cancelled and reserved stock restored.`
+      );
+      setIsCancelDialogOpen(false);
+      setOrderToCancel(null);
+    } catch (err) {
+      setCancelError(
+        err?.message || 'Failed to cancel order. Please try again.'
+      );
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const isFiltered = statusParam !== 'all' || queryParam.trim().length > 0;
 
   return (
@@ -275,6 +330,102 @@ export function MyOrders() {
           🛒 Buy Fresh Produce
         </Link>
       </div>
+
+      {/* Cancellation Success Feedback Banner (FE-079 / ORD-03) */}
+      {cancelSuccess && (
+        <div
+          role="status"
+          data-testid="my-orders-cancel-success"
+          style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '12px',
+            padding: '1rem 1.25rem',
+            color: '#166534',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '1.25rem' }} aria-hidden="true">
+              ✅
+            </span>
+            <div>
+              <strong style={{ display: 'block', fontSize: '0.95rem' }}>
+                Order Cancelled (ORD-03)
+              </strong>
+              <p style={{ margin: 0, fontSize: '0.875rem' }}>{cancelSuccess}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCancelSuccess(null)}
+            aria-label="Dismiss success message"
+            data-testid="dismiss-my-orders-success-btn"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#166534',
+              cursor: 'pointer',
+              fontSize: '1.15rem',
+              padding: '0.25rem',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Cancellation Error Alert Banner */}
+      {cancelError && (
+        <div
+          role="alert"
+          data-testid="my-orders-cancel-error"
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '12px',
+            padding: '1rem 1.25rem',
+            color: '#991b1b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '1.25rem' }} aria-hidden="true">
+              ⚠️
+            </span>
+            <div>
+              <strong style={{ display: 'block', fontSize: '0.95rem' }}>
+                Cancellation Failed
+              </strong>
+              <p style={{ margin: 0, fontSize: '0.875rem' }}>{cancelError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCancelError(null)}
+            aria-label="Dismiss error message"
+            data-testid="dismiss-my-orders-error-btn"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#991b1b',
+              cursor: 'pointer',
+              fontSize: '1.15rem',
+              padding: '0.25rem',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Filter & Search Toolbar (Figma Section 12) */}
       <div
@@ -857,27 +1008,60 @@ export function MyOrders() {
                     </strong>
                   </div>
 
-                  <Link
-                    to={`/account/orders/${order.id}`}
-                    data-testid={`order-view-details-${order.id}`}
+                  <div
                     style={{
-                      backgroundColor: '#f1f5f9',
-                      color: '#1e293b',
-                      padding: '0.55rem 1.1rem',
-                      borderRadius: '6px',
-                      textDecoration: 'none',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      display: 'inline-flex',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: '0.35rem',
-                      minHeight: '44px',
-                      border: '1px solid #cbd5e1',
-                      transition: 'background-color 0.15s ease',
+                      gap: '0.75rem',
+                      flexWrap: 'wrap',
                     }}
                   >
-                    View Details →
-                  </Link>
+                    {/* FE-079 / ORD-03: Cancel button only while Pending */}
+                    {order.status?.toLowerCase() === 'pending' && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        data-testid={`order-cancel-btn-${order.id}`}
+                        onClick={() => handleOpenCancelDialog(order)}
+                        disabled={isCancelling}
+                        style={{
+                          borderColor: '#fca5a5',
+                          color: '#dc2626',
+                          backgroundColor: '#fff5f5',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          minHeight: '44px',
+                          padding: '0.45rem 0.9rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel Order
+                      </Button>
+                    )}
+
+                    <Link
+                      to={`/account/orders/${order.id}`}
+                      data-testid={`order-view-details-${order.id}`}
+                      style={{
+                        backgroundColor: '#f1f5f9',
+                        color: '#1e293b',
+                        padding: '0.55rem 1.1rem',
+                        borderRadius: '6px',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        minHeight: '44px',
+                        border: '1px solid #cbd5e1',
+                        transition: 'background-color 0.15s ease',
+                      }}
+                    >
+                      View Details →
+                    </Link>
+                  </div>
                 </div>
               </div>
             );
@@ -904,6 +1088,45 @@ export function MyOrders() {
             tieToUrl={true}
           />
         </div>
+      )}
+
+      {/* Cancel Order Confirmation Dialog (FE-079 / ORD-03, FE-036) */}
+      {orderToCancel && (
+        <ConfirmDialog
+          isOpen={isCancelDialogOpen}
+          onClose={() => !isCancelling && setIsCancelDialogOpen(false)}
+          onConfirm={handleConfirmCancelOrder}
+          title="Cancel Order"
+          message={`Are you sure you want to cancel order #${orderToCancel.order_number || orderToCancel.id}? Once cancelled, the reserved produce stock will be restored to inventory (ORD-03). This action cannot be undone.`}
+          confirmText="Yes, Cancel Order"
+          cancelText="Keep Order"
+          type="danger"
+          loading={isCancelling}
+          loadingText="Cancelling Order..."
+          testId="my-orders-cancel-dialog"
+          details={
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.35rem',
+                }}
+              >
+                <span style={{ color: '#64748b' }}>Order:</span>
+                <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>
+                  #{orderToCancel.order_number || orderToCancel.id}
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Total Amount:</span>
+                <strong style={{ color: '#15803d' }}>
+                  {formatCurrency(orderToCancel.total_amount)}
+                </strong>
+              </div>
+            </div>
+          }
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import {
   OrderStatusBadge,
   OrderStatusTimeline,
+  ConfirmDialog,
   Spinner,
   Button,
 } from '../../components/common';
@@ -15,8 +16,11 @@ import { orderService } from '../../services/orderService';
  *
  * Conforms to:
  * - FE-078: Items, delivery details, status timeline with timestamps and cancellation reason.
+ * - FE-079 / ORD-03: Cancel pending order. Cancel button only while Pending; confirm dialog; refresh status.
  * - SRS ORD-02: The system shall show an order detail page with items, quantities, prices,
  *   delivery details, total, current status and the status history with timestamps.
+ * - SRS ORD-03: A buyer shall be able to cancel their own order while its status is "Pending";
+ *   the system shall restore the reserved stock.
  * - SRS ORD-07: Cancellation by a Seller or Administrator shall require a reason, which shall be visible to the buyer.
  * - CHK-09: Payment method disclosure ("Pay on delivery / pay seller directly").
  * - Figma Section 12 (Order Detail): Show order info, products, quantities, prices, total, delivery details,
@@ -73,6 +77,12 @@ export function OrderDetail() {
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  // FE-079 / ORD-03: Cancellation dialog state
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+  const [cancelSuccess, setCancelSuccess] = useState(null);
+
   // Synchronize loading state when id or retryCount changes
   const currentKey = `${id}-${retryCount}`;
   const [prevKey, setPrevKey] = useState(currentKey);
@@ -121,6 +131,61 @@ export function OrderDetail() {
     setIsLoading(true);
     setError(null);
     setRetryCount((c) => c + 1);
+  };
+
+  // FE-079: Handlers for pending order cancellation (ORD-03)
+  const isPending = order?.status?.toLowerCase() === 'pending';
+
+  const handleOpenCancelDialog = () => {
+    setCancelError(null);
+    setIsCancelDialogOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    setIsCancelling(true);
+    setCancelError(null);
+    try {
+      const cancelNote = 'Cancelled by buyer (ORD-03)';
+      const updated = await orderService.cancelOrder(order.id, cancelNote);
+      const resolvedOrder =
+        updated && updated.data ? updated.data : updated || {};
+
+      // Refresh order status immediately in component state
+      setOrder((prev) => {
+        const nextStatus = resolvedOrder.status || 'cancelled';
+        const nextReason = resolvedOrder.cancel_reason || cancelNote;
+        const nextHistory = resolvedOrder.status_history || [
+          ...(prev?.status_history || []),
+          {
+            id: (prev?.status_history?.length || 0) + 1,
+            order_id: prev?.id,
+            from_status: prev?.status || 'pending',
+            to_status: 'cancelled',
+            note: nextReason,
+            created_at: new Date().toISOString(),
+          },
+        ];
+
+        return {
+          ...prev,
+          ...resolvedOrder,
+          status: nextStatus,
+          cancel_reason: nextReason,
+          status_history: nextHistory,
+        };
+      });
+
+      setIsCancelDialogOpen(false);
+      setCancelSuccess(
+        'Your order has been cancelled and reserved produce stock has been restored to inventory.'
+      );
+    } catch (err) {
+      setCancelError(
+        err?.message || 'Failed to cancel order. Please try again.'
+      );
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   // Safe field extractions
@@ -300,6 +365,124 @@ export function OrderDetail() {
             gap: '1.5rem',
           }}
         >
+          {/* Order Cancellation Success Feedback Banner (FE-079 / ORD-03) */}
+          {cancelSuccess && (
+            <div
+              role="status"
+              data-testid="cancel-order-success-banner"
+              style={{
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '12px',
+                padding: '1.25rem 1.5rem',
+                color: '#166534',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                }}
+              >
+                <span
+                  style={{ fontSize: '1.5rem', lineHeight: 1 }}
+                  aria-hidden="true"
+                >
+                  ✅
+                </span>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '0.95rem' }}>
+                    Order Successfully Cancelled (ORD-03)
+                  </strong>
+                  <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                    {cancelSuccess}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCancelSuccess(null)}
+                aria-label="Dismiss success message"
+                data-testid="dismiss-cancel-success-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#166534',
+                  cursor: 'pointer',
+                  fontSize: '1.15rem',
+                  padding: '0.25rem',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Cancellation Error Alert Banner */}
+          {cancelError && (
+            <div
+              role="alert"
+              data-testid="cancel-order-error-banner"
+              style={{
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '12px',
+                padding: '1.25rem 1.5rem',
+                color: '#991b1b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                }}
+              >
+                <span
+                  style={{ fontSize: '1.5rem', lineHeight: 1 }}
+                  aria-hidden="true"
+                >
+                  ⚠️
+                </span>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '0.95rem' }}>
+                    Cancellation Failed
+                  </strong>
+                  <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                    {cancelError}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCancelError(null)}
+                aria-label="Dismiss error message"
+                data-testid="dismiss-cancel-error-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#991b1b',
+                  cursor: 'pointer',
+                  fontSize: '1.15rem',
+                  padding: '0.25rem',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Header Card */}
           <div
             style={{
@@ -384,9 +567,46 @@ export function OrderDetail() {
                 )}
               </div>
 
-              {/* Status Badge (ORD-02, Figma Section 12) */}
-              <div data-testid="order-detail-status-badge">
-                <OrderStatusBadge status={order.status} size="lg" />
+              {/* Status Badge & Actions (ORD-02, ORD-03, Figma Section 12) */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '0.75rem',
+                }}
+              >
+                <div data-testid="order-detail-status-badge">
+                  <OrderStatusBadge status={order.status} size="lg" />
+                </div>
+
+                {/* Cancel Pending Order Action (FE-079 / ORD-03): Cancel button only while Pending */}
+                {isPending && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    data-testid="cancel-order-button"
+                    onClick={handleOpenCancelDialog}
+                    disabled={isCancelling}
+                    style={{
+                      borderColor: '#fca5a5',
+                      color: '#dc2626',
+                      backgroundColor: '#fff5f5',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      minHeight: '44px',
+                      padding: '0.45rem 1rem',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 1px 2px 0 rgba(220, 38, 38, 0.05)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span aria-hidden="true">✕</span> Cancel Order
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -735,6 +955,45 @@ export function OrderDetail() {
             style={{ textAlign: 'left' }}
           />
         </div>
+      )}
+
+      {/* Cancel Order Confirmation Dialog (FE-079 / ORD-03, FE-036) */}
+      {order && (
+        <ConfirmDialog
+          isOpen={isCancelDialogOpen}
+          onClose={() => !isCancelling && setIsCancelDialogOpen(false)}
+          onConfirm={handleConfirmCancel}
+          title="Cancel Order"
+          message={`Are you sure you want to cancel order #${order.order_number || order.id}? Once cancelled, the reserved produce stock will be restored to inventory (ORD-03). This action cannot be undone.`}
+          confirmText="Yes, Cancel Order"
+          cancelText="Keep Order"
+          type="danger"
+          loading={isCancelling}
+          loadingText="Cancelling Order..."
+          testId="cancel-order-dialog"
+          details={
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.35rem',
+                }}
+              >
+                <span style={{ color: '#64748b' }}>Order:</span>
+                <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>
+                  #{order.order_number || order.id}
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Total Amount:</span>
+                <strong style={{ color: '#15803d' }}>
+                  {formatCurrency(order.total_amount)}
+                </strong>
+              </div>
+            </div>
+          }
+        />
       )}
     </div>
   );

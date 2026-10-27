@@ -347,4 +347,59 @@ describe('FE-078: Buyer Order Detail Page (ORD-02, ORD-07, CHK-09, Figma Section
       ).toHaveTextContent(mockActiveOrder.order_number);
     });
   });
+
+  describe('8. Cancel Pending Order Action (FE-079 / ORD-03)', () => {
+    const mockPendingOrderDetail = {
+      ...mockActiveOrder,
+      id: 55,
+      order_number: 'VJ-20261027-055',
+      status: 'pending',
+    };
+
+    it('renders Cancel Order button only when pending and triggers confirmation dialog', async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.spyOn(orderService, 'getOrderById').mockResolvedValue(
+        mockPendingOrderDetail
+      );
+      const cancelSpy = vi
+        .spyOn(orderService, 'cancelOrder')
+        .mockResolvedValue({
+          ...mockPendingOrderDetail,
+          status: 'cancelled',
+          cancel_reason: 'Cancelled by buyer (ORD-03)',
+        });
+
+      renderOrderDetail({ route: '/account/orders/55' });
+
+      // Cancel button rendered for pending order
+      const cancelBtn = await screen.findByTestId('cancel-order-button');
+      expect(cancelBtn).toBeInTheDocument();
+
+      // Click to open dialog
+      await user.click(cancelBtn);
+
+      const dialog = await screen.findByTestId('cancel-order-dialog');
+      expect(dialog).toBeInTheDocument();
+
+      // Confirm cancellation
+      const confirmBtn = screen.getByTestId(
+        'cancel-order-dialog-confirm-button'
+      );
+      await user.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(cancelSpy).toHaveBeenCalledWith(55, expect.any(String));
+      });
+
+      // Status badge updates to Cancelled, cancel button disappears
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('order-detail-status-badge')
+        ).toHaveTextContent(/Cancelled/i);
+      });
+      expect(
+        screen.queryByTestId('cancel-order-button')
+      ).not.toBeInTheDocument();
+    });
+  });
 });
