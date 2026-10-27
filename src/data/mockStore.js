@@ -1131,6 +1131,131 @@ class MockStore {
       });
     }
 
+    // Server-side validation of checkout fields (CHK-04, 422)
+    const fieldErrors = {};
+    if (!payload.delivery_name || !String(payload.delivery_name).trim()) {
+      fieldErrors.delivery_name = ['Recipient name is required.'];
+    }
+    if (!payload.delivery_phone || !String(payload.delivery_phone).trim()) {
+      fieldErrors.delivery_phone = ['Phone number is required.'];
+    }
+    if (!payload.delivery_address || !String(payload.delivery_address).trim()) {
+      fieldErrors.delivery_address = ['Delivery address is required.'];
+    }
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new ApiError({
+        message:
+          'Checkout validation failed. Please provide all required delivery details (CHK-02, CHK-04).',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: fieldErrors,
+        data: {
+          message:
+            'Checkout validation failed. Please provide all required delivery details (CHK-02, CHK-04).',
+          errors: fieldErrors,
+        },
+      });
+    }
+
+    // Server-side validation of stock, availability, and prices (CHK-04, ERR-01, 409)
+    const conflicts = [];
+    const itemErrors = {};
+
+    items.forEach((item, idx) => {
+      const productId = Number(item.product_id ?? item.id);
+      const product = this.products.find((p) => p.id === productId);
+
+      if (!product || product.deleted_at || product.is_active === false) {
+        const msg = `"${item.name || product?.name || `Product #${productId}`}" is currently unavailable (ERR-01).`;
+        conflicts.push({
+          product_id: productId,
+          name: product?.name || item.name || `Product #${productId}`,
+          type: 'unavailable',
+          message: msg,
+        });
+        itemErrors[`items.${idx}`] = [msg];
+        itemErrors[String(productId)] = [msg];
+        return;
+      }
+
+      const availableStock =
+        typeof product.quantity === 'number' ? product.quantity : 0;
+      const requestedQty = Number(item.quantity);
+
+      if (
+        availableStock <= 0 ||
+        product.availability === 'out_of_stock' ||
+        product.availability === 'unavailable'
+      ) {
+        const msg = `"${product.name}" is out of stock (CHK-04).`;
+        conflicts.push({
+          product_id: productId,
+          name: product.name,
+          type: 'insufficient_stock',
+          requested_quantity: requestedQty,
+          available_stock: 0,
+          message: msg,
+        });
+        itemErrors[`items.${idx}`] = [msg];
+        itemErrors[String(productId)] = [msg];
+        return;
+      }
+
+      if (availableStock < requestedQty) {
+        const msg = `Insufficient stock for "${product.name}". Requested ${requestedQty}, but only ${availableStock} is available (CHK-04).`;
+        conflicts.push({
+          product_id: productId,
+          name: product.name,
+          type: 'insufficient_stock',
+          requested_quantity: requestedQty,
+          available_stock: availableStock,
+          message: msg,
+        });
+        itemErrors[`items.${idx}`] = [msg];
+        itemErrors[String(productId)] = [msg];
+        return;
+      }
+
+      if (
+        item.price !== undefined &&
+        Number(item.price) !== Number(product.price)
+      ) {
+        const msg = `Price for "${product.name}" has changed from ₦${Number(item.price).toLocaleString()} to ₦${Number(product.price).toLocaleString()} (ERR-01).`;
+        conflicts.push({
+          product_id: productId,
+          name: product.name,
+          type: 'price_changed',
+          old_price: Number(item.price),
+          new_price: Number(product.price),
+          message: msg,
+        });
+        itemErrors[`items.${idx}`] = [msg];
+        itemErrors[String(productId)] = [msg];
+      }
+    });
+
+    if (conflicts.length > 0) {
+      const summaryMsg =
+        conflicts.length === 1
+          ? conflicts[0].message
+          : `Order cannot be placed: ${conflicts.length} items have stock or price conflicts (CHK-04, ERR-01).`;
+
+      throw new ApiError({
+        message: summaryMsg,
+        status: 409,
+        code: 'CONFLICT',
+        errors: itemErrors,
+        data: {
+          message: summaryMsg,
+          code: 'ORDER_CONFLICT',
+          status: 409,
+          items: conflicts,
+          changes: conflicts,
+          errors: itemErrors,
+        },
+      });
+    }
+
     const checkoutRef = `chk_${Date.now()}`;
     const buyer = this.currentUser || this.users.find((u) => u.id === 6);
 

@@ -9,6 +9,7 @@ import {
   OrderReviewModal,
   CheckoutStepper,
   PaymentMethodDisplay,
+  OrderFailureNotice,
 } from '../../components/checkout';
 import { STRINGS, DELIVERY_DETAILS_STORAGE_KEY } from '../../constants';
 import { orderService } from '../../services/orderService';
@@ -74,6 +75,7 @@ export function Checkout() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
+  const [orderFailure, setOrderFailure] = useState(null);
 
   // Delivery details (CHK-02): profile name/phone take precedence, address is
   // restored from this device when available.
@@ -229,6 +231,7 @@ export function Checkout() {
     try {
       setIsSubmitting(true);
       setSubmissionError(null);
+      setOrderFailure(null);
 
       const result = await orderService.createOrder(payload);
 
@@ -247,12 +250,109 @@ export function Checkout() {
 
       navigate(`/checkout/confirmation/${orderRef}`);
     } catch (err) {
+      // Parse structured error details (FE-074, CHK-04, ERR-01)
+      const status =
+        err?.status ||
+        err?.response?.status ||
+        (err?.code === 'CONFLICT'
+          ? 409
+          : err?.code === 'VALIDATION_ERROR'
+            ? 422
+            : 0);
+
+      const isConflict =
+        status === 409 || err?.isConflict || err?.code === 'CONFLICT';
+      const isValidation =
+        status === 422 ||
+        err?.isValidationError ||
+        err?.code === 'VALIDATION_ERROR';
+
+      // Parse item errors
+      const rawItems =
+        err?.data?.items || err?.data?.changes || err?.items || [];
+      const itemErrors = [];
+
+      if (Array.isArray(rawItems) && rawItems.length > 0) {
+        rawItems.forEach((it) => {
+          itemErrors.push({
+            productId: it.product_id ?? it.id,
+            name:
+              it.name ||
+              it.product_name ||
+              `Product #${it.product_id || it.id}`,
+            type:
+              it.type ||
+              (it.requested_quantity !== undefined
+                ? 'insufficient_stock'
+                : it.new_price !== undefined
+                  ? 'price_changed'
+                  : 'generic'),
+            requestedQuantity: it.requested_quantity ?? it.old_quantity,
+            availableStock:
+              it.available_stock ?? it.new_quantity ?? it.current_stock,
+            oldPrice: it.old_price,
+            newPrice: it.new_price,
+            message:
+              it.message ||
+              (it.requested_quantity !== undefined &&
+              it.available_stock !== undefined
+                ? `Requested ${it.requested_quantity}, but only ${it.available_stock} is available in stock.`
+                : it.new_price !== undefined
+                  ? `Price changed to ₦${Number(it.new_price).toLocaleString()}.`
+                  : 'Item has an inventory or pricing conflict.'),
+          });
+        });
+      } else if (err?.errors && typeof err.errors === 'object') {
+        Object.entries(err.errors).forEach(([field, msgs]) => {
+          const msgList = Array.isArray(msgs) ? msgs : [msgs];
+          const match = field.match(/items\.(\d+)/);
+          const itemIdx = match ? parseInt(match[1], 10) : -1;
+          const matchedItem =
+            itemIdx >= 0 && items[itemIdx] ? items[itemIdx] : null;
+
+          msgList.forEach((msg) => {
+            itemErrors.push({
+              productId: matchedItem?.product_id ?? matchedItem?.id,
+              name:
+                matchedItem?.name ||
+                (field.startsWith('items') ? `Item ${itemIdx + 1}` : field),
+              type: msg.toLowerCase().includes('stock')
+                ? 'insufficient_stock'
+                : msg.toLowerCase().includes('price')
+                  ? 'price_changed'
+                  : 'generic',
+              message: msg,
+            });
+          });
+        });
+      }
+
       const errMsg =
         err?.data?.message ||
         err?.message ||
-        'Failed to place order. Please review your cart and try again.';
+        (isConflict
+          ? 'One or more items in your cart have stock or price conflicts (HTTP 409).'
+          : isValidation
+            ? 'Order validation failed. Please check your delivery information and cart items.'
+            : 'Failed to place order. Please review your cart and try again.');
+
+      const failureObj = {
+        status,
+        isConflict,
+        isValidation,
+        message: errMsg,
+        itemErrors,
+        fieldErrors: err?.errors || {},
+      };
+
+      setOrderFailure(failureObj);
       setSubmissionError(errMsg);
       toast.error(errMsg);
+
+      // CART-08: If conflict occurred, trigger cart validation in background so cart state stays in sync
+      if (isConflict) {
+        validateCart().catch(() => {});
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -376,21 +476,37 @@ export function Checkout() {
         </div>
       )}
 
-      {/* Submission Error banner */}
-      {submissionError && (
-        <div
-          role="alert"
-          style={{
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-          }}
-          data-testid="checkout-submission-error"
-        >
-          <strong>Order Error:</strong> {submissionError}
+      {/* Submission Error & Per-Item Failure Notice (FE-074, CHK-04, ERR-01) */}
+      {(orderFailure || submissionError) && (
+        <div data-testid="checkout-submission-error">
+          <OrderFailureNotice
+            testId="checkout-order-failure-notice"
+            error={orderFailure || submissionError}
+            status={orderFailure?.status}
+            itemErrors={orderFailure?.itemErrors || []}
+            fieldErrors={orderFailure?.fieldErrors || {}}
+            onReviewCart={handleReviewInCart}
+            onRevalidate={async () => {
+              setIsValidating(true);
+              try {
+                const res = await validateCart();
+                if (res?.changes && res.changes.length > 0) {
+                  setPendingChanges(res.changes);
+                  setHasAcknowledgedChanges(false);
+                }
+                setOrderFailure(null);
+                setSubmissionError(null);
+              } catch (revalErr) {
+                toast.error(revalErr?.message || 'Cart validation failed');
+              } finally {
+                setIsValidating(false);
+              }
+            }}
+            onDismiss={() => {
+              setOrderFailure(null);
+              setSubmissionError(null);
+            }}
+          />
         </div>
       )}
 
@@ -478,6 +594,13 @@ export function Checkout() {
         isSubmitting={isSubmitting}
         hasConfirmed={hasConfirmed}
         onToggleConfirm={setHasConfirmed}
+        orderFailure={orderFailure}
+        submissionError={submissionError}
+        onClearError={() => {
+          setOrderFailure(null);
+          setSubmissionError(null);
+        }}
+        onReviewCart={handleReviewInCart}
       />
     </div>
   );

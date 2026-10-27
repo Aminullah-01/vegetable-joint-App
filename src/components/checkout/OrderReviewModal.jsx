@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { CheckoutStepper } from './CheckoutStepper';
+import { OrderFailureNotice } from './OrderFailureNotice';
 import { formatCurrency } from '../../utils';
 
 /**
@@ -10,6 +11,7 @@ import { formatCurrency } from '../../utils';
  * SRS References:
  * - CHK-03: The checkout page shall show an order summary: selected products,
  *   quantities, unit prices, subtotals, and total amount, and require explicit confirmation.
+ * - CHK-04 / ERR-01: Rejects order with per-item messages if any product is unavailable or under-stocked.
  * - CHK-05 / BR-06: Shows seller per-order split when multi-seller items are ordered.
  * - CHK-09: Explicitly discloses "Pay on delivery / pay seller directly".
  * - BR-02: Line subtotal = unit price × quantity. Order total = sum of line subtotals.
@@ -27,6 +29,10 @@ export function OrderReviewModal({
   isSubmitting = false,
   hasConfirmed = false,
   onToggleConfirm,
+  orderFailure = null,
+  submissionError = null,
+  onClearError = null,
+  onReviewCart = null,
 }) {
   // Group items by seller for clear order split visibility (CHK-05)
   const itemsBySeller = items.reduce((acc, item) => {
@@ -123,6 +129,26 @@ export function OrderReviewModal({
             if (step <= 2) onClose();
           }}
         />
+
+        {/* Order Placement Failure / Conflict Notice (FE-074, CHK-04, ERR-01) */}
+        {(orderFailure || submissionError) && (
+          <div data-testid="review-order-error">
+            <OrderFailureNotice
+              compact
+              testId="review-order-failure-notice"
+              testIdPrefix="review-"
+              error={orderFailure || submissionError}
+              status={orderFailure?.status}
+              itemErrors={orderFailure?.itemErrors || []}
+              fieldErrors={orderFailure?.fieldErrors || {}}
+              onReviewCart={() => {
+                onClose();
+                if (onReviewCart) onReviewCart();
+              }}
+              onDismiss={onClearError}
+            />
+          </div>
+        )}
 
         {/* Step 1: Delivery Information Review */}
         <section
@@ -531,6 +557,10 @@ OrderReviewModal.propTypes = {
   isSubmitting: PropTypes.bool,
   hasConfirmed: PropTypes.bool,
   onToggleConfirm: PropTypes.func,
+  orderFailure: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
+  submissionError: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
+  onClearError: PropTypes.func,
+  onReviewCart: PropTypes.func,
 };
 
 export default OrderReviewModal;
