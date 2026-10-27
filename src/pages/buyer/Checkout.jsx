@@ -269,7 +269,12 @@ export function Checkout() {
         result?.orders?.[0]?.order_number ||
         'ORD-2026-001';
 
-      navigate(`/checkout/confirmation/${orderRef}`);
+      navigate(`/checkout/confirmation/${orderRef}`, {
+        state: {
+          orders: result?.orders || [],
+          checkoutRef: orderRef,
+        },
+      });
     } catch (err) {
       // Parse structured error details (FE-074, CHK-04, ERR-01)
       const status =

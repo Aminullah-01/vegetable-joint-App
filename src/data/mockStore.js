@@ -1122,6 +1122,17 @@ class MockStore {
     return order;
   }
 
+  getOrdersByRef(ref) {
+    if (!ref) return [];
+    const term = String(ref).trim().toLowerCase();
+    return this.orders.filter(
+      (o) =>
+        (o.checkout_ref && o.checkout_ref.toLowerCase() === term) ||
+        (o.order_number && o.order_number.toLowerCase() === term) ||
+        String(o.id) === term
+    );
+  }
+
   createOrder(payload = {}) {
     const checkoutRef = payload.checkout_ref || generateUUID();
 

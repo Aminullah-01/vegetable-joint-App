@@ -67,6 +67,29 @@ export const orderService = {
   },
 
   /**
+   * Fetch order(s) by checkout reference UUID or order number (CHK-05, CHK-08).
+   *
+   * @param {string} ref
+   * @returns {Promise<Array>}
+   */
+  async getOrdersByRef(ref) {
+    if (isMockMode()) {
+      return mockStore.getOrdersByRef(ref);
+    }
+
+    const response = await apiClient.get('/orders', {
+      params: { search: ref },
+    });
+    const list = response.data || [];
+    return list.filter(
+      (o) =>
+        o.checkout_ref === ref ||
+        o.order_number === ref ||
+        String(o.id) === String(ref)
+    );
+  },
+
+  /**
    * Transition order status per the allowed lifecycle (Seller or Admin).
    * Endpoint: PATCH /orders/{id}/status
    *
