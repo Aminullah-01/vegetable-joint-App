@@ -65,11 +65,12 @@ const ResetPassword = lazy(() => import('../pages/auth/ResetPassword'));
 
 const sellerNavItems = [
   { path: '/seller', label: 'Overview', icon: '📊', end: true },
-  { path: '/seller/products', label: 'My Products', icon: '🥦', end: true },
+  { path: '/seller/products', label: 'Products', icon: '🥦', end: true },
   { path: '/seller/products/new', label: 'Add Product', icon: '➕' },
   { path: '/seller/orders', label: 'Orders', icon: '📦' },
   { path: '/seller/inventory', label: 'Inventory', icon: '📋' },
-  { path: '/seller/sales', label: 'Sales & Revenue', icon: '💰' },
+  { path: '/seller/sales', label: 'Sales', icon: '💰' },
+  { path: '/seller/profile', label: 'Profile', icon: '👤' },
 ];
 
 const adminNavItems = [
@@ -170,8 +171,8 @@ export function AppRoutes() {
             element={<SellerOrderDetail />}
           />
           <Route path={ROUTES.SELLER_INVENTORY} element={<SellerInventory />} />
-
           <Route path={ROUTES.SELLER_SALES} element={<SellerSales />} />
+          <Route path={ROUTES.SELLER_DASHBOARD_PROFILE} element={<Profile />} />
         </Route>
 
         {/* Admin Dashboard Routes (Protected: admin role only) */}

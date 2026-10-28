@@ -39,6 +39,7 @@ export const ROUTES = {
   SELLER_ORDER_DETAIL: '/seller/orders/:id',
   SELLER_INVENTORY: '/seller/inventory',
   SELLER_SALES: '/seller/sales',
+  SELLER_DASHBOARD_PROFILE: '/seller/profile',
 
   // Admin Dashboard
   ADMIN_OVERVIEW: '/admin',
@@ -65,5 +66,19 @@ export const buildPath = {
   sellerEditProduct: (id) => `/seller/products/${id}/edit`,
   sellerOrderDetail: (id) => `/seller/orders/${id}`,
 };
+
+/**
+ * Seller Dashboard Navigation Sections (SEL-01, FE-080, Figma Section 13)
+ * Overview, Products, Add Product, Orders, Inventory, Sales, Profile
+ */
+export const SELLER_NAV_ITEMS = [
+  { path: ROUTES.SELLER_OVERVIEW, label: 'Overview', icon: '📊', end: true },
+  { path: ROUTES.SELLER_PRODUCTS, label: 'Products', icon: '🥦', end: true },
+  { path: ROUTES.SELLER_ADD_PRODUCT, label: 'Add Product', icon: '➕' },
+  { path: ROUTES.SELLER_ORDERS, label: 'Orders', icon: '📦' },
+  { path: ROUTES.SELLER_INVENTORY, label: 'Inventory', icon: '📋' },
+  { path: ROUTES.SELLER_SALES, label: 'Sales', icon: '💰' },
+  { path: ROUTES.SELLER_DASHBOARD_PROFILE, label: 'Profile', icon: '👤' },
+];
 
 export default ROUTES;
