@@ -14,6 +14,7 @@ import {
 import { STRINGS, DELIVERY_DETAILS_STORAGE_KEY } from '../../constants';
 import { generateCheckoutRef } from '../../utils';
 import { orderService } from '../../services/orderService';
+import { parseCheckoutError } from '../../utils';
 
 /**
  * Reads delivery details previously saved on this device (CHK-02).
@@ -77,6 +78,7 @@ export function Checkout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState(null);
   const [orderFailure, setOrderFailure] = useState(null);
+  const [submissionFailure, setSubmissionFailure] = useState(null);
 
   // Client-generated UUID checkout reference (CHK-05, NFR-REL-04, FE-075)
   // Groups per-seller orders and ensures idempotent order submission.
@@ -158,6 +160,9 @@ export function Checkout() {
     setHasAcknowledgedChanges(true);
     setPendingChanges([]);
     setCheckoutRef(generateCheckoutRef());
+    setSubmissionError(null);
+    setSubmissionFailure(null);
+    setOrderFailure(null);
   };
 
   const handleReviewInCart = () => {
@@ -251,6 +256,7 @@ export function Checkout() {
       isSubmittingRef.current = true;
       setIsSubmitting(true);
       setSubmissionError(null);
+      setSubmissionFailure(null);
       setOrderFailure(null);
 
       const result = await orderService.createOrder(payload);
@@ -276,8 +282,11 @@ export function Checkout() {
         },
       });
     } catch (err) {
+      const parsed = parseCheckoutError(err, items);
+
       // Parse structured error details (FE-074, CHK-04, ERR-01)
       const status =
+        parsed.status ||
         err?.status ||
         err?.response?.status ||
         (err?.code === 'CONFLICT'
@@ -287,18 +296,51 @@ export function Checkout() {
             : 0);
 
       const isConflict =
-        status === 409 || err?.isConflict || err?.code === 'CONFLICT';
+        status === 409 ||
+        err?.isConflict ||
+        err?.code === 'CONFLICT' ||
+        parsed.is409;
       const isValidation =
         status === 422 ||
         err?.isValidationError ||
-        err?.code === 'VALIDATION_ERROR';
+        err?.code === 'VALIDATION_ERROR' ||
+        parsed.is422;
 
-      // Parse item errors
+      // CHK-04, ERR-01: On conflict or validation issues (409/422), close review modal
+      // so buyer can immediately review conflicting items or accept changes on checkout page.
+      // On server/network errors (500 etc), keep modal open so buyer can directly retry.
+      if (isConflict || isValidation || parsed.is409 || parsed.is422) {
+        setIsReviewModalOpen(false);
+      }
+
+      // Extract item errors from parsed or raw error
+      let itemErrors = [];
+      if (parsed.itemErrors && parsed.itemErrors.length > 0) {
+        itemErrors = parsed.itemErrors.map((it) => ({
+          ...it,
+          productId: it.productId ?? it.product_id ?? it.id,
+          requestedQuantity:
+            it.requestedQuantity ??
+            it.requested_quantity ??
+            it.oldQuantity ??
+            it.old_quantity,
+          availableStock:
+            it.availableStock ??
+            it.available_stock ??
+            it.newQuantity ??
+            it.new_quantity,
+          oldPrice: it.oldPrice ?? it.old_price,
+          newPrice: it.newPrice ?? it.new_price,
+        }));
+      }
+
       const rawItems =
         err?.data?.items || err?.data?.changes || err?.items || [];
-      const itemErrors = [];
-
-      if (Array.isArray(rawItems) && rawItems.length > 0) {
+      if (
+        itemErrors.length === 0 &&
+        Array.isArray(rawItems) &&
+        rawItems.length > 0
+      ) {
         rawItems.forEach((it) => {
           itemErrors.push({
             productId: it.product_id ?? it.id,
@@ -328,55 +370,31 @@ export function Checkout() {
                   : 'Item has an inventory or pricing conflict.'),
           });
         });
-      } else if (err?.errors && typeof err.errors === 'object') {
-        Object.entries(err.errors).forEach(([field, msgs]) => {
-          const msgList = Array.isArray(msgs) ? msgs : [msgs];
-          const match = field.match(/items\.(\d+)/);
-          const itemIdx = match ? parseInt(match[1], 10) : -1;
-          const matchedItem =
-            itemIdx >= 0 && items[itemIdx] ? items[itemIdx] : null;
-
-          msgList.forEach((msg) => {
-            itemErrors.push({
-              productId: matchedItem?.product_id ?? matchedItem?.id,
-              name:
-                matchedItem?.name ||
-                (field.startsWith('items') ? `Item ${itemIdx + 1}` : field),
-              type: msg.toLowerCase().includes('stock')
-                ? 'insufficient_stock'
-                : msg.toLowerCase().includes('price')
-                  ? 'price_changed'
-                  : 'generic',
-              message: msg,
-            });
-          });
-        });
       }
 
-      const errMsg =
-        err?.data?.message ||
-        err?.message ||
-        (isConflict
-          ? 'One or more items in your cart have stock or price conflicts (HTTP 409).'
-          : isValidation
-            ? 'Order validation failed. Please check your delivery information and cart items.'
-            : 'Failed to place order. Please review your cart and try again.');
-
+      const errMsg = parsed.message || err?.message || 'Failed to place order.';
       const failureObj = {
         status,
         isConflict,
         isValidation,
         message: errMsg,
         itemErrors,
-        fieldErrors: err?.errors || {},
+        fieldErrors: err?.errors || parsed.fieldErrors || {},
       };
 
       setOrderFailure(failureObj);
+      setSubmissionFailure(parsed);
       setSubmissionError(errMsg);
       toast.error(errMsg);
 
-      // CART-08: If conflict occurred, trigger cart validation in background so cart state stays in sync
-      if (isConflict) {
+      // If changes were detected (e.g. stock reduced or price updated), populate pending changes
+      if (parsed.changes && parsed.changes.length > 0) {
+        setPendingChanges(parsed.changes);
+        setHasAcknowledgedChanges(false);
+      }
+
+      // CART-08: If conflict or validation error occurred, trigger cart validation in background
+      if (isConflict || isValidation || parsed.is409 || parsed.is422) {
         validateCart().catch(() => {});
       }
     } finally {
@@ -504,15 +522,45 @@ export function Checkout() {
         </div>
       )}
 
-      {/* Submission Error & Per-Item Failure Notice (FE-074, CHK-04, ERR-01) */}
-      {(orderFailure || submissionError) && (
-        <div data-testid="checkout-submission-error">
+      {/* Submission Error Banner & Per-Item Failure Breakdown (FE-074 / CHK-04, ERR-01) */}
+      {(submissionError || submissionFailure || orderFailure) && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            padding: '1.25rem',
+            borderRadius: '12px',
+            fontSize: '0.875rem',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.875rem',
+          }}
+          data-testid="checkout-submission-error"
+        >
+          {/* OrderFailureNotice for structured 409/422 display */}
           <OrderFailureNotice
             testId="checkout-order-failure-notice"
-            error={orderFailure || submissionError}
-            status={orderFailure?.status}
-            itemErrors={orderFailure?.itemErrors || []}
-            fieldErrors={orderFailure?.fieldErrors || {}}
+            error={submissionError || orderFailure}
+            status={
+              orderFailure?.status ||
+              submissionFailure?.status ||
+              (submissionFailure?.is409
+                ? 409
+                : submissionFailure?.is422
+                  ? 422
+                  : 0)
+            }
+            itemErrors={
+              orderFailure?.itemErrors?.length
+                ? orderFailure.itemErrors
+                : submissionFailure?.itemErrors || []
+            }
+            fieldErrors={
+              orderFailure?.fieldErrors || submissionFailure?.fieldErrors || {}
+            }
             onRetry={handleConfirmOrder}
             isRetrying={isSubmitting}
             onReviewCart={handleReviewInCart}
@@ -526,6 +574,7 @@ export function Checkout() {
                   setCheckoutRef(generateCheckoutRef());
                 }
                 setOrderFailure(null);
+                setSubmissionFailure(null);
                 setSubmissionError(null);
               } catch (revalErr) {
                 toast.error(revalErr?.message || 'Cart validation failed');
@@ -535,9 +584,190 @@ export function Checkout() {
             }}
             onDismiss={() => {
               setOrderFailure(null);
+              setSubmissionFailure(null);
               setSubmissionError(null);
             }}
           />
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem',
+            }}
+          >
+            <span
+              style={{ fontSize: '1.35rem', lineHeight: 1 }}
+              aria-hidden="true"
+            >
+              ⚠️
+            </span>
+            <div style={{ flex: 1 }}>
+              <strong
+                style={{
+                  fontSize: '1rem',
+                  display: 'block',
+                  marginBottom: '0.25rem',
+                  color: '#991b1b',
+                }}
+                data-testid="checkout-error-title"
+              >
+                {submissionFailure?.title ||
+                  (orderFailure?.isConflict
+                    ? 'Stock Conflict — Order Cannot Be Placed'
+                    : 'Order Placement Error')}
+              </strong>
+              <div
+                style={{ lineHeight: 1.45, color: '#7f1d1d' }}
+                data-testid="checkout-error-message"
+              >
+                <strong>Order Error:</strong> {submissionError}
+              </div>
+            </div>
+          </div>
+
+          {/* Per-Item Error Messages Breakdown (FE-074, CHK-04, ERR-01) */}
+          {((submissionFailure?.itemErrors &&
+            submissionFailure.itemErrors.length > 0) ||
+            (orderFailure?.itemErrors &&
+              orderFailure.itemErrors.length > 0)) && (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #fee2e2',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.625rem',
+              }}
+              data-testid="checkout-failure-item-list"
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  color: '#7f1d1d',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Affected Items & Specific Issues:
+              </div>
+              {(submissionFailure?.itemErrors?.length
+                ? submissionFailure.itemErrors
+                : orderFailure?.itemErrors || []
+              ).map((itemErr, idx) => {
+                const itemId =
+                  itemErr.productId ?? itemErr.product_id ?? itemErr.id ?? idx;
+                const isPrice =
+                  itemErr.type === 'price_changed' ||
+                  (itemErr.oldPrice !== undefined &&
+                    itemErr.newPrice !== undefined);
+                const isOutOfStock =
+                  itemErr.type === 'out_of_stock' ||
+                  itemErr.availableStock === 0 ||
+                  itemErr.available_stock === 0;
+
+                const badgeText =
+                  itemErr.badgeText ||
+                  (isOutOfStock
+                    ? 'Out of Stock'
+                    : isPrice
+                      ? 'Price Changed'
+                      : 'Insufficient Stock');
+
+                return (
+                  <div
+                    key={`fail-item-${itemId}-${idx}`}
+                    data-testid={`checkout-failure-item-${itemId}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: '0.5rem',
+                      fontSize: '0.85rem',
+                      color: '#991b1b',
+                      padding: '0.35rem 0',
+                      borderBottom:
+                        idx <
+                        (submissionFailure?.itemErrors?.length ||
+                          orderFailure?.itemErrors?.length ||
+                          0) -
+                          1
+                          ? '1px dashed #fecaca'
+                          : 'none',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span
+                      style={{
+                        backgroundColor: isPrice ? '#fef3c7' : '#fee2e2',
+                        color: isPrice ? '#92400e' : '#b91c1c',
+                        fontSize: '0.725rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '4px',
+                        textTransform: 'uppercase',
+                      }}
+                      data-testid={`checkout-failure-badge-${itemId}`}
+                    >
+                      {badgeText}
+                    </span>
+                    <strong
+                      style={{ color: '#1e293b' }}
+                      data-testid={`checkout-failure-item-name-${itemId}`}
+                    >
+                      {itemErr.name}:
+                    </strong>
+                    <span
+                      style={{ flex: 1, color: '#7f1d1d' }}
+                      data-testid={`checkout-failure-item-detail-${itemId}`}
+                    >
+                      {itemErr.message}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action CTAs to resolve order conflicts */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+              marginTop: '0.25rem',
+            }}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleReviewInCart}
+              data-testid="checkout-failure-review-cart-btn"
+            >
+              ← Review & Edit Cart
+            </Button>
+            {((submissionFailure?.changes &&
+              submissionFailure.changes.length > 0) ||
+              (pendingChanges && pendingChanges.length > 0) ||
+              (orderFailure?.itemErrors &&
+                orderFailure.itemErrors.some(
+                  (e) =>
+                    e.type === 'price_changed' || e.type === 'stock_reduced'
+                ))) && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleAcceptChanges}
+                data-testid="checkout-failure-accept-changes-btn"
+              >
+                Accept Updated Items & Proceed
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

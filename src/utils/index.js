@@ -13,4 +13,5 @@ export * from './validation.js';
 export * from './sellerStatus.js';
 export * from './passwordHash.js';
 export * from './uuid.js';
+export * from './checkoutErrors.js';
 export * from '../constants/index.js';

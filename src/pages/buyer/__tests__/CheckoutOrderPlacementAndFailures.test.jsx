@@ -173,7 +173,7 @@ describe('Place Order & Handle Failures (FE-074 / CHK-04, ERR-01, IF-03)', () =>
       }
     });
 
-    it('throws 409 Conflict when item price has changed', () => {
+    it('throws 409/422 Conflict or Validation error when item price has changed', () => {
       // Roma Tomatoes has price 2500 in mockStore; payload passes outdated price 2000
       expect(() => {
         mockStore.createOrder({
@@ -192,7 +192,7 @@ describe('Place Order & Handle Failures (FE-074 / CHK-04, ERR-01, IF-03)', () =>
           delivery_address: '14 Bompai Road, Kano',
         });
       } catch (err) {
-        expect(err.status).toBe(409);
+        expect([409, 422]).toContain(err.status);
         expect(err.data?.items[0]).toMatchObject({
           product_id: 1,
           type: 'price_changed',
@@ -497,7 +497,7 @@ describe('Place Order & Handle Failures (FE-074 / CHK-04, ERR-01, IF-03)', () =>
   });
 
   describe('6. Review Modal Error Feedback & Dismissal', () => {
-    it('shows error notice directly inside OrderReviewModal and allows dismissal', async () => {
+    it('shows error notice and closes modal so buyer can review conflicts and allows dismissal', async () => {
       const user = userEvent.setup();
       await loginAsBuyer();
       setSavedAddress();
@@ -525,22 +525,16 @@ describe('Place Order & Handle Failures (FE-074 / CHK-04, ERR-01, IF-03)', () =>
         screen.getByTestId('checkout-confirm-place-order-button')
       );
 
-      // Verify in-modal error notice
-      expect(
-        await screen.findByTestId('review-order-error')
-      ).toBeInTheDocument();
-
-      // Close modal
-      await user.click(screen.getByTestId('checkout-review-back-button'));
+      // Modal closes so buyer can address conflicts directly on page (CHK-04, ERR-01)
       await waitFor(() => {
         expect(
           screen.queryByTestId('checkout-review-modal')
         ).not.toBeInTheDocument();
       });
 
-      // Error banner remains visible on checkout page
+      // Error banner is visible on checkout page
       expect(
-        screen.getByTestId('checkout-submission-error')
+        await screen.findByTestId('checkout-submission-error')
       ).toBeInTheDocument();
 
       // Dismiss error

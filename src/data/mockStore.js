@@ -1170,16 +1170,24 @@ class MockStore {
       });
     }
 
-    // Server-side validation of checkout fields (CHK-04, 422)
+    const buyer = this.currentUser || this.users.find((u) => u.id === 6);
+
+    // Server-side validation of checkout fields (CHK-02, CHK-04, 422)
+    const deliveryName = (payload.delivery_name ?? buyer?.name ?? '').trim();
+    const deliveryPhone = (payload.delivery_phone ?? buyer?.phone ?? '').trim();
+    const deliveryAddress = (
+      payload.delivery_address ?? (buyer ? 'Lagos, Nigeria' : '')
+    ).trim();
+
     const fieldErrors = {};
-    if (!payload.delivery_name || !String(payload.delivery_name).trim()) {
-      fieldErrors.delivery_name = ['Recipient name is required.'];
+    if (!deliveryName) {
+      fieldErrors.delivery_name = ['The recipient name is required.'];
     }
-    if (!payload.delivery_phone || !String(payload.delivery_phone).trim()) {
-      fieldErrors.delivery_phone = ['Phone number is required.'];
+    if (!deliveryPhone) {
+      fieldErrors.delivery_phone = ['The delivery phone number is required.'];
     }
-    if (!payload.delivery_address || !String(payload.delivery_address).trim()) {
-      fieldErrors.delivery_address = ['Delivery address is required.'];
+    if (!deliveryAddress) {
+      fieldErrors.delivery_address = ['The delivery address is required.'];
     }
     if (Object.keys(fieldErrors).length > 0) {
       throw new ApiError({
@@ -1196,71 +1204,99 @@ class MockStore {
       });
     }
 
-    // Server-side validation of stock, availability, and prices (CHK-04, ERR-01, 409)
-    const conflicts = [];
-    const itemErrors = {};
+    // Server-side validation of stock, availability, and prices (CHK-04, TC-17, TC-18, ERR-01)
+    const stockErrors = {};
+    const failedStockItems = [];
+    const stockChanges = [];
 
-    items.forEach((item, idx) => {
+    const priceErrors = {};
+    const failedPriceItems = [];
+    const priceChanges = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       const productId = Number(item.product_id ?? item.id);
       const product = this.products.find((p) => p.id === productId);
+      const itemKey = `items.${i}`;
+      const itemName = item.name || product?.name || `Product #${productId}`;
 
-      if (!product || product.deleted_at || product.is_active === false) {
-        const msg = `"${item.name || product?.name || `Product #${productId}`}" is currently unavailable (ERR-01).`;
-        conflicts.push({
+      if (
+        !product ||
+        product.deleted_at ||
+        product.is_active === false ||
+        product.availability === 'unavailable'
+      ) {
+        const msg = `"${itemName}" is currently unavailable (ERR-01).`;
+        stockErrors[itemKey] = [msg];
+        stockErrors[String(productId)] = [msg];
+        failedStockItems.push({
           product_id: productId,
-          name: product?.name || item.name || `Product #${productId}`,
+          name: itemName,
           type: 'unavailable',
           message: msg,
         });
-        itemErrors[`items.${idx}`] = [msg];
-        itemErrors[String(productId)] = [msg];
-        return;
+        stockChanges.push({
+          product_id: productId,
+          name: itemName,
+          type: 'unavailable',
+          message: msg,
+        });
+        continue;
       }
 
       const availableStock =
         typeof product.quantity === 'number' ? product.quantity : 0;
       const requestedQty = Number(item.quantity);
 
-      if (
-        availableStock <= 0 ||
-        product.availability === 'out_of_stock' ||
-        product.availability === 'unavailable'
-      ) {
+      if (availableStock <= 0 || product.availability === 'out_of_stock') {
         const msg = `"${product.name}" is out of stock (CHK-04).`;
-        conflicts.push({
+        stockErrors[itemKey] = [msg];
+        stockErrors[String(productId)] = [msg];
+        failedStockItems.push({
           product_id: productId,
           name: product.name,
-          type: 'insufficient_stock',
-          requested_quantity: requestedQty,
+          type: 'out_of_stock',
           available_stock: 0,
+          requested_quantity: requestedQty,
           message: msg,
         });
-        itemErrors[`items.${idx}`] = [msg];
-        itemErrors[String(productId)] = [msg];
-        return;
-      }
-
-      if (availableStock < requestedQty) {
+        stockChanges.push({
+          product_id: productId,
+          name: product.name,
+          type: 'unavailable',
+          message: msg,
+        });
+      } else if (availableStock < requestedQty) {
         const msg = `Insufficient stock for "${product.name}". Requested ${requestedQty}, but only ${availableStock} is available (CHK-04).`;
-        conflicts.push({
+        stockErrors[itemKey] = [msg];
+        stockErrors[String(productId)] = [msg];
+        failedStockItems.push({
           product_id: productId,
           name: product.name,
           type: 'insufficient_stock',
-          requested_quantity: requestedQty,
           available_stock: availableStock,
+          requested_quantity: requestedQty,
           message: msg,
         });
-        itemErrors[`items.${idx}`] = [msg];
-        itemErrors[String(productId)] = [msg];
-        return;
+        stockChanges.push({
+          product_id: productId,
+          name: product.name,
+          type: 'stock_reduced',
+          old_quantity: requestedQty,
+          new_quantity: availableStock,
+          message: msg,
+        });
       }
 
+      // Price validation (TC-18 / CART-08)
       if (
         item.price !== undefined &&
-        Number(item.price) !== Number(product.price)
+        Number(product.price) !== Number(item.price)
       ) {
         const msg = `Price for "${product.name}" has changed from ₦${Number(item.price).toLocaleString()} to ₦${Number(product.price).toLocaleString()} (ERR-01).`;
-        conflicts.push({
+        priceErrors[itemKey] = [msg];
+        priceErrors[String(productId)] = [msg];
+        failedPriceItems.push({
           product_id: productId,
           name: product.name,
           type: 'price_changed',
@@ -1268,34 +1304,64 @@ class MockStore {
           new_price: Number(product.price),
           message: msg,
         });
-        itemErrors[`items.${idx}`] = [msg];
-        itemErrors[String(productId)] = [msg];
+        priceChanges.push({
+          product_id: productId,
+          name: product.name,
+          type: 'price_changed',
+          old_price: Number(item.price),
+          new_price: Number(product.price),
+          message: msg,
+        });
       }
-    });
+    }
 
-    if (conflicts.length > 0) {
+    // Reject on stock/availability conflicts (CHK-04, TC-17, UC-02 4a) -> HTTP 409 CONFLICT
+    if (failedStockItems.length > 0) {
       const summaryMsg =
-        conflicts.length === 1
-          ? conflicts[0].message
-          : `Order cannot be placed: ${conflicts.length} items have stock or price conflicts (CHK-04, ERR-01).`;
+        failedStockItems.length === 1
+          ? failedStockItems[0].message
+          : 'One or more items in your cart have insufficient stock or are unavailable (CHK-04).';
 
       throw new ApiError({
         message: summaryMsg,
         status: 409,
         code: 'CONFLICT',
-        errors: itemErrors,
+        errors: stockErrors,
         data: {
           message: summaryMsg,
           code: 'ORDER_CONFLICT',
           status: 409,
-          items: conflicts,
-          changes: conflicts,
-          errors: itemErrors,
+          items: failedStockItems,
+          failed_items: failedStockItems,
+          changes: stockChanges,
+          errors: stockErrors,
         },
       });
     }
 
-    const buyer = this.currentUser || this.users.find((u) => u.id === 6);
+    // Reject on price changes (TC-18, CART-08, UC-02 1a) -> HTTP 422 VALIDATION_ERROR
+    if (failedPriceItems.length > 0) {
+      const summaryMsg =
+        failedPriceItems.length === 1
+          ? failedPriceItems[0].message
+          : 'Price for one or more items has changed since you added them to your cart (ERR-01).';
+
+      throw new ApiError({
+        message: summaryMsg,
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: priceErrors,
+        data: {
+          message: summaryMsg,
+          status: 422,
+          code: 'VALIDATION_ERROR',
+          items: failedPriceItems,
+          failed_items: failedPriceItems,
+          changes: priceChanges,
+          errors: priceErrors,
+        },
+      });
+    }
 
     // Group items by seller (CHK-05: one order per seller)
     const itemsBySeller = new Map();
