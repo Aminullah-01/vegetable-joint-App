@@ -1603,28 +1603,65 @@ class MockStore {
     };
   }
 
-  getSellerDashboard() {
-    const seller = this.sellers[0];
-    const sellerProducts = this.products.filter(
-      (p) => p.seller_id === seller.id && !p.deleted_at
-    );
-    const sellerOrders = this.orders.filter((o) => o.seller_id === seller.id);
+  getSellerDashboard(sellerId = null) {
+    const resolvedSellerId =
+      sellerId ??
+      this.currentUser?.seller_id ??
+      this.sellers.find((s) => s.user_id === this.currentUser?.id)?.id ??
+      this.sellers[0]?.id ??
+      1;
 
-    const pendingOrders = sellerOrders.filter((o) => o.status === 'pending');
+    const seller =
+      this.sellers.find((s) => s.id === resolvedSellerId) || this.sellers[0];
+    const sellerProducts = this.products.filter(
+      (p) => p.seller_id === resolvedSellerId && !p.deleted_at
+    );
+    const sellerOrders = this.orders.filter(
+      (o) => o.seller_id === resolvedSellerId
+    );
+
+    const pendingOrders = sellerOrders.filter(
+      (o) => (o.status || '').toLowerCase() === 'pending'
+    );
     const completedOrders = sellerOrders.filter(
-      (o) => o.status === 'completed'
+      (o) => (o.status || '').toLowerCase() === 'completed'
     );
     const totalRevenue = completedOrders.reduce(
-      (sum, o) => sum + o.total_amount,
+      (sum, o) => sum + Number(o.total_amount || 0),
       0
     );
 
+    const lowStockThreshold = 5;
+    const lowStockProducts = sellerProducts.filter(
+      (p) =>
+        (typeof p.quantity === 'number' && p.quantity <= lowStockThreshold) ||
+        p.availability === 'out_of_stock' ||
+        p.availability === 'low_stock'
+    );
+
+    const totalProductsSold = completedOrders.reduce((acc, order) => {
+      const itemsCount = (order.items || []).reduce(
+        (iSum, it) => iSum + Number(it.quantity || 0),
+        0
+      );
+      return acc + itemsCount;
+    }, 0);
+
     return {
+      seller_id: resolvedSellerId,
+      seller_name: seller?.business_name || 'My Vegetable Store',
       active_listings_count: sellerProducts.length,
+      total_products_count: sellerProducts.length,
       pending_orders_count: pendingOrders.length,
       completed_orders_count: completedOrders.length,
       total_revenue: totalRevenue,
+      total_products_sold: totalProductsSold,
+      low_stock_count: lowStockProducts.length,
+      low_stock_threshold: lowStockThreshold,
+      pending_orders: pendingOrders.slice(0, 5),
       recent_orders: sellerOrders.slice(0, 5),
+      low_stock_products: lowStockProducts.slice(0, 5),
+      latest_sales: completedOrders.slice(0, 5),
     };
   }
 

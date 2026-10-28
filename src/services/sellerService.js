@@ -82,23 +82,33 @@ export const sellerService = {
   },
 
   /**
-   * Get seller dashboard metrics (active listings, pending orders, revenue).
+   * Get seller dashboard metrics (active listings, pending orders, revenue, low-stock items).
    * Endpoint: GET /seller/dashboard
    *
+   * @param {Object} [params={}]
    * @returns {Promise<{
+   *   seller_id: number,
+   *   seller_name: string,
    *   active_listings_count: number,
+   *   total_products_count: number,
    *   pending_orders_count: number,
    *   completed_orders_count: number,
    *   total_revenue: number,
-   *   recent_orders: Array
+   *   total_products_sold: number,
+   *   low_stock_count: number,
+   *   low_stock_threshold: number,
+   *   pending_orders: Array,
+   *   recent_orders: Array,
+   *   low_stock_products: Array,
+   *   latest_sales: Array
    * }>}
    */
-  async getSellerDashboard() {
+  async getSellerDashboard(params = {}) {
     if (isMockMode()) {
-      return mockStore.getSellerDashboard();
+      return mockStore.getSellerDashboard(params?.seller_id);
     }
 
-    const response = await apiClient.get('/seller/dashboard');
+    const response = await apiClient.get('/seller/dashboard', { params });
     return response.data;
   },
 };
