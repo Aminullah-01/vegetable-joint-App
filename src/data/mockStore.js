@@ -836,8 +836,161 @@ class MockStore {
 
   deleteProduct(id) {
     const product = this.getProductById(id);
+    const currentSellerId =
+      this.currentUser?.seller_id ??
+      this.sellers.find((s) => s.user_id === this.currentUser?.id)?.id;
+    if (
+      this.currentUser &&
+      this.currentUser.role === 'seller' &&
+      currentSellerId &&
+      product.seller_id !== currentSellerId
+    ) {
+      throw new ApiError({
+        message:
+          'You are not authorized to delete another seller’s product (SEL-14).',
+        status: 403,
+        code: 'FORBIDDEN',
+      });
+    }
     product.deleted_at = new Date().toISOString();
     return { message: 'Product deleted successfully.' };
+  }
+
+  getSellerProducts(params = {}) {
+    const {
+      q,
+      search,
+      category,
+      availability,
+      sort = 'newest',
+      page = 1,
+      per_page = 10,
+      seller_id,
+      seller,
+    } = params;
+
+    const resolvedSellerId =
+      seller_id ??
+      seller ??
+      this.currentUser?.seller_id ??
+      this.sellers.find((s) => s.user_id === this.currentUser?.id)?.id ??
+      this.sellers[0]?.id ??
+      1;
+
+    // Filter to authenticated seller and exclude soft-deleted items (SEL-04, SEL-14)
+    let results = this.products.filter(
+      (p) => p.seller_id === Number(resolvedSellerId) && !p.deleted_at
+    );
+
+    // Search query: name, description, category
+    const searchTerm = (q || search || '').trim().toLowerCase();
+    if (searchTerm) {
+      results = results.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchTerm) ||
+          p.description?.toLowerCase().includes(searchTerm) ||
+          p.category?.name?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Category filter
+    if (category && category !== 'all') {
+      results = results.filter((p) => {
+        if (typeof category === 'number' || !isNaN(Number(category))) {
+          return p.category_id === Number(category);
+        }
+        return (
+          p.category?.slug === category ||
+          p.category?.name?.toLowerCase() === String(category).toLowerCase()
+        );
+      });
+    }
+
+    // Availability filter (SEL-07, BR-01)
+    if (availability && availability !== 'all') {
+      results = results.filter((p) => {
+        const isManuallyUnavailable =
+          p.availability === false ||
+          p.availability === 'unavailable' ||
+          p.is_available === false;
+
+        if (availability === 'unavailable') {
+          return isManuallyUnavailable;
+        }
+        if (isManuallyUnavailable) {
+          return false;
+        }
+
+        const stock = Number(p.quantity || 0);
+        const threshold = Number(p.low_stock_threshold || 5);
+
+        if (availability === 'out_of_stock') {
+          return stock === 0;
+        }
+        if (availability === 'low_stock') {
+          return stock > 0 && stock <= threshold;
+        }
+        if (availability === 'in_stock' || availability === 'available') {
+          return stock > threshold;
+        }
+        return p.availability === availability;
+      });
+    }
+
+    // Sorting
+    switch (sort) {
+      case 'price_asc':
+        results.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_desc':
+        results.sort((a, b) => b.price - a.price);
+        break;
+      case 'stock_asc':
+        results.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+        break;
+      case 'stock_desc':
+        results.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
+        break;
+      case 'name_asc':
+        results.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'name_desc':
+        results.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case 'oldest':
+        results.sort(
+          (a, b) =>
+            new Date(a.created_at || a.updated_at || 0).getTime() -
+            new Date(b.created_at || b.updated_at || 0).getTime()
+        );
+        break;
+      case 'newest':
+      default:
+        results.sort(
+          (a, b) =>
+            new Date(b.created_at || b.updated_at || 0).getTime() -
+            new Date(a.created_at || a.updated_at || 0).getTime()
+        );
+        break;
+    }
+
+    const meta = createPaginationMeta(results.length, page, per_page);
+    const offset = (meta.current_page - 1) * meta.per_page;
+    const paginated = results.slice(offset, offset + meta.per_page);
+
+    return {
+      data: paginated,
+      meta,
+      links: {
+        first: '?page=1',
+        last: `?page=${meta.last_page}`,
+        prev: meta.current_page > 1 ? `?page=${meta.current_page - 1}` : null,
+        next:
+          meta.current_page < meta.last_page
+            ? `?page=${meta.current_page + 1}`
+            : null,
+      },
+    };
   }
 
   // --- Cart Management & Server-side Sync (CART-08, CART-10) ---

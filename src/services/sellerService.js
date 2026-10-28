@@ -52,8 +52,7 @@ export const sellerService = {
    */
   async getSellerProducts(params = {}) {
     if (isMockMode()) {
-      const sellerId = mockStore.sellers[0]?.id || 1;
-      return mockStore.getProducts({ ...params, seller: sellerId });
+      return mockStore.getSellerProducts(params);
     }
 
     const response = await apiClient.get('/seller/products', { params });
@@ -62,6 +61,22 @@ export const sellerService = {
       meta: response.meta,
       links: response.links,
     };
+  },
+
+  /**
+   * Soft-delete a product (SEL-04, BR-10).
+   * Endpoint: DELETE /seller/products/{id} or DELETE /products/{id}
+   *
+   * @param {string|number} id - Product ID.
+   * @returns {Promise<{ message: string }>}
+   */
+  async deleteProduct(id) {
+    if (isMockMode()) {
+      return mockStore.deleteProduct(id);
+    }
+
+    const response = await apiClient.delete(`/seller/products/${id}`);
+    return response.data;
   },
 
   /**

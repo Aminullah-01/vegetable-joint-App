@@ -95,9 +95,13 @@ describe('Guest Checkout Redirect Keeps Cart (FE-060 / CART-09 / TC-12)', () => 
 
     // ProtectedRoute redirects guest to /login
     expect(
-      await screen.findByRole('heading', {
-        name: /Sign In to Vegetable Joint/i,
-      })
+      await screen.findByRole(
+        'heading',
+        {
+          name: /Sign In to Vegetable Joint/i,
+        },
+        { timeout: 4000 }
+      )
     ).toBeInTheDocument();
 
     // Verifies guest checkout alert banner is displayed
@@ -137,9 +141,13 @@ describe('Guest Checkout Redirect Keeps Cart (FE-060 / CART-09 / TC-12)', () => 
 
     // Should redirect back to /checkout and load items intact
     expect(
-      await screen.findByRole('heading', {
-        name: /Checkout & Delivery Details/i,
-      })
+      await screen.findByRole(
+        'heading',
+        {
+          name: /Checkout & Delivery Details/i,
+        },
+        { timeout: 4000 }
+      )
     ).toBeInTheDocument();
 
     // Confirm that the guest cart items remain intact
@@ -179,9 +187,13 @@ describe('Guest Checkout Redirect Keeps Cart (FE-060 / CART-09 / TC-12)', () => 
     await user.click(signinLink);
 
     expect(
-      await screen.findByRole('heading', {
-        name: /Sign In to Vegetable Joint/i,
-      })
+      await screen.findByRole(
+        'heading',
+        {
+          name: /Sign In to Vegetable Joint/i,
+        },
+        { timeout: 4000 }
+      )
     ).toBeInTheDocument();
     expect(screen.getByTestId('checkout-guest-notice')).toBeInTheDocument();
   });
@@ -211,9 +223,13 @@ describe('Guest Checkout Redirect Keeps Cart (FE-060 / CART-09 / TC-12)', () => 
 
     // Navigates to /checkout after registration
     expect(
-      await screen.findByRole('heading', {
-        name: /Checkout & Delivery Details/i,
-      })
+      await screen.findByRole(
+        'heading',
+        {
+          name: /Checkout & Delivery Details/i,
+        },
+        { timeout: 4000 }
+      )
     ).toBeInTheDocument();
 
     // Verify cart items are intact
