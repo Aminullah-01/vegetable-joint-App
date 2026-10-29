@@ -13,6 +13,7 @@ import {
   Pagination,
   TableSkeleton,
   EmptyState,
+  Toggle,
 } from '../../components/common';
 
 /**
@@ -58,6 +59,9 @@ export function SellerProducts() {
   const [productToDelete, setProductToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+
+  // In-flight availability toggle state (FE-087 / SEL-07)
+  const [togglingId, setTogglingId] = useState(null);
 
   // Determine current seller ID for scoping (SEL-14)
   const currentSellerId =
@@ -245,6 +249,77 @@ export function SellerProducts() {
       );
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Handle manual availability toggle (FE-087 / SEL-07, BR-01)
+  const handleToggleAvailability = async (product, newChecked) => {
+    if (!canPublish) {
+      toast?.error?.(
+        'Availability cannot be toggled until your seller account is approved (AUTH-03, ADM-03).'
+      );
+      return;
+    }
+
+    const previousAvailability = product.availability;
+    const targetAvailability = newChecked ? 'available' : 'unavailable';
+
+    // Optimistically update product in local state
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === product.id) {
+          const qty = Number(p.quantity || 0);
+          const threshold = Number(p.low_stock_threshold || 5);
+          const nextAvail =
+            targetAvailability === 'unavailable'
+              ? 'unavailable'
+              : qty <= 0
+                ? 'out_of_stock'
+                : qty <= threshold
+                  ? 'low_stock'
+                  : 'in_stock';
+          return {
+            ...p,
+            availability: nextAvail,
+            is_available: nextAvail !== 'unavailable' && qty > 0,
+          };
+        }
+        return p;
+      })
+    );
+
+    setTogglingId(product.id);
+
+    try {
+      await sellerService.updateProductStock(product.id, {
+        availability: targetAvailability,
+      });
+
+      const qty = Number(product.quantity || 0);
+      let msg;
+      if (targetAvailability === 'unavailable') {
+        msg = `Vegetable "${product.name}" is now marked Unavailable and hidden from marketplace buyers (SEL-07).`;
+      } else if (qty === 0) {
+        msg = `Vegetable "${product.name}" switch turned ON, but is automatically Out of Stock (0 units) (SEL-07, BR-01).`;
+      } else {
+        msg = `Vegetable "${product.name}" is now Available for marketplace buyers (SEL-07).`;
+      }
+
+      setSuccessMessage(msg);
+      toast?.success?.(msg);
+    } catch (err) {
+      // Revert on failure
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, availability: previousAvailability } : p
+        )
+      );
+      const errorMsg =
+        err?.message || 'Failed to update availability. Please try again.';
+      setError(errorMsg);
+      toast?.error?.(errorMsg);
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -1066,12 +1141,59 @@ export function SellerProducts() {
                           )}
                         </td>
 
-                        {/* 5. Availability Status (SEL-07) */}
+                        {/* 5. Availability Status & Toggle (FE-087 / SEL-07, BR-01) */}
                         <td
                           style={{ padding: '0.85rem 1rem' }}
                           data-testid={`product-availability-${prod.id}`}
                         >
-                          <AvailabilityBadge product={prod} size="sm" />
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.35rem',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                              }}
+                            >
+                              <Toggle
+                                id={`toggle-avail-${prod.id}`}
+                                testId={`product-availability-toggle-${prod.id}`}
+                                checked={
+                                  prod.availability !== 'unavailable' &&
+                                  prod.availability !== false
+                                }
+                                onChange={(newChecked) =>
+                                  handleToggleAvailability(prod, newChecked)
+                                }
+                                disabled={!canPublish || togglingId === prod.id}
+                                loading={togglingId === prod.id}
+                                size="sm"
+                                ariaLabel={`Toggle availability for ${prod.name}`}
+                              />
+                              <AvailabilityBadge product={prod} size="sm" />
+                            </div>
+
+                            {/* Auto Out of Stock indicator when switch is ON and quantity is 0 */}
+                            {Number(prod.quantity || 0) === 0 &&
+                              prod.availability !== 'unavailable' && (
+                                <span
+                                  data-testid={`auto-out-of-stock-hint-${prod.id}`}
+                                  style={{
+                                    fontSize: '0.725rem',
+                                    color: '#b91c1c',
+                                    fontWeight: 500,
+                                    lineHeight: 1.1,
+                                  }}
+                                >
+                                  Auto Out of Stock (0 stock)
+                                </span>
+                              )}
+                          </div>
                         </td>
 
                         {/* 6. Last Updated */}

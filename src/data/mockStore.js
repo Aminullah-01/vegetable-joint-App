@@ -966,7 +966,12 @@ class MockStore {
     }
 
     // Availability derivation (SEL-07, BR-01)
-    if (data.availability === 'unavailable' || data.availability === false) {
+    const targetAvailability =
+      data.availability !== undefined
+        ? data.availability
+        : product.availability;
+
+    if (targetAvailability === 'unavailable' || targetAvailability === false) {
       product.availability = 'unavailable';
     } else {
       const qty = product.quantity;
@@ -974,6 +979,8 @@ class MockStore {
       product.availability =
         qty <= 0 ? 'out_of_stock' : qty <= threshold ? 'low_stock' : 'in_stock';
     }
+    product.is_available =
+      product.availability !== 'unavailable' && product.quantity > 0;
 
     product.updated_at = new Date().toISOString();
     return product;

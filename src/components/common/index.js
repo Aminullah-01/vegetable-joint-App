@@ -28,6 +28,7 @@ export { Select } from './Select';
 export { Textarea } from './Textarea';
 export { Checkbox } from './Checkbox';
 export { Radio, RadioGroup } from './Radio';
+export { Toggle } from './Toggle';
 export { Button } from './Button';
 export { Link } from './Link';
 export { AvailabilityBadge } from './AvailabilityBadge';

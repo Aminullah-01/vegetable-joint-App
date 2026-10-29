@@ -11,6 +11,7 @@ import {
   Textarea,
   ImageUploader,
   ConfirmDialog,
+  Toggle,
 } from '../../components/common';
 
 const ALLOWED_UNITS = [
@@ -757,16 +758,40 @@ export function SellerProductForm() {
             }}
             data-testid="product-availability-section"
           >
-            <label
-              htmlFor="prod-availability"
+            <div
               style={{
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: '#334155',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              Availability Mode (SEL-07)
-            </label>
+              <label
+                htmlFor="prod-availability"
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#334155',
+                }}
+              >
+                Availability Mode (SEL-07)
+              </label>
+
+              {/* Interactive Toggle Switch (FE-087 / SEL-07) */}
+              <Toggle
+                id="form-availability-toggle"
+                testId="product-availability-toggle"
+                checked={formData.availability !== 'unavailable'}
+                onChange={(checked) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    availability: checked ? 'available' : 'unavailable',
+                  }));
+                }}
+                disabled={!canPublish || isSubmitting}
+                size="sm"
+                ariaLabel="Toggle product availability"
+              />
+            </div>
             <select
               id="prod-availability"
               name="availability"
