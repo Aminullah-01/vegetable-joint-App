@@ -13,7 +13,7 @@ const mockSellersList = [
   { id: 2, business_name: 'Danbatta Agro Ventures', location: 'Kano' },
 ];
 
-// Mock Orders conforming to ADM-06, Figma Section 14, and DB Schema
+// Mock Orders conforming to ADM-06, ADM-07, Figma Section 14, and DB Schema
 const mockOrdersList = [
   {
     id: 1,
@@ -223,14 +223,14 @@ TestWrapper.propTypes = {
   toastMocks: PropTypes.object,
 };
 
-describe('FE-101 / ADM-06: Admin Orders Monitoring Page', () => {
+describe('FE-101 / FE-102 (ADM-06, ADM-07): Admin Orders Monitoring & Status Override', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
 
     vi.spyOn(adminService, 'getSellers').mockResolvedValue(mockSellersList);
 
     vi.spyOn(adminService, 'getOrders').mockResolvedValue({
-      data: mockOrdersList,
+      data: JSON.parse(JSON.stringify(mockOrdersList)),
       meta: {
         total: mockOrdersList.length,
         current_page: 1,
@@ -238,6 +238,34 @@ describe('FE-101 / ADM-06: Admin Orders Monitoring Page', () => {
       },
       links: {},
     });
+
+    vi.spyOn(adminService, 'overrideOrderStatus').mockImplementation(
+      async (id, newStatus, reason) => {
+        if (!reason || !reason.trim()) {
+          throw new Error(
+            'A reason is mandatory for administrative order status overrides (ADM-07).'
+          );
+        }
+        const found = mockOrdersList.find((o) => o.id === Number(id));
+        return {
+          ...found,
+          status: newStatus,
+          status_history: [
+            ...(found.status_history || []),
+            {
+              id: (found.status_history?.length || 0) + 1,
+              order_id: found.id,
+              from_status: found.status,
+              to_status: newStatus,
+              changed_by: 1,
+              note: `Admin override: ${reason}`,
+              created_at: new Date().toISOString(),
+            },
+          ],
+          updated_at: new Date().toISOString(),
+        };
+      }
+    );
   });
 
   describe('1. Orders Table & Listing (ADM-06, Figma Section 14)', () => {
@@ -293,7 +321,7 @@ describe('FE-101 / ADM-06: Admin Orders Monitoring Page', () => {
       );
     });
 
-    it('renders View Details button for each order row', async () => {
+    it('renders View Details and Override action buttons for each order row', async () => {
       render(
         <TestWrapper>
           <AdminOrders />
@@ -305,8 +333,10 @@ describe('FE-101 / ADM-06: Admin Orders Monitoring Page', () => {
       });
 
       expect(screen.getByTestId('view-order-btn-1')).toBeInTheDocument();
+      expect(screen.getByTestId('override-status-btn-1')).toBeInTheDocument();
+
       expect(screen.getByTestId('view-order-btn-2')).toBeInTheDocument();
-      expect(screen.getByTestId('view-order-btn-3')).toBeInTheDocument();
+      expect(screen.getByTestId('override-status-btn-2')).toBeInTheDocument();
     });
   });
 
@@ -544,7 +574,205 @@ describe('FE-101 / ADM-06: Admin Orders Monitoring Page', () => {
     });
   });
 
-  describe('4. Error Handling, Empty State & Refresh', () => {
+  describe('4. Order Status Override (FE-102 / ADM-07)', () => {
+    it('opens override modal and enforces mandatory target status selection', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <TestWrapper>
+          <AdminOrders />
+        </TestWrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('override-status-btn-1')).toBeInTheDocument();
+      });
+
+      // Click Override button on row 1
+      await user.click(screen.getByTestId('override-status-btn-1'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('override-status-modal')).toBeInTheDocument();
+      });
+
+      // Verify current status is displayed
+      expect(
+        screen.getByTestId('override-current-status-badge')
+      ).toHaveTextContent('Confirmed');
+
+      // Attempt to submit without selecting a target status or entering reason
+      await user.click(screen.getByTestId('override-modal-submit-btn'));
+
+      expect(screen.getByTestId('override-status-error')).toHaveTextContent(
+        /Please select a target status/i
+      );
+      expect(screen.getByTestId('override-reason-error')).toHaveTextContent(
+        /A reason is mandatory/i
+      );
+      expect(adminService.overrideOrderStatus).not.toHaveBeenCalled();
+    });
+
+    it('enforces mandatory override reason and blocks submission with empty or whitespace reason (ADM-07)', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <TestWrapper>
+          <AdminOrders />
+        </TestWrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('override-status-btn-1')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('override-status-btn-1'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('override-status-modal')).toBeInTheDocument();
+      });
+
+      // Select target status 'completed'
+      const statusSelect = screen.getByTestId('override-status-select');
+      await user.selectOptions(statusSelect, 'completed');
+
+      // Enter only whitespace for reason
+      const reasonInput = screen.getByTestId('override-reason-input');
+      await user.type(reasonInput, '   ');
+
+      // Attempt to submit
+      await user.click(screen.getByTestId('override-modal-submit-btn'));
+
+      expect(screen.getByTestId('override-reason-error')).toHaveTextContent(
+        /A reason is mandatory for administrative order status overrides/i
+      );
+      expect(adminService.overrideOrderStatus).not.toHaveBeenCalled();
+    });
+
+    it('successfully overrides status with mandatory justification reason and updates table & toast (ADM-07)', async () => {
+      const user = userEvent.setup();
+      const toastSuccess = vi.fn();
+
+      render(
+        <TestWrapper toastMocks={{ success: toastSuccess }}>
+          <AdminOrders />
+        </TestWrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('override-status-btn-1')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('override-status-btn-1'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('override-status-modal')).toBeInTheDocument();
+      });
+
+      // Select 'ready'
+      const statusSelect = screen.getByTestId('override-status-select');
+      await user.selectOptions(statusSelect, 'ready');
+
+      // Enter valid mandatory reason
+      const reasonInput = screen.getByTestId('override-reason-input');
+      await user.type(
+        reasonInput,
+        'Buyer confirmed pickup at vendor market stall via phone call'
+      );
+
+      // Submit
+      await user.click(screen.getByTestId('override-modal-submit-btn'));
+
+      await waitFor(() => {
+        expect(adminService.overrideOrderStatus).toHaveBeenCalledWith(
+          1,
+          'ready',
+          'Buyer confirmed pickup at vendor market stall via phone call'
+        );
+      });
+
+      // Modal closes
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('override-status-modal')
+        ).not.toBeInTheDocument();
+      });
+
+      // Status badge in table row updates to Ready
+      await waitFor(() => {
+        expect(screen.getByTestId('order-status-badge-1')).toHaveTextContent(
+          'Ready'
+        );
+      });
+
+      expect(toastSuccess).toHaveBeenCalledWith(
+        expect.stringContaining('overridden to ready')
+      );
+    });
+
+    it('allows overriding status directly from the Order Details modal', async () => {
+      const user = userEvent.setup();
+      const toastSuccess = vi.fn();
+
+      render(
+        <TestWrapper toastMocks={{ success: toastSuccess }}>
+          <AdminOrders />
+        </TestWrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('view-order-btn-2')).toBeInTheDocument();
+      });
+
+      // Open View Details for order 2 (completed)
+      await user.click(screen.getByTestId('view-order-btn-2'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('view-order-modal')).toBeInTheDocument();
+      });
+
+      // Click Override Status button inside modal
+      const modalOverrideBtn = screen.getByTestId('modal-override-status-btn');
+      expect(modalOverrideBtn).toBeInTheDocument();
+      await user.click(modalOverrideBtn);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('override-status-modal')).toBeInTheDocument();
+      });
+
+      // Override from terminal 'completed' to 'processing' (ADM-07 terminal exception)
+      const statusSelect = screen.getByTestId('override-status-select');
+      await user.selectOptions(statusSelect, 'processing');
+
+      const reasonInput = screen.getByTestId('override-reason-input');
+      await user.type(
+        reasonInput,
+        'Buyer reported damaged crate upon delivery; order reopened for seller replacement'
+      );
+
+      await user.click(screen.getByTestId('override-modal-submit-btn'));
+
+      await waitFor(() => {
+        expect(adminService.overrideOrderStatus).toHaveBeenCalledWith(
+          2,
+          'processing',
+          'Buyer reported damaged crate upon delivery; order reopened for seller replacement'
+        );
+      });
+
+      // Modal reflects updated status
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-order-status')).toHaveTextContent(
+          'Processing'
+        );
+      });
+
+      expect(toastSuccess).toHaveBeenCalledWith(
+        expect.stringContaining('overridden to processing')
+      );
+    });
+  });
+
+  describe('5. Error Handling, Empty State & Refresh', () => {
     it('displays error state with working retry when loading orders fails', async () => {
       adminService.getOrders.mockRejectedValueOnce(
         new Error('Network error loading orders')

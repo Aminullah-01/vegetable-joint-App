@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { adminService } from '../../services/adminService';
+import { ToastContext } from '../../context/toastContextDef';
 import {
   Button,
   Modal,
@@ -12,13 +13,16 @@ import {
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 /**
- * AdminOrders — Orders Monitoring Page (ADM-06, Figma Section 14)
+ * AdminOrders — Orders Monitoring & Status Override Page (ADM-06, ADM-07, Figma Section 14)
  *
  * Requirements:
  * - ADM-06: Admins shall be able to view and search all orders (by number, buyer, seller, status, date) and view order details.
- * - Figma Section 14: Search by order number, buyer, seller, status, date; complete order details view.
+ * - ADM-07: Admins shall be able to override an order’s status, with a mandatory reason recorded in the status history.
+ * - Figma Section 14: Searchable orders table, complete order details view, and status override with mandatory reason.
  */
 export function AdminOrders() {
+  const toast = useContext(ToastContext);
+
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -37,6 +41,11 @@ export function AdminOrders() {
 
   // Detail Modal state (ADM-06)
   const [viewingOrder, setViewingOrder] = useState(null);
+
+  // Status Override Modal state (ADM-07)
+  const [overrideTarget, setOverrideTarget] = useState(null); // { order, targetStatus, reason }
+  const [overrideFormError, setOverrideFormError] = useState({});
+  const [isSubmittingOverride, setIsSubmittingOverride] = useState(false);
 
   // Load sellers list for dropdown filter
   useEffect(() => {
@@ -141,6 +150,76 @@ export function AdminOrders() {
     setCurrentPage(1);
   };
 
+  const openOverrideModal = (order) => {
+    setOverrideTarget({
+      order,
+      targetStatus: '',
+      reason: '',
+    });
+    setOverrideFormError({});
+  };
+
+  const closeOverrideModal = () => {
+    setOverrideTarget(null);
+    setOverrideFormError({});
+  };
+
+  // Submit Administrative Order Status Override (ADM-07)
+  const handleConfirmOverride = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!overrideTarget) return;
+
+    const errors = {};
+    if (!overrideTarget.targetStatus) {
+      errors.status = 'Please select a target status.';
+    }
+    if (!overrideTarget.reason || !overrideTarget.reason.trim()) {
+      errors.reason =
+        'A reason is mandatory for administrative order status overrides (ADM-07).';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setOverrideFormError(errors);
+      return;
+    }
+
+    try {
+      setIsSubmittingOverride(true);
+      setOverrideFormError({});
+
+      const updated = await adminService.overrideOrderStatus(
+        overrideTarget.order.id,
+        overrideTarget.targetStatus,
+        overrideTarget.reason.trim()
+      );
+
+      // Update in local orders state
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === overrideTarget.order.id ? { ...o, ...updated } : o
+        )
+      );
+
+      // If viewing modal is currently open for this order, update it in place
+      if (viewingOrder && viewingOrder.id === overrideTarget.order.id) {
+        setViewingOrder((prev) => ({ ...prev, ...updated }));
+      }
+
+      const successMsg = `Order ${overrideTarget.order.order_number} status overridden to ${overrideTarget.targetStatus}.`;
+      toast?.success?.(successMsg);
+
+      closeOverrideModal();
+    } catch (err) {
+      const errMsg =
+        err?.message ||
+        'Failed to override order status. Please check inputs and try again.';
+      setOverrideFormError({ reason: errMsg });
+      toast?.error?.(errMsg);
+    } finally {
+      setIsSubmittingOverride(false);
+    }
+  };
+
   const hasActiveFilters =
     Boolean(searchQuery.trim()) ||
     statusFilter !== 'all' ||
@@ -211,7 +290,7 @@ export function AdminOrders() {
             }}
           >
             Global monitoring of all buyer purchases and seller fulfillments
-            across the marketplace (ADM-06).
+            across the marketplace (ADM-06, ADM-07).
           </p>
         </div>
 
@@ -485,7 +564,7 @@ export function AdminOrders() {
                     style={{
                       padding: '0.85rem 1rem',
                       textAlign: 'right',
-                      minWidth: '120px',
+                      minWidth: '180px',
                     }}
                   >
                     Actions
@@ -654,16 +733,42 @@ export function AdminOrders() {
                           textAlign: 'right',
                         }}
                       >
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          data-testid={`view-order-btn-${order.id}`}
-                          onClick={() => setViewingOrder(order)}
-                          aria-label={`View details for order ${order.order_number}`}
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            gap: '0.4rem',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            flexWrap: 'wrap',
+                          }}
                         >
-                          View Details
-                        </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            data-testid={`view-order-btn-${order.id}`}
+                            onClick={() => setViewingOrder(order)}
+                            aria-label={`View details for order ${order.order_number}`}
+                          >
+                            View
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            data-testid={`override-status-btn-${order.id}`}
+                            onClick={() => openOverrideModal(order)}
+                            style={{
+                              color: '#b45309',
+                              borderColor: '#fde68a',
+                              backgroundColor: '#fffbeb',
+                            }}
+                            aria-label={`Override status for order ${order.order_number}`}
+                          >
+                            Override
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -708,10 +813,27 @@ export function AdminOrders() {
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
                 width: '100%',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
               }}
             >
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="modal-override-status-btn"
+                onClick={() => openOverrideModal(viewingOrder)}
+                style={{
+                  color: '#b45309',
+                  borderColor: '#fde68a',
+                  backgroundColor: '#fffbeb',
+                }}
+              >
+                Override Status
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -1288,6 +1410,216 @@ export function AdminOrders() {
                 </div>
               )}
           </div>
+        </Modal>
+      )}
+
+      {/* Administrative Status Override Modal (ADM-07) */}
+      {overrideTarget && (
+        <Modal
+          isOpen={Boolean(overrideTarget)}
+          onClose={closeOverrideModal}
+          title={`Override Status: ${overrideTarget.order.order_number}`}
+          description="Administrative override bypasses normal order lifecycle progression. A mandatory justification reason is permanently recorded in the status audit trail (ADM-07)."
+          size="md"
+          testId="override-status-modal"
+          footer={
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+                width: '100%',
+              }}
+            >
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={closeOverrideModal}
+                disabled={isSubmittingOverride}
+                data-testid="override-modal-cancel-btn"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmOverride}
+                disabled={isSubmittingOverride}
+                data-testid="override-modal-submit-btn"
+              >
+                {isSubmittingOverride
+                  ? 'Saving Override...'
+                  : 'Confirm Override'}
+              </Button>
+            </div>
+          }
+        >
+          <form
+            onSubmit={handleConfirmOverride}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem',
+            }}
+          >
+            {/* Current Status Row */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.75rem 1rem',
+                backgroundColor: '#f8fafc',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.85rem',
+                  color: '#64748b',
+                  fontWeight: '500',
+                }}
+              >
+                Current Status:
+              </span>
+              <OrderStatusBadge
+                status={overrideTarget.order.status}
+                size="sm"
+                testId="override-current-status-badge"
+              />
+            </div>
+
+            {/* Target Status Select */}
+            <div>
+              <label
+                htmlFor="override-status-select"
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  color: '#1e293b',
+                  marginBottom: '0.35rem',
+                }}
+              >
+                Target Status <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <select
+                id="override-status-select"
+                value={overrideTarget.targetStatus}
+                onChange={(e) =>
+                  setOverrideTarget((prev) => ({
+                    ...prev,
+                    targetStatus: e.target.value,
+                  }))
+                }
+                data-testid="override-status-select"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: '6px',
+                  border: `1px solid ${
+                    overrideFormError.status ? '#ef4444' : '#cbd5e1'
+                  }`,
+                  fontSize: '0.9rem',
+                  backgroundColor: '#ffffff',
+                  color: '#1e293b',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="">-- Select Target Status --</option>
+                {[
+                  'pending',
+                  'confirmed',
+                  'processing',
+                  'ready',
+                  'completed',
+                  'cancelled',
+                ]
+                  .filter((st) => st !== overrideTarget.order.status)
+                  .map((st) => (
+                    <option key={st} value={st}>
+                      {st.charAt(0).toUpperCase() + st.slice(1)}
+                    </option>
+                  ))}
+              </select>
+              {overrideFormError.status && (
+                <p
+                  data-testid="override-status-error"
+                  style={{
+                    color: '#dc2626',
+                    fontSize: '0.8rem',
+                    margin: '0.25rem 0 0',
+                  }}
+                >
+                  {overrideFormError.status}
+                </p>
+              )}
+            </div>
+
+            {/* Mandatory Reason */}
+            <div>
+              <label
+                htmlFor="override-reason-input"
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  color: '#1e293b',
+                  marginBottom: '0.35rem',
+                }}
+              >
+                Override Reason (Mandatory){' '}
+                <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <textarea
+                id="override-reason-input"
+                value={overrideTarget.reason}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setOverrideTarget((prev) => ({ ...prev, reason: val }));
+                  if (overrideFormError.reason) {
+                    setOverrideFormError((err) => ({ ...err, reason: null }));
+                  }
+                }}
+                rows={3}
+                placeholder="e.g. Manual payment verification, customer service dispute resolution, verbal cancellation by customer"
+                data-testid="override-reason-input"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: '6px',
+                  border: `1px solid ${
+                    overrideFormError.reason ? '#ef4444' : '#cbd5e1'
+                  }`,
+                  fontSize: '0.9rem',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box',
+                  resize: 'vertical',
+                }}
+                required
+              />
+              {overrideFormError.reason ? (
+                <p
+                  data-testid="override-reason-error"
+                  style={{
+                    color: '#dc2626',
+                    fontSize: '0.8rem',
+                    margin: '0.25rem 0 0',
+                  }}
+                >
+                  {overrideFormError.reason}
+                </p>
+              ) : (
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  A detailed justification reason is required by marketplace
+                  compliance rules (ADM-07).
+                </span>
+              )}
+            </div>
+          </form>
         </Modal>
       )}
     </div>

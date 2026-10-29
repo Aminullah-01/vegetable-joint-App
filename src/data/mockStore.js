@@ -2910,6 +2910,105 @@ class MockStore {
     };
   }
 
+  overrideOrderStatus(id, newStatus, reason) {
+    if (!reason || !reason.trim()) {
+      throw new ApiError({
+        message:
+          'A mandatory reason is required for administrative status overrides (ADM-07).',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: {
+          reason: [
+            'The reason field is required for administrative status overrides.',
+          ],
+        },
+      });
+    }
+
+    const order = this.getOrderById(id);
+    const validStatuses = [
+      'pending',
+      'confirmed',
+      'processing',
+      'ready',
+      'completed',
+      'cancelled',
+    ];
+    if (!validStatuses.includes(newStatus)) {
+      throw new ApiError({
+        message: `Invalid target status '${newStatus}'.`,
+        status: 422,
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    if (order.status === newStatus) {
+      throw new ApiError({
+        message: `Order is already in '${newStatus}' status.`,
+        status: 422,
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const oldStatus = order.status;
+    const trimmedReason = reason.trim();
+    order.status = newStatus;
+    order.updated_at = new Date().toISOString();
+
+    if (newStatus === 'completed') {
+      order.completed_at = new Date().toISOString();
+    } else if (oldStatus === 'completed' && newStatus !== 'completed') {
+      order.completed_at = null;
+    }
+
+    if (newStatus === 'cancelled') {
+      order.cancel_reason = `Admin override: ${trimmedReason}`;
+    }
+
+    const historyEntry = {
+      id: (order.status_history?.length || 0) + 1,
+      order_id: order.id,
+      from_status: oldStatus,
+      to_status: newStatus,
+      changed_by: this.currentUser?.id || 1,
+      note: `Admin override: ${trimmedReason}`,
+      created_at: new Date().toISOString(),
+    };
+
+    if (!Array.isArray(order.status_history)) {
+      order.status_history = [];
+    }
+    order.status_history.push(historyEntry);
+
+    // Audit log (ADM-07, ADM-09)
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: this.currentUser?.id || 1,
+      action: 'order.status_override',
+      entity_type: 'order',
+      entity_id: order.id,
+      ip_address: '127.0.0.1',
+      metadata: {
+        order_number: order.order_number,
+        from_status: oldStatus,
+        to_status: newStatus,
+        reason: trimmedReason,
+      },
+      created_at: new Date().toISOString(),
+    });
+
+    const buyerObj =
+      order.buyer || this.users.find((u) => u.id === order.buyer_id);
+    const sellerObj =
+      order.seller || this.sellers.find((s) => s.id === order.seller_id);
+
+    return {
+      ...order,
+      buyer: buyerObj ? sanitizeUser(buyerObj) : null,
+      seller: sellerObj || null,
+    };
+  }
+
   getSettings() {
     return { ...this.settings };
   }

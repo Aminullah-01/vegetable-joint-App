@@ -127,6 +127,36 @@ export const orderService = {
     const response = await apiClient.post(`/orders/${id}/cancel`, { reason });
     return response.data;
   },
+
+  /**
+   * Override an order status with a mandatory justification reason (Admin-only, ADM-07).
+   * Endpoint: POST /admin/orders/{id}/override-status
+   *
+   * @param {string|number} id
+   * @param {string} status
+   * @param {string} reason
+   * @returns {Promise<Object>}
+   */
+  async overrideOrderStatus(id, status, reason) {
+    if (!reason || !reason.trim()) {
+      throw new Error(
+        'A reason is mandatory for administrative order status overrides (ADM-07).'
+      );
+    }
+
+    if (isMockMode()) {
+      return mockStore.overrideOrderStatus(id, status, reason);
+    }
+
+    const response = await apiClient.post(
+      `/admin/orders/${id}/override-status`,
+      {
+        status,
+        reason,
+      }
+    );
+    return response.data;
+  },
 };
 
 export default orderService;

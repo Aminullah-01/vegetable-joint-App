@@ -97,7 +97,7 @@ describe('AppRoutes & Route-level Code Splitting (FE-021, NFR-PERF-01)', () => {
     );
 
     expect(
-      await screen.findByText(/Admin Overview \(ADM-10\)/i)
+      await screen.findByRole('heading', { level: 1, name: /Admin Overview/i })
     ).toBeInTheDocument();
   });
 });
