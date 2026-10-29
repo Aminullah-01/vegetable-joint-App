@@ -11,6 +11,7 @@ import { STRINGS } from '../constants/index.js';
 import { hashPassword, verifyPassword } from '../utils/passwordHash.js';
 import { PHONE_REGEX } from '../utils/validation.js';
 import { generateUUID } from '../utils/uuid.js';
+import { validateProductImage } from '../utils/image.js';
 
 /**
  * Shared demo password for every seeded mock account. It is hashed on load so
@@ -829,6 +830,74 @@ class MockStore {
 
     this.products.unshift(newProduct);
     return newProduct;
+  }
+
+  /**
+   * Uploads a product image with simulated progress (SEL-05, A-08).
+   *
+   * @param {File|Blob} file
+   * @param {Function} [onProgress] - ({ loaded, total, percent })
+   * @returns {Promise<{ url: string, filename: string, size: number, type: string }>}
+   */
+  async uploadImage(file, onProgress) {
+    if (!file) {
+      throw new ApiError({
+        message: 'No image file provided for upload.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const validationError = validateProductImage(file);
+    if (validationError) {
+      throw new ApiError({
+        message: validationError,
+        status: 422,
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const totalBytes = file.size || 100000;
+
+    if (typeof onProgress === 'function') {
+      const steps = [
+        { percent: 25, loaded: Math.round(totalBytes * 0.25) },
+        { percent: 60, loaded: Math.round(totalBytes * 0.6) },
+        { percent: 90, loaded: Math.round(totalBytes * 0.9) },
+        { percent: 100, loaded: totalBytes },
+      ];
+      for (const step of steps) {
+        onProgress({
+          loaded: step.loaded,
+          total: totalBytes,
+          percent: step.percent,
+        });
+        await new Promise((r) => setTimeout(r, 20));
+      }
+    }
+
+    let url = '';
+    if (
+      typeof URL !== 'undefined' &&
+      typeof URL.createObjectURL === 'function'
+    ) {
+      try {
+        url = URL.createObjectURL(file);
+      } catch {
+        url =
+          'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80';
+      }
+    } else {
+      url =
+        'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80';
+    }
+
+    return {
+      url,
+      filename: file.name || 'product-image.jpg',
+      size: file.size || 0,
+      type: file.type || 'image/jpeg',
+    };
   }
 
   updateProduct(id, data) {

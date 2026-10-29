@@ -442,6 +442,96 @@ export class ApiClient {
       body: formData,
     });
   }
+
+  /**
+   * Multipart file upload with upload progress tracking (IF-01, SEL-05).
+   * Uses XMLHttpRequest when available so upload progress events can be monitored.
+   *
+   * @param {string} endpoint
+   * @param {FormData} formData
+   * @param {Object} [options={}]
+   * @param {Function} [options.onProgress] - Callback receiving ({ loaded, total, percent })
+   * @returns {Promise<any>}
+   */
+  uploadWithProgress(endpoint, formData, options = {}) {
+    const {
+      onProgress,
+      method = 'POST',
+      headers: customHeaders = {},
+      params = {},
+      skipAuth = false,
+      token: tokenOverride,
+    } = options;
+
+    if (
+      typeof XMLHttpRequest === 'undefined' ||
+      typeof onProgress !== 'function'
+    ) {
+      return this.upload(endpoint, formData, options);
+    }
+
+    const url = formatUrl(this.baseUrl, endpoint, params);
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, url);
+
+      xhr.setRequestHeader('Accept', 'application/json');
+
+      if (!skipAuth) {
+        const activeToken = tokenOverride || this.getToken();
+        if (activeToken) {
+          xhr.setRequestHeader('Authorization', `Bearer ${activeToken}`);
+        }
+      }
+
+      for (const [key, value] of Object.entries(customHeaders)) {
+        xhr.setRequestHeader(key, value);
+      }
+
+      if (xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            onProgress({
+              loaded: event.loaded,
+              total: event.total,
+              percent,
+            });
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        let parsed = null;
+        try {
+          parsed = JSON.parse(xhr.responseText);
+        } catch {
+          parsed = xhr.responseText;
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(parsed?.data ?? parsed);
+        } else {
+          reject(
+            new Error(
+              parsed?.message || `Upload failed with status ${xhr.status}`
+            )
+          );
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error during file upload'));
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error('Upload request timed out'));
+      };
+
+      xhr.send(formData);
+    });
+  }
 }
 
 /**

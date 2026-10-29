@@ -1,11 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth, useToast } from '../../hooks';
 import { canSellerPublish } from '../../utils/sellerStatus';
 import { sellerService } from '../../services/sellerService';
 import { categoryService } from '../../services/categoryService';
-import { validateProductImage } from '../../utils/image';
-import { Button, Input, Select, Textarea } from '../../components/common';
+import {
+  Button,
+  Input,
+  Select,
+  Textarea,
+  ImageUploader,
+} from '../../components/common';
 
 const ALLOWED_UNITS = [
   { value: 'basket', label: 'per basket' },
@@ -35,7 +40,6 @@ export function SellerProductForm() {
   const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
 
   const canPublish = canSellerPublish(user);
 
@@ -332,41 +336,6 @@ export function SellerProductForm() {
     if (fieldErr) {
       setErrors((prev) => ({ ...prev, [name]: fieldErr }));
     }
-  };
-
-  // Image file upload handler (SEL-05, A-08)
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const imgErr = validateProductImage(file);
-    if (imgErr) {
-      setErrors((prev) => ({ ...prev, image: imgErr }));
-      return;
-    }
-
-    setErrors((prev) => ({ ...prev, image: undefined }));
-
-    // Create object preview
-    const previewUrl = URL.createObjectURL(file);
-    setFormData((prev) => ({
-      ...prev,
-      imageFile: file,
-      imagePreview: previewUrl,
-    }));
-  };
-
-  const handleRemoveImage = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    setFormData((prev) => ({
-      ...prev,
-      image: '',
-      imageFile: null,
-      imagePreview: null,
-    }));
-    setErrors((prev) => ({ ...prev, image: undefined }));
   };
 
   // Form submission handler (SEL-02, SEL-03)
@@ -793,150 +762,41 @@ export function SellerProductForm() {
             data-testid="product-description-input"
           />
 
-          {/* Product Image Upload & Preview (SEL-05, A-08) */}
-          <div
-            style={{
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '1.25rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
+          {/* Product Image Upload, Preview & Progress (FE-084 / SEL-05) */}
+          <ImageUploader
+            id="prod-image-file"
+            label="Product Image (SEL-05)"
+            helperText="JPEG, PNG or WebP — Maximum 2 MB (A-08, SEL-05)"
+            value={formData.imagePreview || formData.image}
+            onChange={({ file, previewUrl, uploadedUrl }) => {
+              setFormData((prev) => ({
+                ...prev,
+                imageFile: file || null,
+                imagePreview: previewUrl || null,
+                image:
+                  uploadedUrl !== undefined ? uploadedUrl || '' : prev.image,
+              }));
+              if (errors.image) {
+                setErrors((prev) => ({ ...prev, image: undefined }));
+              }
             }}
-            data-testid="product-image-upload-section"
-          >
-            <label
-              htmlFor="prod-image-file"
-              style={{
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: '#334155',
-              }}
-            >
-              Product Image (SEL-05)
-            </label>
-
-            <div
-              style={{
-                display: 'flex',
-                gap: '1.25rem',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-              }}
-            >
-              {/* Thumbnail Preview or Fallback Placeholder */}
-              <div
-                style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  flexShrink: 0,
-                }}
-              >
-                {formData.imagePreview ? (
-                  <img
-                    src={formData.imagePreview}
-                    alt="Produce preview"
-                    data-testid="product-image-preview"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    }}
-                  />
-                ) : (
-                  <span
-                    data-testid="product-image-placeholder-icon"
-                    style={{ fontSize: '2rem' }}
-                    aria-label="Default produce placeholder"
-                    role="img"
-                  >
-                    🥦
-                  </span>
-                )}
-              </div>
-
-              {/* Upload Controls & Format constraints */}
-              <div style={{ flex: 1, minWidth: '200px' }}>
-                <input
-                  ref={fileInputRef}
-                  id="prod-image-file"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/*"
-                  onChange={handleImageChange}
-                  data-testid="product-image-input"
-                  style={{
-                    fontSize: '0.85rem',
-                    color: '#475569',
-                    marginBottom: '0.35rem',
-                    display: 'block',
-                  }}
-                />
-                <div
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#64748b',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  Supported formats: <strong>JPEG, PNG or WebP</strong> &bull;
-                  Maximum size: <strong>2 MB</strong> (A-08, SEL-05).
-                </div>
-                <div
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#94a3b8',
-                    marginTop: '0.2rem',
-                  }}
-                >
-                  If no image is uploaded, a default fresh vegetable placeholder
-                  will be used automatically.
-                </div>
-
-                {formData.imagePreview && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    data-testid="product-remove-image-btn"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#dc2626',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      padding: '0.25rem 0',
-                      marginTop: '0.25rem',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Remove image
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {errors.image && (
-              <span
-                data-testid="product-image-error"
-                style={{
-                  color: '#dc2626',
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                }}
-              >
-                ⚠️ {errors.image}
-              </span>
-            )}
-          </div>
+            onRemove={() => {
+              setFormData((prev) => ({
+                ...prev,
+                image: '',
+                imageFile: null,
+                imagePreview: null,
+              }));
+              setErrors((prev) => ({ ...prev, image: undefined }));
+            }}
+            onError={(errMsg) => {
+              setErrors((prev) => ({ ...prev, image: errMsg }));
+            }}
+            externalError={errors.image}
+            disabled={!canPublish || isSubmitting}
+            autoUpload={true}
+            testId="product-image"
+          />
 
           {/* Form Actions (Save & Publish vs Cancel) */}
           <div

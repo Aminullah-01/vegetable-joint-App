@@ -141,6 +141,30 @@ export const sellerService = {
   },
 
   /**
+   * Upload a product image file with progress callback (SEL-05).
+   * Endpoint: POST /seller/products/upload-image or mockStore simulation
+   *
+   * @param {File|Blob} file - Image file (JPEG, PNG, WebP, ≤ 2 MB)
+   * @param {Function} [onProgress] - Progress callback ({ loaded, total, percent })
+   * @returns {Promise<{ url: string, filename: string, size: number, type: string }>}
+   */
+  async uploadProductImage(file, onProgress) {
+    if (isMockMode()) {
+      return mockStore.uploadImage(file, onProgress);
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+    return apiClient.uploadWithProgress(
+      '/seller/products/upload-image',
+      formData,
+      {
+        onProgress,
+      }
+    );
+  },
+
+  /**
    * Quick update for inventory stock quantity and availability (SEL-07, SEL-08).
    * Endpoint: PATCH /products/{id}/stock
    *

@@ -46,6 +46,7 @@ export {
   ImageWithPlaceholder,
   VegetablePlaceholder,
 } from './LazyImage';
+export { ImageUploader } from './ImageUploader';
 export { ProductCard } from '../products/ProductCard';
 export { CategoryCard } from '../products/CategoryCard';
 export { SellerCard } from '../products/SellerCard';

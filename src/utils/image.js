@@ -1,3 +1,5 @@
+import { formatFileSize } from './formatters.js';
+
 /**
  * Image Utilities and NFR Constraints
  *
@@ -6,6 +8,8 @@
  * - NFR-COMP-03: Core browsing and cart functions remain usable if images fail to load (alt text and layout preserved).
  * - SEL-05 / A-08: Supported formats JPEG, PNG, WebP with max upload size of 2 MB. Default placeholder when missing or failed.
  */
+
+export { formatFileSize };
 
 export const IMAGE_BUDGETS = {
   THUMBNAIL_MAX_KB: 100, // NFR-PERF-03
