@@ -316,6 +316,37 @@ export const sellerService = {
     const response = await apiClient.get('/seller/sales', { params });
     return response.data;
   },
+
+  /**
+   * Get authenticated seller's profile details (SEL-01, AUTH-11).
+   * Endpoint: GET /seller/profile or GET /profile
+   *
+   * @returns {Promise<Object>}
+   */
+  async getSellerProfile() {
+    if (isMockMode()) {
+      return mockStore.getCurrentProfile();
+    }
+
+    const response = await apiClient.get('/seller/profile');
+    return response.data;
+  },
+
+  /**
+   * Update seller profile details (business_name, location, description, phone, name) (FE-094, AUTH-11).
+   * Endpoint: PUT /seller/profile or PUT /profile
+   *
+   * @param {Object} data
+   * @returns {Promise<Object>}
+   */
+  async updateSellerProfile(data) {
+    if (isMockMode()) {
+      return mockStore.updateProfile(data);
+    }
+
+    const response = await apiClient.put('/seller/profile', data);
+    return response.data;
+  },
 };
 
 export default sellerService;

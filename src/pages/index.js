@@ -32,6 +32,7 @@ export * from './seller/SellerOrders';
 export * from './seller/SellerOrderDetail';
 export * from './seller/SellerInventory';
 export * from './seller/SellerSales';
+export * from './seller/SellerProfileEdit';
 
 // Admin Dashboard Pages
 export * from './admin/AdminOverview';

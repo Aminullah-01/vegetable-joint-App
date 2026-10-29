@@ -37,6 +37,9 @@ const SellerOrderDetail = lazy(
 );
 const SellerInventory = lazy(() => import('../pages/seller/SellerInventory'));
 const SellerSales = lazy(() => import('../pages/seller/SellerSales'));
+const SellerProfileEdit = lazy(
+  () => import('../pages/seller/SellerProfileEdit')
+);
 
 // Lazy-loaded Admin Dashboard Pages (FE-021 / NFR-PERF-01)
 const AdminOverview = lazy(() => import('../pages/admin/AdminOverview'));
@@ -172,7 +175,10 @@ export function AppRoutes() {
           />
           <Route path={ROUTES.SELLER_INVENTORY} element={<SellerInventory />} />
           <Route path={ROUTES.SELLER_SALES} element={<SellerSales />} />
-          <Route path={ROUTES.SELLER_DASHBOARD_PROFILE} element={<Profile />} />
+          <Route
+            path={ROUTES.SELLER_DASHBOARD_PROFILE}
+            element={<SellerProfileEdit />}
+          />
         </Route>
 
         {/* Admin Dashboard Routes (Protected: admin role only) */}

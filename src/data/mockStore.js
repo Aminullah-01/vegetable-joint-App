@@ -429,7 +429,12 @@ class MockStore {
       // Default to guest/demo buyer
       return sanitizeUser(this.users.find((u) => u.id === 6));
     }
-    const seller = this.sellers.find((s) => s.user_id === this.currentUser.id);
+    const seller = this.sellers.find(
+      (s) =>
+        s.user_id === this.currentUser.id ||
+        (this.currentUser.seller_id && s.id === this.currentUser.seller_id) ||
+        (this.currentUser.seller?.id && s.id === this.currentUser.seller.id)
+    );
     return {
       ...sanitizeUser(this.currentUser),
       seller_profile: seller || null,
@@ -478,7 +483,13 @@ class MockStore {
       }
     }
 
-    const seller = this.sellers.find((s) => s.user_id === user.id) || null;
+    const seller =
+      this.sellers.find(
+        (s) =>
+          s.user_id === user.id ||
+          (user.seller_id && s.id === user.seller_id) ||
+          (user.seller?.id && s.id === user.seller.id)
+      ) || null;
 
     let businessName = null;
     let location = null;
