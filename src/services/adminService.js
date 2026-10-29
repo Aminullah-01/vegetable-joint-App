@@ -249,6 +249,42 @@ export const adminService = {
   },
 
   /**
+   * List all marketplace orders for monitoring (ADM-06).
+   * Endpoint: GET /admin/orders
+   *
+   * @param {Object} [params={}]
+   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   */
+  async getOrders(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getAdminOrders(params);
+    }
+
+    const response = await apiClient.get('/admin/orders', { params });
+    return {
+      data: response.data || [],
+      meta: response.meta,
+      links: response.links,
+    };
+  },
+
+  /**
+   * Get complete order details for administration (ADM-06).
+   * Endpoint: GET /admin/orders/{id}
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async getOrderById(id) {
+    if (isMockMode()) {
+      return mockStore.getAdminOrderById(id);
+    }
+
+    const response = await apiClient.get(`/admin/orders/${id}`);
+    return response.data;
+  },
+
+  /**
    * Retrieve platform configuration settings (ADM-06).
    * Endpoint: GET /admin/settings
    *

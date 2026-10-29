@@ -2748,6 +2748,168 @@ class MockStore {
     return { ...product };
   }
 
+  getAdminOrders(params = {}) {
+    const {
+      search,
+      q,
+      order_number,
+      buyer,
+      seller,
+      status,
+      date,
+      date_from,
+      date_to,
+      page = 1,
+      per_page = 20,
+    } = params;
+
+    let results = [...this.orders];
+
+    // Search query (order number, buyer, seller, delivery name, product name)
+    const term = (search || q || '').trim().toLowerCase();
+    if (term) {
+      results = results.filter((o) => {
+        const orderNum = o.order_number?.toLowerCase() || '';
+        const checkoutRef = o.checkout_ref?.toLowerCase() || '';
+        const buyerName = o.buyer?.name?.toLowerCase() || '';
+        const buyerEmail = o.buyer?.email?.toLowerCase() || '';
+        const deliveryName = o.delivery_name?.toLowerCase() || '';
+        const sellerName = o.seller?.business_name?.toLowerCase() || '';
+        const hasItemMatch =
+          Array.isArray(o.items) &&
+          o.items.some((it) => it.product_name?.toLowerCase().includes(term));
+        return (
+          orderNum.includes(term) ||
+          checkoutRef.includes(term) ||
+          buyerName.includes(term) ||
+          buyerEmail.includes(term) ||
+          deliveryName.includes(term) ||
+          sellerName.includes(term) ||
+          hasItemMatch
+        );
+      });
+    }
+
+    // Specific order number filter
+    if (order_number && order_number.trim()) {
+      const numTerm = order_number.trim().toLowerCase();
+      results = results.filter((o) =>
+        o.order_number?.toLowerCase().includes(numTerm)
+      );
+    }
+
+    // Buyer filter (name, email, or id)
+    if (buyer && buyer !== 'all') {
+      const bTerm = String(buyer).trim().toLowerCase();
+      results = results.filter((o) => {
+        const bId = String(o.buyer_id);
+        const bName = o.buyer?.name?.toLowerCase() || '';
+        const bEmail = o.buyer?.email?.toLowerCase() || '';
+        return bId === bTerm || bName.includes(bTerm) || bEmail.includes(bTerm);
+      });
+    }
+
+    // Seller filter (business name or id)
+    if (seller && seller !== 'all') {
+      const sTerm = String(seller).trim().toLowerCase();
+      results = results.filter((o) => {
+        const sId = String(o.seller_id);
+        const sName = o.seller?.business_name?.toLowerCase() || '';
+        return sId === sTerm || sName.includes(sTerm);
+      });
+    }
+
+    // Status filter
+    if (status && status !== 'all') {
+      results = results.filter(
+        (o) => o.status?.toLowerCase() === status.toLowerCase()
+      );
+    }
+
+    // Date filters (exact date: YYYY-MM-DD or range)
+    if (date && date.trim()) {
+      const targetDate = date.trim();
+      results = results.filter(
+        (o) => o.created_at && o.created_at.startsWith(targetDate)
+      );
+    } else {
+      if (date_from) {
+        const fromTime = new Date(date_from).setHours(0, 0, 0, 0);
+        if (!isNaN(fromTime)) {
+          results = results.filter(
+            (o) => new Date(o.created_at).getTime() >= fromTime
+          );
+        }
+      }
+      if (date_to) {
+        const toTime = new Date(date_to).setHours(23, 59, 59, 999);
+        if (!isNaN(toTime)) {
+          results = results.filter(
+            (o) => new Date(o.created_at).getTime() <= toTime
+          );
+        }
+      }
+    }
+
+    // Sort newest first
+    results.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    const meta = createPaginationMeta(results.length, page, per_page);
+    const offset = (meta.current_page - 1) * meta.per_page;
+
+    const enriched = results.slice(offset, offset + meta.per_page).map((o) => {
+      const buyerObj = o.buyer || this.users.find((u) => u.id === o.buyer_id);
+      const sellerObj =
+        o.seller || this.sellers.find((s) => s.id === o.seller_id);
+      return {
+        ...o,
+        buyer: buyerObj ? sanitizeUser(buyerObj) : null,
+        seller: sellerObj || null,
+      };
+    });
+
+    return {
+      data: enriched,
+      meta,
+      links: {
+        first: '?page=1',
+        last: `?page=${meta.last_page}`,
+        prev: meta.current_page > 1 ? `?page=${meta.current_page - 1}` : null,
+        next:
+          meta.current_page < meta.last_page
+            ? `?page=${meta.current_page + 1}`
+            : null,
+      },
+    };
+  }
+
+  getAdminOrderById(id) {
+    const order = this.orders.find(
+      (o) => o.id === Number(id) || o.order_number === String(id)
+    );
+    if (!order) {
+      throw new ApiError({
+        message: 'Order not found.',
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+    }
+
+    const buyerObj =
+      order.buyer || this.users.find((u) => u.id === order.buyer_id);
+    const sellerObj =
+      order.seller || this.sellers.find((s) => s.id === order.seller_id);
+
+    return {
+      ...order,
+      buyer: buyerObj ? sanitizeUser(buyerObj) : null,
+      seller: sellerObj || null,
+    };
+  }
+
   getSettings() {
     return { ...this.settings };
   }
