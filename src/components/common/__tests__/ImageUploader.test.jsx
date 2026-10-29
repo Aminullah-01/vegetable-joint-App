@@ -218,16 +218,16 @@ describe('ImageUploader Component (FE-084 / SEL-05)', () => {
   describe('4. Upload with Progress Tracking (SEL-05, AC: upload with progress)', () => {
     it('displays animated progress bar, percentage readout, and status during upload', async () => {
       let progressCallback;
+      let resolveUpload;
       const mockUploadFn = vi.fn((file, onProgress) => {
         progressCallback = onProgress;
         return new Promise((resolve) => {
-          setTimeout(() => {
+          resolveUpload = () =>
             resolve({
               url: 'https://cdn.vegetablejoint.ng/products/sweet-carrots.jpg',
               filename: file.name,
               size: file.size,
             });
-          }, 100);
         });
       });
 
@@ -259,6 +259,7 @@ describe('ImageUploader Component (FE-084 / SEL-05)', () => {
 
       // Trigger 100% progress
       progressCallback({ loaded: 1000, total: 1000, percent: 100 });
+      resolveUpload();
       expect(
         await screen.findByTestId('upload-progress-percentage')
       ).toHaveTextContent('100%');

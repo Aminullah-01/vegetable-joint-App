@@ -10,6 +10,7 @@ import {
   Select,
   Textarea,
   ImageUploader,
+  ConfirmDialog,
 } from '../../components/common';
 
 const ALLOWED_UNITS = [
@@ -62,6 +63,11 @@ export function SellerProductForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingProduct, setIsLoadingProduct] = useState(isEditing);
   const [serverError, setServerError] = useState(null);
+
+  // Soft delete state (FE-086 / SEL-04)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // Load available categories
   useEffect(() => {
@@ -416,6 +422,27 @@ export function SellerProductForm() {
         'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
     });
     setErrors({});
+  };
+
+  // Delete listing handler (FE-086 / SEL-04, BR-10)
+  const handleDeleteProduct = async () => {
+    if (!id) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await sellerService.deleteProduct(id);
+      toast.success(
+        `Vegetable "${formData.name || 'Listing'}" was successfully deleted (SEL-04).`
+      );
+      navigate('/seller/products', { replace: true });
+    } catch (err) {
+      setDeleteError(
+        err?.message || 'Failed to delete listing. Please try again.'
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoadingProduct) {
@@ -839,7 +866,7 @@ export function SellerProductForm() {
             testId="product-image"
           />
 
-          {/* Form Actions (Save & Publish vs Cancel) */}
+          {/* Form Actions (Save & Publish vs Cancel vs Delete) */}
           <div
             style={{
               display: 'flex',
@@ -874,9 +901,78 @@ export function SellerProductForm() {
             >
               Cancel
             </Link>
+
+            {/* Delete Listing Action in Edit Mode (FE-086 / SEL-04, BR-10) */}
+            {isEditing && (
+              <button
+                type="button"
+                data-testid="edit-form-delete-btn"
+                onClick={() => {
+                  setDeleteError(null);
+                  setShowDeleteDialog(true);
+                }}
+                disabled={!canPublish || isSubmitting || isDeleting}
+                title={
+                  !canPublish
+                    ? 'Listing deletion is locked until your seller account is approved'
+                    : `Delete "${formData.name || 'this listing'}"`
+                }
+                style={{
+                  marginLeft: 'auto',
+                  color: !canPublish ? '#94a3b8' : '#dc2626',
+                  backgroundColor: !canPublish ? '#f1f5f9' : '#fef2f2',
+                  border: `1px solid ${!canPublish ? '#cbd5e1' : '#fecaca'}`,
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  padding: '0.55rem 1.1rem',
+                  borderRadius: '6px',
+                  cursor: !canPublish ? 'not-allowed' : 'pointer',
+                  opacity: !canPublish ? 0.6 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span>🗑️</span>
+                <span>Delete Listing</span>
+              </button>
+            )}
           </div>
         </form>
       </div>
+
+      {/* Soft Delete Confirmation Dialog (FE-086 / SEL-04, BR-10) */}
+      {isEditing && (
+        <ConfirmDialog
+          isOpen={showDeleteDialog}
+          onClose={() => !isDeleting && setShowDeleteDialog(false)}
+          onConfirm={handleDeleteProduct}
+          title="Delete Vegetable Listing"
+          message={`Are you sure you want to delete "${formData.name || 'this vegetable'}"? This vegetable listing will be soft-deleted and removed from the marketplace. Past orders referencing this vegetable will not be affected (SEL-04, BR-10).`}
+          confirmText="Delete Vegetable"
+          cancelText="Cancel"
+          type="danger"
+          loading={isDeleting}
+          testId="delete-product-confirm-dialog"
+          details={
+            deleteError ? (
+              <div
+                role="alert"
+                data-testid="delete-dialog-error"
+                style={{
+                  color: '#991b1b',
+                  backgroundColor: '#fef2f2',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                }}
+              >
+                ⚠️ {deleteError}
+              </div>
+            ) : null
+          }
+        />
+      )}
     </div>
   );
 }

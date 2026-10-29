@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks';
+import { ToastContext } from '../../context/toastContextDef';
 import { canSellerPublish } from '../../utils/sellerStatus';
 import { sellerService } from '../../services/sellerService';
 import { categoryService } from '../../services/categoryService';
@@ -29,6 +30,7 @@ import {
  */
 export function SellerProducts() {
   const { user } = useAuth();
+  const toast = useContext(ToastContext);
   const canPublish = canSellerPublish(user);
 
   // Data states
@@ -204,6 +206,12 @@ export function SellerProducts() {
 
   // Initiate soft delete
   const handleDeleteClick = (product) => {
+    if (!canPublish) {
+      setDeleteError(
+        'Listing deletion is locked until your seller account is approved (AUTH-03, ADM-03).'
+      );
+      return;
+    }
     setProductToDelete(product);
     setDeleteError(null);
   };
@@ -216,9 +224,9 @@ export function SellerProducts() {
 
     try {
       await sellerService.deleteProduct(productToDelete.id);
-      setSuccessMessage(
-        `Vegetable "${productToDelete.name}" was successfully deleted (SEL-04).`
-      );
+      const successMsg = `Vegetable "${productToDelete.name}" was successfully deleted (SEL-04).`;
+      setSuccessMessage(successMsg);
+      toast?.success?.(successMsg);
       setProductToDelete(null);
 
       // Re-fetch or update list locally
@@ -227,6 +235,10 @@ export function SellerProducts() {
         ...prev,
         total: Math.max(0, prev.total - 1),
       }));
+
+      if (products.length === 1 && currentPage > 1) {
+        setCurrentPage((prev) => Math.max(1, prev - 1));
+      }
     } catch (err) {
       setDeleteError(
         err?.message || 'Failed to delete product. Please try again.'
@@ -1134,17 +1146,23 @@ export function SellerProducts() {
                             <button
                               type="button"
                               onClick={() => handleDeleteClick(prod)}
+                              disabled={!canPublish}
                               data-testid={`product-delete-btn-${prod.id}`}
-                              title={`Delete ${prod.name}`}
+                              title={
+                                !canPublish
+                                  ? 'Listing deletion is locked until your seller account is approved (AUTH-03, ADM-03)'
+                                  : `Delete ${prod.name}`
+                              }
                               style={{
-                                color: '#dc2626',
-                                background: '#fef2f2',
-                                border: '1px solid #fecaca',
+                                color: !canPublish ? '#94a3b8' : '#dc2626',
+                                background: !canPublish ? '#f1f5f9' : '#fef2f2',
+                                border: `1px solid ${!canPublish ? '#cbd5e1' : '#fecaca'}`,
                                 fontWeight: 600,
                                 fontSize: '0.825rem',
                                 padding: '0.35rem 0.65rem',
                                 borderRadius: '6px',
-                                cursor: 'pointer',
+                                cursor: !canPublish ? 'not-allowed' : 'pointer',
+                                opacity: !canPublish ? 0.6 : 1,
                               }}
                             >
                               Delete

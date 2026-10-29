@@ -997,6 +997,18 @@ class MockStore {
         code: 'FORBIDDEN',
       });
     }
+
+    const seller =
+      this.sellers.find((s) => s.id === product.seller_id) || this.sellers[0];
+
+    if (seller && seller.approval_status !== 'approved') {
+      throw new ApiError({
+        message: `Cannot delete product: seller account status is ${seller.approval_status} (AUTH-03, ADM-03).`,
+        status: 403,
+        code: 'FORBIDDEN',
+      });
+    }
+
     product.deleted_at = new Date().toISOString();
     return { message: 'Product deleted successfully.' };
   }
