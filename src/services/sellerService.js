@@ -211,6 +211,26 @@ export const sellerService = {
     const response = await apiClient.get('/seller/dashboard', { params });
     return response.data;
   },
+
+  /**
+   * Get orders placed with this seller (SEL-10, SEL-14).
+   * Endpoint: GET /seller/orders
+   *
+   * @param {Object} [params={}]
+   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   */
+  async getSellerOrders(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getOrders(params);
+    }
+
+    const response = await apiClient.get('/seller/orders', { params });
+    return {
+      data: response.data || [],
+      meta: response.meta,
+      links: response.links,
+    };
+  },
 };
 
 export default sellerService;

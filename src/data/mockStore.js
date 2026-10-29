@@ -1386,12 +1386,46 @@ class MockStore {
       results = results.filter((o) => o.buyer_id === user.id);
     } else if (user.role === 'seller') {
       const seller = this.sellers.find((s) => s.user_id === user.id);
-      const sellerId = seller ? seller.id : user.id;
-      results = results.filter((o) => o.seller_id === sellerId);
+      const sellerId =
+        params.seller_id ??
+        user.seller_id ??
+        user.seller?.id ??
+        (seller ? seller.id : user.id);
+      results = results.filter((o) => o.seller_id === Number(sellerId));
     }
 
     if (status && status !== 'all') {
       results = results.filter((o) => o.status === status);
+    }
+
+    // Date filtering (SEL-10)
+    if (params.date && params.date.trim()) {
+      const targetDate = params.date.trim();
+      results = results.filter((o) => {
+        if (!o.created_at) return false;
+        return o.created_at.startsWith(targetDate);
+      });
+    } else {
+      const fromDate = params.date_from || params.start_date;
+      const toDate = params.date_to || params.end_date;
+
+      if (fromDate) {
+        const fromTime = new Date(fromDate).setHours(0, 0, 0, 0);
+        if (!isNaN(fromTime)) {
+          results = results.filter(
+            (o) => new Date(o.created_at).getTime() >= fromTime
+          );
+        }
+      }
+
+      if (toDate) {
+        const toTime = new Date(toDate).setHours(23, 59, 59, 999);
+        if (!isNaN(toTime)) {
+          results = results.filter(
+            (o) => new Date(o.created_at).getTime() <= toTime
+          );
+        }
+      }
     }
 
     if (search && search.trim()) {
