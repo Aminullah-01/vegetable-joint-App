@@ -3014,9 +3014,53 @@ class MockStore {
   }
 
   updateSettings(data) {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid settings payload.');
+    }
+
+    if (data.site_name !== undefined) {
+      const trimmedName = String(data.site_name).trim();
+      if (!trimmedName) {
+        throw new Error('Site name is required.');
+      }
+      data.site_name = trimmedName;
+    }
+
+    if (
+      data.contact_email !== undefined &&
+      data.contact_email !== null &&
+      data.contact_email !== ''
+    ) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(String(data.contact_email).trim())) {
+        throw new Error('Please enter a valid contact email address.');
+      }
+      data.contact_email = String(data.contact_email).trim();
+    }
+
+    const changedKeys = Object.keys(data).filter(
+      (k) => k !== 'updated_at' && data[k] !== this.settings[k]
+    );
+
     Object.assign(this.settings, data, {
       updated_at: new Date().toISOString(),
     });
+
+    if (changedKeys.length > 0) {
+      this.auditLogs.unshift({
+        id: this.auditLogs.length + 1,
+        user_id: this.currentUser?.id || 1,
+        action: 'settings.updated',
+        entity_type: 'site_settings',
+        entity_id: null,
+        ip_address: '127.0.0.1',
+        metadata: {
+          keys_changed: changedKeys,
+        },
+        created_at: new Date().toISOString(),
+      });
+    }
+
     return { ...this.settings };
   }
 

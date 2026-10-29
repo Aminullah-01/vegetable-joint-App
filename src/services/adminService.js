@@ -315,7 +315,7 @@ export const adminService = {
   },
 
   /**
-   * Retrieve platform configuration settings (ADM-06).
+   * Retrieve platform configuration settings (ADM-08).
    * Endpoint: GET /admin/settings
    *
    * @returns {Promise<Record<string, any>>}
