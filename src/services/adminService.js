@@ -162,6 +162,93 @@ export const adminService = {
   },
 
   /**
+   * List all categories for administration (ADM-05).
+   * Endpoint: GET /categories
+   *
+   * @param {Object} [params={}]
+   * @returns {Promise<Array>}
+   */
+  async getCategories(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getCategories({ all: true, ...params });
+    }
+
+    const response = await apiClient.get('/categories', {
+      params: { all: true, ...params },
+    });
+    return response.data || [];
+  },
+
+  /**
+   * Create a new category (ADM-05).
+   * Endpoint: POST /categories
+   *
+   * @param {Object} data
+   * @returns {Promise<Object>}
+   */
+  async createCategory(data) {
+    if (isMockMode()) {
+      return mockStore.createCategory(data);
+    }
+
+    const response = await apiClient.post('/categories', data);
+    return response.data;
+  },
+
+  /**
+   * Update category name, slug, description, or status (ADM-05).
+   * Endpoint: PUT /categories/{id}
+   *
+   * @param {string|number} id
+   * @param {Object} data
+   * @returns {Promise<Object>}
+   */
+  async updateCategory(id, data) {
+    if (isMockMode()) {
+      return mockStore.updateCategory(id, data);
+    }
+
+    const response = await apiClient.put(`/categories/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete category (only allowed if unused per ADM-05 and BR-09).
+   * Endpoint: DELETE /categories/{id}
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async deleteCategory(id) {
+    if (isMockMode()) {
+      return mockStore.deleteCategory(id);
+    }
+
+    const response = await apiClient.delete(`/categories/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Deactivate category (ADM-05, BR-09).
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async deactivateCategory(id) {
+    return this.updateCategory(id, { is_active: false });
+  },
+
+  /**
+   * Reactivate category (ADM-05).
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async reactivateCategory(id) {
+    return this.updateCategory(id, { is_active: true });
+  },
+
+  /**
    * Retrieve platform configuration settings (ADM-06).
    * Endpoint: GET /admin/settings
    *

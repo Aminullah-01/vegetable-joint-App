@@ -1329,10 +1329,30 @@ class MockStore {
 
   // --- Categories ---
   getCategories(params = {}) {
-    if (params.all) {
-      return [...this.categories];
+    let results = [...this.categories];
+
+    if (!params.all && !params.include_inactive) {
+      results = results.filter((c) => c.is_active);
     }
-    return this.categories.filter((c) => c.is_active);
+
+    if (params.search) {
+      const term = params.search.trim().toLowerCase();
+      results = results.filter(
+        (c) =>
+          c.name.toLowerCase().includes(term) ||
+          (c.description && c.description.toLowerCase().includes(term))
+      );
+    }
+
+    return results.map((c) => {
+      const count = this.products.filter(
+        (p) => p.category_id === c.id && !p.deleted_at
+      ).length;
+      return {
+        ...c,
+        products_count: count > 0 ? count : (c.products_count ?? 0),
+      };
+    });
   }
 
   getCategoryById(id) {
@@ -1344,37 +1364,146 @@ class MockStore {
         code: 'NOT_FOUND',
       });
     }
-    return category;
+    const count = this.products.filter(
+      (p) => p.category_id === category.id && !p.deleted_at
+    ).length;
+    return {
+      ...category,
+      products_count: count > 0 ? count : (category.products_count ?? 0),
+    };
   }
 
   createCategory(data) {
+    if (!data.name || !data.name.trim()) {
+      throw new ApiError({
+        message: 'Category name is required.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: { name: ['The name field is required.'] },
+      });
+    }
+
+    const trimmedName = data.name.trim();
+    const existing = this.categories.find(
+      (c) => c.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (existing) {
+      throw new ApiError({
+        message: 'A category with this name already exists.',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: { name: ['The category name has already been taken.'] },
+      });
+    }
+
     const nextId = Math.max(0, ...this.categories.map((c) => c.id)) + 1;
     const newCategory = {
       id: nextId,
-      name: data.name,
-      slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
-      description: data.description || '',
+      name: trimmedName,
+      slug:
+        data.slug?.trim() ||
+        trimmedName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, ''),
+      description: data.description?.trim() || '',
       is_active: data.is_active !== false,
       products_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
     this.categories.push(newCategory);
-    return newCategory;
+
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: 1,
+      action: 'category.created',
+      entity_type: 'category',
+      entity_id: newCategory.id,
+      ip_address: '127.0.0.1',
+      metadata: { name: newCategory.name },
+      created_at: new Date().toISOString(),
+    });
+
+    return { ...newCategory };
   }
 
   updateCategory(id, data) {
-    const category = this.getCategoryById(id);
-    Object.assign(category, data, { updated_at: new Date().toISOString() });
-    return category;
+    const category = this.categories.find((c) => c.id === Number(id));
+    if (!category) {
+      throw new ApiError({
+        message: 'Category not found.',
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+    }
+
+    if (data.name && data.name.trim()) {
+      const trimmedName = data.name.trim();
+      const existing = this.categories.find(
+        (c) =>
+          c.id !== category.id &&
+          c.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (existing) {
+        throw new ApiError({
+          message: 'A category with this name already exists.',
+          status: 422,
+          code: 'VALIDATION_ERROR',
+          errors: { name: ['The category name has already been taken.'] },
+        });
+      }
+      category.name = trimmedName;
+    }
+
+    if (data.slug !== undefined) {
+      category.slug = data.slug.trim();
+    }
+    if (data.description !== undefined) {
+      category.description = data.description.trim();
+    }
+    if (data.is_active !== undefined) {
+      category.is_active = Boolean(data.is_active);
+    }
+    category.updated_at = new Date().toISOString();
+
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: 1,
+      action:
+        data.is_active === false ? 'category.deactivated' : 'category.updated',
+      entity_type: 'category',
+      entity_id: category.id,
+      ip_address: '127.0.0.1',
+      metadata: { name: category.name, is_active: category.is_active },
+      created_at: new Date().toISOString(),
+    });
+
+    const count = this.products.filter(
+      (p) => p.category_id === category.id && !p.deleted_at
+    ).length;
+    return {
+      ...category,
+      products_count: count > 0 ? count : (category.products_count ?? 0),
+    };
   }
 
   deleteCategory(id) {
-    const category = this.getCategoryById(id);
+    const category = this.categories.find((c) => c.id === Number(id));
+    if (!category) {
+      throw new ApiError({
+        message: 'Category not found.',
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+    }
     const hasProducts = this.products.some(
       (p) => p.category_id === category.id && !p.deleted_at
     );
-    if (hasProducts) {
+    if (
+      hasProducts ||
+      (category.products_count && category.products_count > 0)
+    ) {
       throw new ApiError({
         message:
           'Cannot delete category that contains active products (BR-09). You may deactivate it instead.',
@@ -1383,6 +1512,18 @@ class MockStore {
       });
     }
     this.categories = this.categories.filter((c) => c.id !== category.id);
+
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: 1,
+      action: 'category.deleted',
+      entity_type: 'category',
+      entity_id: category.id,
+      ip_address: '127.0.0.1',
+      metadata: { name: category.name },
+      created_at: new Date().toISOString(),
+    });
+
     return { message: 'Category deleted successfully.' };
   }
 

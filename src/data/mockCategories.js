@@ -106,6 +106,17 @@ export const mockCategories = [
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
   },
+  {
+    id: 11,
+    name: 'Exotic Herbs & Microgreens',
+    slug: 'exotic-herbs-microgreens',
+    description:
+      'Specialty culinary herbs, basil, dill, and hydroponic microgreens.',
+    is_active: false,
+    products_count: 0,
+    created_at: '2026-01-05T00:00:00Z',
+    updated_at: '2026-01-05T00:00:00Z',
+  },
 ];
 
 export default mockCategories;

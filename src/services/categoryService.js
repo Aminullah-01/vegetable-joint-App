@@ -88,6 +88,26 @@ export const categoryService = {
     const response = await apiClient.delete(`/categories/${id}`);
     return response.data;
   },
+
+  /**
+   * Deactivate category (Admin, ADM-05, BR-09).
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async deactivateCategory(id) {
+    return this.updateCategory(id, { is_active: false });
+  },
+
+  /**
+   * Reactivate category (Admin, ADM-05).
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async reactivateCategory(id) {
+    return this.updateCategory(id, { is_active: true });
+  },
 };
 
 export default categoryService;
