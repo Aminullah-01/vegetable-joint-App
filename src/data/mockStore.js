@@ -2416,6 +2416,197 @@ class MockStore {
     };
   }
 
+  getAdminProducts(params = {}) {
+    const {
+      search,
+      q,
+      category,
+      seller,
+      status,
+      availability,
+      page = 1,
+      per_page = 20,
+    } = params;
+
+    let results = [...this.products];
+
+    // Search filter
+    const term = (search || q || '').trim().toLowerCase();
+    if (term) {
+      results = results.filter((p) => {
+        const catName = p.category?.name?.toLowerCase() || '';
+        const sellerName = p.seller?.business_name?.toLowerCase() || '';
+        const name = p.name?.toLowerCase() || '';
+        return (
+          name.includes(term) ||
+          catName.includes(term) ||
+          sellerName.includes(term) ||
+          String(p.id).includes(term)
+        );
+      });
+    }
+
+    // Category filter
+    if (category && category !== 'all') {
+      results = results.filter(
+        (p) =>
+          String(p.category_id) === String(category) ||
+          p.category?.slug === category ||
+          p.category?.name?.toLowerCase() === category.toLowerCase()
+      );
+    }
+
+    // Seller filter
+    if (seller && seller !== 'all') {
+      results = results.filter(
+        (p) =>
+          String(p.seller_id) === String(seller) ||
+          p.seller?.business_name?.toLowerCase().includes(seller.toLowerCase())
+      );
+    }
+
+    // Status filter (all, published, unpublished, removed)
+    if (status && status !== 'all') {
+      if (status === 'removed' || status === 'deleted') {
+        results = results.filter((p) => Boolean(p.deleted_at));
+      } else if (status === 'unpublished') {
+        results = results.filter(
+          (p) =>
+            !p.deleted_at &&
+            (p.is_published === false || p.status === 'unpublished')
+        );
+      } else if (status === 'published') {
+        results = results.filter(
+          (p) =>
+            !p.deleted_at &&
+            p.is_published !== false &&
+            p.status !== 'unpublished'
+        );
+      }
+    }
+
+    // Availability filter
+    if (availability && availability !== 'all') {
+      results = results.filter((p) => p.availability === availability);
+    }
+
+    const meta = createPaginationMeta(results.length, page, per_page);
+    const offset = (meta.current_page - 1) * meta.per_page;
+
+    return {
+      data: results.slice(offset, offset + meta.per_page).map((p) => {
+        const categoryObj =
+          p.category || this.categories.find((c) => c.id === p.category_id);
+        const sellerObj =
+          p.seller || this.sellers.find((s) => s.id === p.seller_id);
+        return {
+          ...p,
+          category: categoryObj,
+          seller: sellerObj,
+          is_published: p.is_published !== false && p.status !== 'unpublished',
+        };
+      }),
+      meta,
+      links: {
+        first: '?page=1',
+        last: `?page=${meta.last_page}`,
+        prev: meta.current_page > 1 ? `?page=${meta.current_page - 1}` : null,
+        next:
+          meta.current_page < meta.last_page
+            ? `?page=${meta.current_page + 1}`
+            : null,
+      },
+    };
+  }
+
+  unpublishAdminProduct(id, reason = '') {
+    const product = this.products.find((p) => p.id === Number(id));
+    if (!product) {
+      throw new ApiError({
+        message: 'Product not found.',
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+    }
+
+    product.is_published = false;
+    product.status = 'unpublished';
+    product.moderation_reason = reason || 'Unpublished by administrator';
+    product.updated_at = new Date().toISOString();
+
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: 1,
+      action: 'product.unpublished',
+      entity_type: 'product',
+      entity_id: product.id,
+      ip_address: '127.0.0.1',
+      metadata: { name: product.name, reason },
+      created_at: new Date().toISOString(),
+    });
+
+    return { ...product };
+  }
+
+  publishAdminProduct(id) {
+    const product = this.products.find((p) => p.id === Number(id));
+    if (!product) {
+      throw new ApiError({
+        message: 'Product not found.',
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+    }
+
+    product.is_published = true;
+    product.status = 'published';
+    product.moderation_reason = null;
+    product.updated_at = new Date().toISOString();
+
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: 1,
+      action: 'product.published',
+      entity_type: 'product',
+      entity_id: product.id,
+      ip_address: '127.0.0.1',
+      metadata: { name: product.name },
+      created_at: new Date().toISOString(),
+    });
+
+    return { ...product };
+  }
+
+  removeAdminProduct(id, reason = '') {
+    const product = this.products.find((p) => p.id === Number(id));
+    if (!product) {
+      throw new ApiError({
+        message: 'Product not found.',
+        status: 404,
+        code: 'NOT_FOUND',
+      });
+    }
+
+    product.deleted_at = new Date().toISOString();
+    product.is_published = false;
+    product.moderation_reason =
+      reason || 'Removed by administrator for policy violation';
+    product.updated_at = new Date().toISOString();
+
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: 1,
+      action: 'product.removed',
+      entity_type: 'product',
+      entity_id: product.id,
+      ip_address: '127.0.0.1',
+      metadata: { name: product.name, reason },
+      created_at: new Date().toISOString(),
+    });
+
+    return { ...product };
+  }
+
   getSettings() {
     return { ...this.settings };
   }

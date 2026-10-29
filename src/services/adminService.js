@@ -88,6 +88,80 @@ export const adminService = {
   },
 
   /**
+   * List products for moderation across all sellers (ADM-04).
+   * Endpoint: GET /admin/products
+   *
+   * @param {Object} [params={}]
+   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   */
+  async getProducts(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getAdminProducts(params);
+    }
+
+    const response = await apiClient.get('/admin/products', { params });
+    return {
+      data: response.data || [],
+      meta: response.meta,
+      links: response.links,
+    };
+  },
+
+  /**
+   * Unpublish a violating product listing (ADM-04).
+   * Endpoint: PATCH /admin/products/{id}/unpublish
+   *
+   * @param {string|number} id
+   * @param {string} [reason]
+   * @returns {Promise<Object>}
+   */
+  async unpublishProduct(id, reason = '') {
+    if (isMockMode()) {
+      return mockStore.unpublishAdminProduct(id, reason);
+    }
+
+    const response = await apiClient.patch(`/admin/products/${id}/unpublish`, {
+      reason,
+    });
+    return response.data;
+  },
+
+  /**
+   * Re-publish a moderated product listing (ADM-04).
+   * Endpoint: PATCH /admin/products/{id}/publish
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async publishProduct(id) {
+    if (isMockMode()) {
+      return mockStore.publishAdminProduct(id);
+    }
+
+    const response = await apiClient.patch(`/admin/products/${id}/publish`);
+    return response.data;
+  },
+
+  /**
+   * Remove / soft-delete a violating product listing (ADM-04, BR-10).
+   * Endpoint: DELETE /admin/products/{id}
+   *
+   * @param {string|number} id
+   * @param {string} [reason]
+   * @returns {Promise<Object>}
+   */
+  async removeProduct(id, reason = '') {
+    if (isMockMode()) {
+      return mockStore.removeAdminProduct(id, reason);
+    }
+
+    const response = await apiClient.delete(`/admin/products/${id}`, {
+      data: { reason },
+    });
+    return response.data;
+  },
+
+  /**
    * Retrieve platform configuration settings (ADM-06).
    * Endpoint: GET /admin/settings
    *
