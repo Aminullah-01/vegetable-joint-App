@@ -2252,7 +2252,13 @@ class MockStore {
       results = results.filter((u) => u.role === role);
     }
     if (status && status !== 'all') {
-      results = results.filter((u) => u.status === status);
+      if (status === 'suspended' || status === 'deactivated') {
+        results = results.filter(
+          (u) => u.status === 'suspended' || u.status === 'deactivated'
+        );
+      } else {
+        results = results.filter((u) => u.status === status);
+      }
     }
     if (search && search.trim()) {
       const term = search.trim().toLowerCase();
@@ -2268,9 +2274,16 @@ class MockStore {
     const offset = (meta.current_page - 1) * meta.per_page;
 
     return {
-      data: results
-        .slice(offset, offset + meta.per_page)
-        .map((u) => sanitizeUser(u)),
+      data: results.slice(offset, offset + meta.per_page).map((u) => {
+        const sanitized = sanitizeUser(u);
+        if (u.role === 'seller') {
+          const seller = this.sellers.find((s) => s.user_id === u.id);
+          if (seller) {
+            sanitized.seller_profile = seller;
+          }
+        }
+        return sanitized;
+      }),
       meta,
       links: {
         first: '?page=1',
@@ -2295,7 +2308,27 @@ class MockStore {
     }
     user.status = status;
     user.updated_at = new Date().toISOString();
-    return sanitizeUser(user);
+
+    const action = status === 'active' ? 'user.activated' : 'user.suspended';
+    this.auditLogs.unshift({
+      id: this.auditLogs.length + 1,
+      user_id: 1,
+      action,
+      entity_type: 'user',
+      entity_id: user.id,
+      ip_address: '127.0.0.1',
+      metadata: { name: user.name, email: user.email, status },
+      created_at: new Date().toISOString(),
+    });
+
+    const sanitized = sanitizeUser(user);
+    if (user.role === 'seller') {
+      const seller = this.sellers.find((s) => s.user_id === user.id);
+      if (seller) {
+        sanitized.seller_profile = seller;
+      }
+    }
+    return sanitized;
   }
 
   getAdminSellers(params = {}) {
