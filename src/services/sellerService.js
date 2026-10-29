@@ -286,6 +286,36 @@ export const sellerService = {
     const response = await apiClient.post(`/orders/${id}/cancel`, { reason });
     return response.data;
   },
+
+  /**
+   * Get seller sales performance metrics for a selectable period (SEL-12, BR-12, SEL-14).
+   * Endpoint: GET /seller/sales
+   *
+   * @param {Object} [params={}] - Query parameters (period, date_from, date_to, seller_id).
+   * @returns {Promise<{
+   *   seller_id: number,
+   *   seller_name: string,
+   *   period: string,
+   *   date_from: string|null,
+   *   date_to: string|null,
+   *   total_sales: number,
+   *   completed_orders_count: number,
+   *   total_orders_count: number,
+   *   order_count: number,
+   *   total_products_sold: number,
+   *   average_order_value: number,
+   *   products_sold: Array<{ product_id: number, product_name: string, unit: string, quantity_sold: number, total_revenue: number, order_count: number }>,
+   *   recent_orders: Array
+   * }>}
+   */
+  async getSellerSales(params = {}) {
+    if (isMockMode()) {
+      return mockStore.getSellerSales(params);
+    }
+
+    const response = await apiClient.get('/seller/sales', { params });
+    return response.data;
+  },
 };
 
 export default sellerService;

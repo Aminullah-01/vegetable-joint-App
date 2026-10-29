@@ -2064,6 +2064,174 @@ class MockStore {
     };
   }
 
+  /**
+   * Get seller sales metrics for a selectable period (SEL-12, BR-12, SEL-14).
+   * Calculates total sales value (Completed orders only), order count,
+   * products sold (quantity per product), and recent orders.
+   *
+   * @param {Object} [params={}]
+   * @returns {Object}
+   */
+  getSellerSales(params = {}) {
+    const resolvedSellerId =
+      params.seller_id ??
+      this.currentUser?.seller_id ??
+      this.currentUser?.seller?.id ??
+      this.sellers.find((s) => s.user_id === this.currentUser?.id)?.id ??
+      this.sellers[0]?.id ??
+      1;
+
+    const seller =
+      this.sellers.find((s) => s.id === Number(resolvedSellerId)) ||
+      this.sellers[0];
+
+    // SEL-14 / BR-08: Object-level authorization (strictly this seller's orders)
+    const sellerOrders = this.orders.filter(
+      (o) => Number(o.seller_id) === Number(resolvedSellerId)
+    );
+
+    const period = params.period || 'all';
+    let fromTime = null;
+    let toTime = null;
+
+    if (params.date_from || params.start_date) {
+      const dFrom = new Date(params.date_from || params.start_date);
+      dFrom.setHours(0, 0, 0, 0);
+      if (!isNaN(dFrom.getTime())) fromTime = dFrom.getTime();
+    }
+    if (params.date_to || params.end_date) {
+      const dTo = new Date(params.date_to || params.end_date);
+      dTo.setHours(23, 59, 59, 999);
+      if (!isNaN(dTo.getTime())) toTime = dTo.getTime();
+    }
+
+    if (period !== 'all' && period !== 'custom') {
+      const now = new Date();
+      if (period === 'today') {
+        const d = new Date(now);
+        d.setHours(0, 0, 0, 0);
+        fromTime = d.getTime();
+        const dEnd = new Date(now);
+        dEnd.setHours(23, 59, 59, 999);
+        toTime = dEnd.getTime();
+      } else if (period === 'this_week' || period === 'week') {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 6);
+        d.setHours(0, 0, 0, 0);
+        fromTime = d.getTime();
+        const dEnd = new Date(now);
+        dEnd.setHours(23, 59, 59, 999);
+        toTime = dEnd.getTime();
+      } else if (period === 'this_month' || period === 'month') {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        fromTime = d.getTime();
+        const dEnd = new Date(now);
+        dEnd.setHours(23, 59, 59, 999);
+        toTime = dEnd.getTime();
+      } else if (period === 'this_year' || period === 'year') {
+        const d = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+        fromTime = d.getTime();
+        const dEnd = new Date(now);
+        dEnd.setHours(23, 59, 59, 999);
+        toTime = dEnd.getTime();
+      }
+    }
+
+    let periodOrders = sellerOrders;
+    if (fromTime !== null || toTime !== null) {
+      periodOrders = periodOrders.filter((o) => {
+        const orderDateStr = o.created_at;
+        if (!orderDateStr) return false;
+        const orderTime = new Date(orderDateStr).getTime();
+        if (isNaN(orderTime)) return false;
+        if (fromTime !== null && orderTime < fromTime) return false;
+        if (toTime !== null && orderTime > toTime) return false;
+        return true;
+      });
+    }
+
+    // Only orders with status Completed count towards sales figures (SEL-12, BR-12)
+    const completedOrders = periodOrders.filter(
+      (o) => (o.status || '').toLowerCase() === 'completed'
+    );
+
+    const totalSales = completedOrders.reduce(
+      (sum, o) => sum + Number(o.total_amount || 0),
+      0
+    );
+
+    const completedOrdersCount = completedOrders.length;
+    const totalOrdersCount = periodOrders.length;
+
+    // Aggregate products sold (quantity per product) from completed orders (SEL-12)
+    const productMap = new Map();
+    completedOrders.forEach((order) => {
+      (order.items || []).forEach((item) => {
+        const key = item.product_id || item.product_name;
+        const existing = productMap.get(key) || {
+          product_id: item.product_id,
+          product_name: item.product_name,
+          unit: item.unit || 'kg',
+          unit_price: Number(item.price || 0),
+          quantity_sold: 0,
+          total_revenue: 0,
+          order_ids: new Set(),
+        };
+        existing.quantity_sold += Number(item.quantity || 0);
+        existing.total_revenue += Number(
+          item.subtotal ?? Number(item.quantity || 0) * Number(item.price || 0)
+        );
+        existing.order_ids.add(order.id);
+        productMap.set(key, existing);
+      });
+    });
+
+    const productsSold = Array.from(productMap.values())
+      .map((p) => ({
+        product_id: p.product_id,
+        product_name: p.product_name,
+        unit: p.unit,
+        unit_price: p.unit_price,
+        quantity_sold: p.quantity_sold,
+        total_revenue: p.total_revenue,
+        order_count: p.order_ids.size,
+        percentage_of_sales:
+          totalSales > 0 ? (p.total_revenue / totalSales) * 100 : 0,
+      }))
+      .sort((a, b) => b.quantity_sold - a.quantity_sold);
+
+    const totalProductsSold = productsSold.reduce(
+      (acc, p) => acc + p.quantity_sold,
+      0
+    );
+
+    const averageOrderValue =
+      completedOrdersCount > 0
+        ? Math.round(totalSales / completedOrdersCount)
+        : 0;
+
+    // Recent orders in this period, sorted newest first (SEL-12)
+    const recentOrders = [...periodOrders].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    return {
+      seller_id: Number(resolvedSellerId),
+      seller_name: seller?.business_name || 'My Vegetable Store',
+      period,
+      date_from: fromTime ? new Date(fromTime).toISOString() : null,
+      date_to: toTime ? new Date(toTime).toISOString() : null,
+      total_sales: totalSales,
+      completed_orders_count: completedOrdersCount,
+      total_orders_count: totalOrdersCount,
+      order_count: completedOrdersCount,
+      total_products_sold: totalProductsSold,
+      average_order_value: averageOrderValue,
+      products_sold: productsSold,
+      recent_orders: recentOrders,
+    };
+  }
+
   // --- Admin ---
   getUsers(params = {}) {
     const { role, status, search, page = 1, per_page = 20 } = params;
