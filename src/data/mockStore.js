@@ -2406,6 +2406,8 @@ class MockStore {
       .filter((o) => o.status === 'completed')
       .reduce((sum, o) => sum + o.total_amount, 0);
 
+    const activeProducts = this.products.filter((p) => !p.deleted_at).length;
+
     return {
       total_users: this.users.length,
       total_sellers: this.sellers.filter(
@@ -2414,8 +2416,10 @@ class MockStore {
       pending_seller_approvals: this.sellers.filter(
         (s) => s.approval_status === 'pending'
       ).length,
-      active_products: this.products.filter((p) => !p.deleted_at).length,
+      active_products: activeProducts,
+      total_products: activeProducts,
       total_orders: this.orders.length,
+      total_sales_value: totalRevenue,
       platform_gmv: totalRevenue,
     };
   }

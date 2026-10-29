@@ -139,7 +139,7 @@ export const adminService = {
   },
 
   /**
-   * Retrieve administrator high-level overview metrics and GMV (ADM-01).
+   * Retrieve administrator high-level overview metrics, counts, and sales value (ADM-01, ADM-10).
    * Endpoint: GET /admin/stats
    *
    * @returns {Promise<{
@@ -147,7 +147,9 @@ export const adminService = {
    *   total_sellers: number,
    *   pending_seller_approvals: number,
    *   active_products: number,
+   *   total_products: number,
    *   total_orders: number,
+   *   total_sales_value: number,
    *   platform_gmv: number
    * }>}
    */
