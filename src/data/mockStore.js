@@ -2340,18 +2340,35 @@ class MockStore {
     }
     if (search && search.trim()) {
       const term = search.trim().toLowerCase();
-      results = results.filter(
-        (s) =>
+      results = results.filter((s) => {
+        const user = this.users.find((u) => u.id === s.user_id);
+        return (
           s.business_name.toLowerCase().includes(term) ||
-          s.location.toLowerCase().includes(term)
-      );
+          s.location.toLowerCase().includes(term) ||
+          (user &&
+            (user.name.toLowerCase().includes(term) ||
+              user.email.toLowerCase().includes(term) ||
+              user.phone.includes(term)))
+        );
+      });
     }
 
     const meta = createPaginationMeta(results.length, page, per_page);
     const offset = (meta.current_page - 1) * meta.per_page;
 
     return {
-      data: results.slice(offset, offset + meta.per_page),
+      data: results.slice(offset, offset + meta.per_page).map((s) => {
+        const user = this.users.find((u) => u.id === s.user_id);
+        const productsCount = this.products.filter(
+          (p) => p.seller_id === s.id && !p.deleted_at
+        ).length;
+        return {
+          ...s,
+          user: user ? sanitizeUser(user) : null,
+          owner: user ? sanitizeUser(user) : null,
+          total_products: s.total_products ?? productsCount,
+        };
+      }),
       meta,
       links: {
         first: '?page=1',
@@ -2391,7 +2408,12 @@ class MockStore {
       created_at: new Date().toISOString(),
     });
 
-    return seller;
+    const user = this.users.find((u) => u.id === seller.user_id);
+    return {
+      ...seller,
+      user: user ? sanitizeUser(user) : null,
+      owner: user ? sanitizeUser(user) : null,
+    };
   }
 
   getSettings() {
