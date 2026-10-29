@@ -902,11 +902,80 @@ class MockStore {
 
   updateProduct(id, data) {
     const product = this.getProductById(id);
-    Object.assign(product, data, { updated_at: new Date().toISOString() });
-    if (data.quantity !== undefined) {
-      product.availability =
-        Number(data.quantity) > 0 ? 'in_stock' : 'out_of_stock';
+
+    const currentSellerId =
+      this.currentUser?.seller_id ??
+      this.sellers.find((s) => s.user_id === this.currentUser?.id)?.id;
+
+    if (
+      this.currentUser &&
+      this.currentUser.role === 'seller' &&
+      currentSellerId &&
+      product.seller_id !== currentSellerId
+    ) {
+      throw new ApiError({
+        message:
+          'You are not authorized to update another seller’s product (SEL-14).',
+        status: 403,
+        code: 'FORBIDDEN',
+      });
     }
+
+    const seller =
+      this.sellers.find((s) => s.id === product.seller_id) || this.sellers[0];
+
+    if (seller && seller.approval_status !== 'approved') {
+      throw new ApiError({
+        message: `Cannot edit product: seller account status is ${seller.approval_status} (AUTH-03, ADM-03).`,
+        status: 403,
+        code: 'FORBIDDEN',
+      });
+    }
+
+    // Category update
+    if (data.category_id !== undefined) {
+      const categoryId = Number(data.category_id);
+      const cat = this.categories.find((c) => c.id === categoryId);
+      if (cat) {
+        product.category_id = categoryId;
+        product.category = { id: cat.id, name: cat.name, slug: cat.slug };
+      }
+    }
+
+    // Numeric and text fields
+    if (data.name !== undefined) {
+      product.name = data.name;
+    }
+    if (data.description !== undefined) {
+      product.description = data.description;
+    }
+    if (data.unit !== undefined) {
+      product.unit = data.unit;
+    }
+    if (data.image !== undefined) {
+      product.image = data.image;
+    }
+    if (data.price !== undefined) {
+      product.price = Number(data.price);
+    }
+    if (data.quantity !== undefined) {
+      product.quantity = Number(data.quantity);
+    }
+    if (data.low_stock_threshold !== undefined) {
+      product.low_stock_threshold = Number(data.low_stock_threshold);
+    }
+
+    // Availability derivation (SEL-07, BR-01)
+    if (data.availability === 'unavailable' || data.availability === false) {
+      product.availability = 'unavailable';
+    } else {
+      const qty = product.quantity;
+      const threshold = product.low_stock_threshold || 5;
+      product.availability =
+        qty <= 0 ? 'out_of_stock' : qty <= threshold ? 'low_stock' : 'in_stock';
+    }
+
+    product.updated_at = new Date().toISOString();
     return product;
   }
 

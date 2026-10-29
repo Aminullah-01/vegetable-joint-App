@@ -429,6 +429,47 @@ export function SellerProductForm() {
     );
   }
 
+  if (isEditing && serverError && !formData.name) {
+    return (
+      <div
+        data-testid="product-not-found-state"
+        style={{
+          maxWidth: '650px',
+          margin: '2rem auto',
+          textAlign: 'center',
+          backgroundColor: '#ffffff',
+          padding: '2.5rem',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+        }}
+      >
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🥦</div>
+        <h2 style={{ color: '#1e293b', marginBottom: '0.5rem' }}>
+          Listing Not Found
+        </h2>
+        <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+          {serverError ||
+            'The requested vegetable listing could not be found or you do not have permission to view it.'}
+        </p>
+        <Link
+          to="/seller/products"
+          data-testid="product-error-back-link"
+          style={{
+            backgroundColor: '#15803d',
+            color: '#ffffff',
+            padding: '0.65rem 1.25rem',
+            borderRadius: '6px',
+            textDecoration: 'none',
+            fontWeight: 600,
+            display: 'inline-block',
+          }}
+        >
+          ← Return to My Products
+        </Link>
+      </div>
+    );
+  }
+
   const quantityNum = Number(formData.quantity || 0);
   const derivedAvailability =
     formData.availability === 'unavailable'
