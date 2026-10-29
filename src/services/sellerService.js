@@ -231,6 +231,23 @@ export const sellerService = {
       links: response.links,
     };
   },
+
+  /**
+   * Get authenticated seller's order by ID (SEL-10, SEL-14).
+   * Endpoint: GET /seller/orders/{id}
+   *
+   * @param {string|number} id
+   * @param {Object} [params={}]
+   * @returns {Promise<Object>}
+   */
+  async getSellerOrderById(id, params = {}) {
+    if (isMockMode()) {
+      return mockStore.getSellerOrderById(id, params);
+    }
+
+    const response = await apiClient.get(`/seller/orders/${id}`, { params });
+    return response.data;
+  },
 };
 
 export default sellerService;

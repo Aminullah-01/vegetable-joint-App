@@ -1482,6 +1482,30 @@ class MockStore {
     return order;
   }
 
+  getSellerOrderById(id, context = null) {
+    const order = this.getOrderById(id);
+    const sellerId =
+      context?.seller_id ??
+      context?.seller?.id ??
+      (context?.role === 'seller'
+        ? this.sellers.find((s) => s.user_id === context.id)?.id || context.id
+        : null);
+
+    if (
+      sellerId != null &&
+      order.seller_id &&
+      Number(order.seller_id) !== Number(sellerId)
+    ) {
+      throw new ApiError({
+        message: 'You are not authorized to view this order.',
+        status: 403,
+        code: 'FORBIDDEN',
+      });
+    }
+
+    return order;
+  }
+
   getOrdersByRef(ref) {
     if (!ref) return [];
     const term = String(ref).trim().toLowerCase();
