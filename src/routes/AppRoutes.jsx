@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MainLayout, DashboardLayout } from '../components/layout';
-import { ROUTES } from './routeConfig';
+import { ROUTES, SELLER_NAV_ITEMS, ADMIN_NAV_ITEMS } from './routeConfig';
 import { ProtectedRoute } from './ProtectedRoute';
 import { GuestRoute } from './GuestRoute';
 import { Spinner } from '../components/common';
@@ -65,27 +65,6 @@ const Profile = lazy(() => import('../pages/account/Profile'));
 // Lazy-loaded Secondary Auth Pages
 const ForgotPassword = lazy(() => import('../pages/auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('../pages/auth/ResetPassword'));
-
-const sellerNavItems = [
-  { path: '/seller', label: 'Overview', icon: '📊', end: true },
-  { path: '/seller/products', label: 'Products', icon: '🥦', end: true },
-  { path: '/seller/products/new', label: 'Add Product', icon: '➕' },
-  { path: '/seller/orders', label: 'Orders', icon: '📦' },
-  { path: '/seller/inventory', label: 'Inventory', icon: '📋' },
-  { path: '/seller/sales', label: 'Sales', icon: '💰' },
-  { path: '/seller/profile', label: 'Profile', icon: '👤' },
-];
-
-const adminNavItems = [
-  { path: '/admin', label: 'Overview', icon: '📊', end: true },
-  { path: '/admin/users', label: 'Users', icon: '👥' },
-  { path: '/admin/sellers', label: 'Sellers', icon: '🌾' },
-  { path: '/admin/products', label: 'Product Moderation', icon: '🥕' },
-  { path: '/admin/categories', label: 'Categories', icon: '📁' },
-  { path: '/admin/orders', label: 'Orders Monitor', icon: '🛍️' },
-  { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
-  { path: '/admin/audit-log', label: 'Audit Log', icon: '📜' },
-];
 
 export function AppRoutes() {
   return (
@@ -153,7 +132,7 @@ export function AppRoutes() {
               <DashboardLayout
                 title="Seller Portal"
                 role="seller"
-                navItems={sellerNavItems}
+                navItems={SELLER_NAV_ITEMS}
               />
             </ProtectedRoute>
           }
@@ -188,7 +167,7 @@ export function AppRoutes() {
               <DashboardLayout
                 title="Admin Portal"
                 role="admin"
-                navItems={adminNavItems}
+                navItems={ADMIN_NAV_ITEMS}
               />
             </ProtectedRoute>
           }

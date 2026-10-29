@@ -81,4 +81,19 @@ export const SELLER_NAV_ITEMS = [
   { path: ROUTES.SELLER_DASHBOARD_PROFILE, label: 'Profile', icon: '👤' },
 ];
 
+/**
+ * Administrator Dashboard Navigation Sections (ADM-01, FE-095, Figma Section 14)
+ * Overview, Users, Sellers, Products, Categories, Orders, Settings (+ Audit log)
+ */
+export const ADMIN_NAV_ITEMS = [
+  { path: ROUTES.ADMIN_OVERVIEW, label: 'Overview', icon: '📊', end: true },
+  { path: ROUTES.ADMIN_USERS, label: 'Users', icon: '👥' },
+  { path: ROUTES.ADMIN_SELLERS, label: 'Sellers', icon: '🌾' },
+  { path: ROUTES.ADMIN_PRODUCTS, label: 'Products', icon: '🥕' },
+  { path: ROUTES.ADMIN_CATEGORIES, label: 'Categories', icon: '📁' },
+  { path: ROUTES.ADMIN_ORDERS, label: 'Orders', icon: '📦' },
+  { path: ROUTES.ADMIN_SETTINGS, label: 'Settings', icon: '⚙️' },
+  { path: ROUTES.ADMIN_AUDIT_LOG, label: 'Audit Log', icon: '📜' },
+];
+
 export default ROUTES;

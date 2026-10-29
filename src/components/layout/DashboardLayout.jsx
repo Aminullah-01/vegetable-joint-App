@@ -10,7 +10,7 @@ import {
   canSellerPublish,
 } from '../../utils/sellerStatus';
 import { SellerApprovalNotice } from '../seller/SellerApprovalNotice';
-import { SELLER_NAV_ITEMS } from '../../routes/routeConfig';
+import { SELLER_NAV_ITEMS, ADMIN_NAV_ITEMS } from '../../routes/routeConfig';
 
 /**
  * DashboardLayout — Dedicated Dashboard Layout with Responsive Sidebar
@@ -32,7 +32,9 @@ export function DashboardLayout({ title, role, navItems }) {
       ? navItems
       : role === 'seller'
         ? SELLER_NAV_ITEMS
-        : [];
+        : role === 'admin'
+          ? ADMIN_NAV_ITEMS
+          : [];
 
   const sellerApprovalStatus =
     role === 'seller' ? getSellerApprovalStatus(user) : null;
@@ -133,6 +135,7 @@ export function DashboardLayout({ title, role, navItems }) {
           </Link>
 
           <span
+            data-testid="header-role-badge"
             style={{
               backgroundColor: role === 'admin' ? '#fef3c7' : '#e0f2fe',
               color: role === 'admin' ? '#92400e' : '#0369a1',
@@ -285,7 +288,7 @@ export function DashboardLayout({ title, role, navItems }) {
                 paddingLeft: '0.5rem',
               }}
             >
-              Navigation
+              {role === 'admin' ? 'Administration' : 'Navigation'}
             </div>
             {effectiveNavItems.map((item) => {
               const isAddProduct = item.path === '/seller/products/new';
