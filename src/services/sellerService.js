@@ -80,6 +80,67 @@ export const sellerService = {
   },
 
   /**
+   * Create a new vegetable listing (SEL-02).
+   * Endpoint: POST /seller/products or POST /products
+   *
+   * @param {FormData|Object} productData
+   * @returns {Promise<Object>}
+   */
+  async createProduct(productData) {
+    if (isMockMode()) {
+      return mockStore.createProduct(productData);
+    }
+
+    let response;
+    if (typeof FormData !== 'undefined' && productData instanceof FormData) {
+      response = await apiClient.upload('/seller/products', productData);
+    } else {
+      response = await apiClient.post('/seller/products', productData);
+    }
+    return response.data;
+  },
+
+  /**
+   * Get product by ID for editing or inspection.
+   * Endpoint: GET /products/{id}
+   *
+   * @param {string|number} id
+   * @returns {Promise<Object>}
+   */
+  async getProductById(id) {
+    if (isMockMode()) {
+      return mockStore.getProductById(id);
+    }
+
+    const response = await apiClient.get(`/products/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Update an existing product listing (SEL-03).
+   * Endpoint: PUT /seller/products/{id} or PUT /products/{id}
+   *
+   * @param {string|number} id
+   * @param {FormData|Object} productData
+   * @returns {Promise<Object>}
+   */
+  async updateProduct(id, productData) {
+    if (isMockMode()) {
+      return mockStore.updateProduct(id, productData);
+    }
+
+    let response;
+    if (typeof FormData !== 'undefined' && productData instanceof FormData) {
+      response = await apiClient.upload(`/seller/products/${id}`, productData, {
+        method: 'PUT',
+      });
+    } else {
+      response = await apiClient.put(`/seller/products/${id}`, productData);
+    }
+    return response.data;
+  },
+
+  /**
    * Quick update for inventory stock quantity and availability (SEL-07, SEL-08).
    * Endpoint: PATCH /products/{id}/stock
    *

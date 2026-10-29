@@ -801,7 +801,14 @@ class MockStore {
       image:
         data.image ||
         'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80',
-      availability: Number(data.quantity) > 0 ? 'in_stock' : 'out_of_stock',
+      availability:
+        data.availability === 'unavailable' || data.availability === false
+          ? 'unavailable'
+          : Number(data.quantity) > 0
+            ? Number(data.quantity) <= (Number(data.low_stock_threshold) || 5)
+              ? 'low_stock'
+              : 'in_stock'
+            : 'out_of_stock',
       average_rating: 0,
       rating_count: 0,
       deleted_at: null,

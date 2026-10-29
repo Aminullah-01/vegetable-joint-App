@@ -93,3 +93,24 @@ export function getOptimizedImageUrl(url, options = {}) {
 
   return url;
 }
+
+/**
+ * Validates a product image file against upload constraints (SEL-05, A-08).
+ * Allowed types: JPEG, PNG, WebP. Max size: 2 MB.
+ *
+ * @param {File|Blob|null} file
+ * @returns {string|null} Error message or null if valid.
+ */
+export function validateProductImage(file) {
+  if (!file) {
+    return null;
+  }
+  const isAllowedType = IMAGE_BUDGETS.ALLOWED_MIME_TYPES.includes(file.type);
+  if (!isAllowedType) {
+    return 'Image must be in JPEG, PNG, or WebP format (SEL-05).';
+  }
+  if (file.size > IMAGE_BUDGETS.UPLOAD_MAX_BYTES) {
+    return 'Image file size must not exceed 2 MB (SEL-05).';
+  }
+  return null;
+}
