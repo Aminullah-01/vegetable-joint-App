@@ -32,6 +32,8 @@ export { Toggle } from './Toggle';
 export { Button } from './Button';
 export { Link } from './Link';
 export { AvailabilityBadge } from './AvailabilityBadge';
+export { LowStockIndicator } from './LowStockIndicator';
+export { isLowStock, isOutOfStock, getStockStatus } from '../../utils/stock.js';
 export { OrderStatusBadge } from './OrderStatusBadge';
 export { OrderStatusTimeline } from './OrderStatusTimeline';
 export { RatingDisplay } from './RatingDisplay';

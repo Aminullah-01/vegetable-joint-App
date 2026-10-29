@@ -14,6 +14,7 @@ import {
   TableSkeleton,
   EmptyState,
   Toggle,
+  LowStockIndicator,
 } from '../../components/common';
 
 /**
@@ -1114,31 +1115,51 @@ export function SellerProducts() {
                           style={{ padding: '0.85rem 1rem' }}
                           data-testid={`product-stock-${prod.id}`}
                         >
-                          {isOutOfStock ? (
-                            <span
-                              style={{
-                                color: '#dc2626',
-                                fontWeight: 700,
-                                fontSize: '0.825rem',
-                              }}
-                            >
-                              0 {prod.unit || 'units'} (Out of stock)
-                            </span>
-                          ) : isLowStock ? (
-                            <span
-                              style={{
-                                color: '#b45309',
-                                fontWeight: 600,
-                                fontSize: '0.825rem',
-                              }}
-                            >
-                              ⚠️ {quantity} {prod.unit || 'units'} (Low stock)
-                            </span>
-                          ) : (
-                            <span style={{ color: '#0f172a', fontWeight: 500 }}>
-                              {quantity} {prod.unit || 'units'}
-                            </span>
-                          )}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            {isOutOfStock ? (
+                              <span
+                                style={{
+                                  color: '#dc2626',
+                                  fontWeight: 700,
+                                  fontSize: '0.825rem',
+                                }}
+                              >
+                                0 {prod.unit || 'units'} (Out of stock)
+                              </span>
+                            ) : isLowStock ? (
+                              <span
+                                style={{
+                                  color: '#b45309',
+                                  fontWeight: 600,
+                                  fontSize: '0.825rem',
+                                }}
+                              >
+                                ⚠️ {quantity} {prod.unit || 'units'} (Low stock)
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  color: '#0f172a',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {quantity} {prod.unit || 'units'}
+                              </span>
+                            )}
+                            <LowStockIndicator
+                              quantity={quantity}
+                              threshold={threshold}
+                              unit={prod.unit}
+                              testId={`product-low-stock-indicator-${prod.id}`}
+                            />
+                          </div>
                         </td>
 
                         {/* 5. Availability Status & Toggle (FE-087 / SEL-07, BR-01) */}

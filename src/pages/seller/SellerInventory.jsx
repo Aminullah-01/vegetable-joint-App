@@ -13,6 +13,7 @@ import {
   Pagination,
   TableSkeleton,
   EmptyState,
+  LowStockIndicator,
 } from '../../components/common';
 
 /**
@@ -1182,36 +1183,24 @@ export function SellerInventory() {
 
                             {/* Low Stock Flag (SEL-09) */}
                             {isLowStock && (
-                              <span
-                                data-testid={`inventory-low-stock-warning-${prod.id}`}
-                                style={{
-                                  fontSize: '0.7rem',
-                                  backgroundColor: '#fef3c7',
-                                  color: '#b45309',
-                                  padding: '0.125rem 0.4rem',
-                                  borderRadius: '4px',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                ⚠️ Low (≤ {threshold})
-                              </span>
+                              <LowStockIndicator
+                                quantity={prod.quantity}
+                                threshold={threshold}
+                                unit={prod.unit}
+                                availability={prod.availability}
+                                testId={`inventory-low-stock-warning-${prod.id}`}
+                              />
                             )}
 
                             {/* Out of Stock Flag (SEL-07, BR-01) */}
                             {isOutOfStock && (
-                              <span
-                                data-testid={`inventory-out-of-stock-warning-${prod.id}`}
-                                style={{
-                                  fontSize: '0.7rem',
-                                  backgroundColor: '#fee2e2',
-                                  color: '#dc2626',
-                                  padding: '0.125rem 0.4rem',
-                                  borderRadius: '4px',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                🚫 Out of Stock
-                              </span>
+                              <LowStockIndicator
+                                quantity={prod.quantity}
+                                threshold={threshold}
+                                unit={prod.unit}
+                                availability={prod.availability}
+                                testId={`inventory-out-of-stock-warning-${prod.id}`}
+                              />
                             )}
 
                             {/* Inline Edit Trigger (SEL-08) */}
