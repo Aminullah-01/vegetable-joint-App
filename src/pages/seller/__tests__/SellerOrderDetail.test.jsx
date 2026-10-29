@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import PropTypes from 'prop-types';
@@ -658,6 +658,94 @@ describe('FE-091 / SEL-10: Seller Order Detail', () => {
 
       await waitFor(() => {
         expect(getOrderSpy).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  describe('8. Integrated Order Status Controls (SEL-11, ORD-05, ORD-07, FE-092)', () => {
+    it('renders order status controls with valid next action button', async () => {
+      renderSellerOrderDetailPage({ orderId: 101 });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('order-status-controls')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('advance-status-btn')).toHaveTextContent(
+        /Confirm Order/i
+      );
+      expect(screen.getByTestId('open-cancel-dialog-btn')).toBeInTheDocument();
+    });
+
+    it('advances order status and reactively updates badge and controls on detail page', async () => {
+      const user = userEvent.setup();
+      const updateSpy = vi
+        .spyOn(sellerService, 'updateOrderStatus')
+        .mockResolvedValueOnce({
+          ...sampleOrders[101],
+          status: 'confirmed',
+        });
+
+      renderSellerOrderDetailPage({ orderId: 101 });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('advance-status-btn')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('advance-status-btn'));
+      expect(updateSpy).toHaveBeenCalledWith(101, 'confirmed', '');
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('order-header-status-badge')
+        ).toHaveTextContent(/Confirmed/i);
+        expect(screen.getByTestId('advance-status-btn')).toHaveTextContent(
+          /Start Processing/i
+        );
+      });
+    });
+
+    it('cancels order with mandatory reason and displays cancellation banner', async () => {
+      const user = userEvent.setup();
+      const cancelSpy = vi
+        .spyOn(sellerService, 'cancelOrder')
+        .mockResolvedValueOnce({
+          ...sampleOrders[101],
+          status: 'cancelled',
+          cancel_reason: 'Produce spoiled during storage',
+        });
+
+      renderSellerOrderDetailPage({ orderId: 101 });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('open-cancel-dialog-btn')
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('open-cancel-dialog-btn'));
+      expect(screen.getByTestId('cancel-order-modal')).toBeInTheDocument();
+
+      // Submit with reason
+      fireEvent.change(screen.getByTestId('cancellation-reason-input'), {
+        target: { value: 'Produce spoiled during storage' },
+      });
+      await user.click(screen.getByTestId('confirm-cancel-order-btn'));
+
+      expect(cancelSpy).toHaveBeenCalledWith(
+        101,
+        'Produce spoiled during storage'
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('order-cancellation-banner')
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('cancellation-reason')).toHaveTextContent(
+          /Produce spoiled during storage/i
+        );
+        expect(
+          screen.getByTestId('terminal-status-notice')
+        ).toBeInTheDocument();
       });
     });
   });

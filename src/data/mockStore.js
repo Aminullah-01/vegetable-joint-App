@@ -1878,13 +1878,37 @@ class MockStore {
     return order;
   }
 
-  cancelOrder(id, reason = '') {
+  cancelOrder(id, reason = '', context = null) {
     const order = this.getOrderById(id);
+    const user = context || this.currentUser;
+
     if (order.status === 'completed' || order.status === 'cancelled') {
       throw new ApiError({
         message: `Order cannot be cancelled in '${order.status}' state.`,
         status: 409,
         code: 'CONFLICT',
+      });
+    }
+
+    // Per Figure 2 of SRS 3.6.2: From ready, cancellation is Administrator only
+    if (order.status === 'ready' && user?.role === 'seller') {
+      throw new ApiError({
+        message:
+          'Sellers cannot cancel an order that is ready for delivery (Admin only per SRS 3.6.2).',
+        status: 403,
+        code: 'FORBIDDEN',
+      });
+    }
+
+    // Cancellation by a Seller or Administrator requires a reason (ORD-07)
+    if (user?.role === 'seller' && (!reason || !String(reason).trim())) {
+      throw new ApiError({
+        message: 'Cancellation by a seller requires a reason (ORD-07).',
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        errors: {
+          reason: ['Please provide a reason for cancelling this order.'],
+        },
       });
     }
 
@@ -1903,7 +1927,7 @@ class MockStore {
 
     const oldStatus = order.status;
     order.status = 'cancelled';
-    order.cancel_reason = reason;
+    order.cancel_reason = reason ? String(reason).trim() : null;
     order.updated_at = new Date().toISOString();
 
     order.status_history.push({
@@ -1911,9 +1935,9 @@ class MockStore {
       order_id: order.id,
       from_status: oldStatus,
       to_status: 'cancelled',
-      changed_by: this.currentUser?.id || 1,
+      changed_by: user?.id || 1,
       note: reason
-        ? `Cancelled: ${reason}`
+        ? `Cancelled: ${reason.trim()}`
         : 'Cancelled by user. Stock restored.',
       created_at: new Date().toISOString(),
     });

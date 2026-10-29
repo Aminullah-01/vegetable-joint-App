@@ -11,6 +11,7 @@ import {
   OrderDetailSkeleton,
 } from '../../components/common';
 import { PaymentMethodDisplay } from '../../components/checkout';
+import { OrderStatusControls } from '../../components/seller/OrderStatusControls';
 
 /**
  * SellerOrderDetail — Dedicated Seller Order Fulfillment & Detail View
@@ -117,6 +118,31 @@ export function SellerOrderDetail() {
     } else if (toast?.info) {
       toast.info('Printing is not supported in this browser environment.');
     }
+  };
+
+  const handleStatusUpdated = (updatedOrder) => {
+    if (!updatedOrder) return;
+    setOrder((prev) => {
+      const merged = { ...prev, ...updatedOrder };
+      if (updatedOrder.status_history) {
+        merged.status_history = updatedOrder.status_history;
+      } else if (updatedOrder.status !== prev?.status) {
+        merged.status_history = [
+          ...(prev?.status_history || []),
+          {
+            id: (prev?.status_history?.length || 0) + 1,
+            order_id: prev?.id,
+            from_status: prev?.status,
+            to_status: updatedOrder.status,
+            note:
+              updatedOrder.cancel_reason ||
+              `Status updated to ${updatedOrder.status}`,
+            created_at: new Date().toISOString(),
+          },
+        ];
+      }
+      return merged;
+    });
   };
 
   // Safe field extractions
@@ -607,6 +633,23 @@ export function SellerOrderDetail() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Order Lifecycle Controls (SEL-11, ORD-05, ORD-07) */}
+          <div
+            className="seller-order-card"
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              padding: '1.5rem',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}
+          >
+            <OrderStatusControls
+              order={order}
+              onStatusUpdated={handleStatusUpdated}
+            />
           </div>
 
           {/* 2-Column Responsive Layout */}

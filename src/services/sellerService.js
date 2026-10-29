@@ -248,6 +248,44 @@ export const sellerService = {
     const response = await apiClient.get(`/seller/orders/${id}`, { params });
     return response.data;
   },
+
+  /**
+   * Advance order status per permitted lifecycle (SEL-11, ORD-05).
+   * Endpoint: PATCH /orders/{id}/status
+   *
+   * @param {string|number} id
+   * @param {string} status
+   * @param {string} [note]
+   * @returns {Promise<Object>}
+   */
+  async updateOrderStatus(id, status, note = '') {
+    if (isMockMode()) {
+      return mockStore.updateOrderStatus(id, status, note);
+    }
+
+    const response = await apiClient.patch(`/orders/${id}/status`, {
+      status,
+      note,
+    });
+    return response.data;
+  },
+
+  /**
+   * Cancel an order with a mandatory reason (ORD-07).
+   * Endpoint: POST /orders/{id}/cancel
+   *
+   * @param {string|number} id
+   * @param {string} reason
+   * @returns {Promise<Object>}
+   */
+  async cancelOrder(id, reason) {
+    if (isMockMode()) {
+      return mockStore.cancelOrder(id, reason);
+    }
+
+    const response = await apiClient.post(`/orders/${id}/cancel`, { reason });
+    return response.data;
+  },
 };
 
 export default sellerService;

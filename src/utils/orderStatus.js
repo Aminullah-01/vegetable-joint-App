@@ -174,3 +174,116 @@ export function isStepCompleted(stepStatus, currentStatus) {
 
   return stepIdx <= currentIdx;
 }
+
+/**
+ * Permitted status transitions for sellers according to the lifecycle in SRS 3.6.2 (Figure 2)
+ *
+ * Rules (SEL-11, ORD-05, ORD-07, BR-07):
+ * - Pending -> Confirmed (Seller)
+ * - Confirmed -> Processing (Seller)
+ * - Processing -> Ready (Seller)
+ * - Ready -> Completed (Seller)
+ * - Pending, Confirmed, Processing -> Cancelled (Seller, reason required)
+ * - Ready -> Cancelled is Administrator only (Seller cannot cancel once package is ready)
+ * - Completed and Cancelled are terminal (no further transitions)
+ */
+export const SELLER_LIFECYCLE_CONFIG = {
+  [ORDER_STATUSES.PENDING]: {
+    nextStatus: ORDER_STATUSES.CONFIRMED,
+    nextActionLabel: 'Confirm Order',
+    nextActionHelper:
+      'Accept order and confirm produce availability with buyer.',
+    canAdvance: true,
+    canCancel: true,
+  },
+  [ORDER_STATUSES.CONFIRMED]: {
+    nextStatus: ORDER_STATUSES.PROCESSING,
+    nextActionLabel: 'Start Processing',
+    nextActionHelper: 'Begin harvest, packaging, and sorting produce items.',
+    canAdvance: true,
+    canCancel: true,
+  },
+  [ORDER_STATUSES.PROCESSING]: {
+    nextStatus: ORDER_STATUSES.READY,
+    nextActionLabel: 'Mark Ready for Delivery',
+    nextActionHelper:
+      'Produce is packed and ready for dispatch or customer handover.',
+    canAdvance: true,
+    canCancel: true,
+  },
+  [ORDER_STATUSES.READY]: {
+    nextStatus: ORDER_STATUSES.COMPLETED,
+    nextActionLabel: 'Complete Order',
+    nextActionHelper:
+      'Confirm produce delivery/handover and collect payment (terminal state).',
+    canAdvance: true,
+    canCancel: false, // Per Figure 2 of SRS 3.6.2: Ready -> Cancelled is Administrator only
+  },
+  [ORDER_STATUSES.COMPLETED]: {
+    nextStatus: null,
+    nextActionLabel: null,
+    canAdvance: false,
+    canCancel: false,
+  },
+  [ORDER_STATUSES.CANCELLED]: {
+    nextStatus: null,
+    nextActionLabel: null,
+    canAdvance: false,
+    canCancel: false,
+  },
+};
+
+/**
+ * Returns the permitted seller configuration for the current order status (SEL-11, ORD-05)
+ *
+ * @param {string} status
+ * @returns {object}
+ */
+export function getSellerLifecycleConfig(status) {
+  const norm = normalizeOrderStatus(status);
+  return (
+    SELLER_LIFECYCLE_CONFIG[norm] ||
+    SELLER_LIFECYCLE_CONFIG[ORDER_STATUSES.PENDING]
+  );
+}
+
+/**
+ * Returns the only valid next status advancement for a seller, or null if terminal (SEL-11, ORD-05)
+ *
+ * @param {string} status
+ * @returns {string|null}
+ */
+export function getSellerNextStatus(status) {
+  const config = getSellerLifecycleConfig(status);
+  return config.nextStatus || null;
+}
+
+/**
+ * Checks whether a seller is permitted to cancel an order at the current status (SRS 3.6.2, ORD-07)
+ *
+ * @param {string} status
+ * @returns {boolean}
+ */
+export function canSellerCancel(status) {
+  const config = getSellerLifecycleConfig(status);
+  return Boolean(config.canCancel);
+}
+
+/**
+ * Validates whether a target status is a valid next step for a seller (ORD-05)
+ *
+ * @param {string} currentStatus
+ * @param {string} targetStatus
+ * @returns {boolean}
+ */
+export function isValidSellerTransition(currentStatus, targetStatus) {
+  const normCurrent = normalizeOrderStatus(currentStatus);
+  const normTarget = normalizeOrderStatus(targetStatus);
+
+  if (normTarget === ORDER_STATUSES.CANCELLED) {
+    return canSellerCancel(normCurrent);
+  }
+
+  const nextAllowed = getSellerNextStatus(normCurrent);
+  return normTarget === nextAllowed;
+}
