@@ -3065,21 +3065,122 @@ class MockStore {
   }
 
   getAuditLogs(params = {}) {
-    const { user_id, action, page = 1, per_page = 20 } = params;
+    const {
+      user_id,
+      action,
+      date,
+      date_from,
+      date_to,
+      from,
+      to,
+      search,
+      page = 1,
+      per_page = 20,
+    } = params;
     let results = [...this.auditLogs];
 
-    if (user_id) {
-      results = results.filter((l) => l.user_id === Number(user_id));
-    }
-    if (action) {
-      results = results.filter((l) => l.action.includes(action));
+    // Filter by user (ADM-09)
+    if (user_id !== undefined && user_id !== '' && user_id !== 'all') {
+      if (
+        user_id === 'null' ||
+        user_id === 'system' ||
+        user_id === 'anonymous' ||
+        user_id === null
+      ) {
+        results = results.filter(
+          (l) => l.user_id === null || l.user_id === undefined
+        );
+      } else {
+        results = results.filter((l) => Number(l.user_id) === Number(user_id));
+      }
     }
 
-    const meta = createPaginationMeta(results.length, page, per_page);
+    // Filter by action (ADM-09)
+    if (action && action !== 'all') {
+      results = results.filter(
+        (l) =>
+          l.action === action ||
+          l.action.startsWith(action) ||
+          l.action.includes(action)
+      );
+    }
+
+    // Filter by exact date YYYY-MM-DD
+    if (date) {
+      results = results.filter((l) => {
+        if (!l.created_at) return false;
+        const logDateStr = new Date(l.created_at).toISOString().split('T')[0];
+        return logDateStr === date;
+      });
+    }
+
+    // Filter by date range (from / to)
+    const effectiveFrom = date_from || from;
+    const effectiveTo = date_to || to;
+
+    if (effectiveFrom) {
+      const fromTimestamp = new Date(effectiveFrom).getTime();
+      results = results.filter((l) => {
+        if (!l.created_at) return false;
+        return new Date(l.created_at).getTime() >= fromTimestamp;
+      });
+    }
+
+    if (effectiveTo) {
+      const toDateObj = new Date(effectiveTo);
+      toDateObj.setHours(23, 59, 59, 999);
+      const toTimestamp = toDateObj.getTime();
+      results = results.filter((l) => {
+        if (!l.created_at) return false;
+        return new Date(l.created_at).getTime() <= toTimestamp;
+      });
+    }
+
+    // Free text search
+    if (search && search.trim()) {
+      const term = search.trim().toLowerCase();
+      results = results.filter((l) => {
+        const actionMatch = l.action?.toLowerCase().includes(term);
+        const entityMatch =
+          l.entity_type?.toLowerCase().includes(term) ||
+          String(l.entity_id || '').includes(term);
+        const ipMatch = l.ip_address?.toLowerCase().includes(term);
+        const metaMatch = l.metadata
+          ? JSON.stringify(l.metadata).toLowerCase().includes(term)
+          : false;
+        const userObj = l.user_id
+          ? this.users.find((u) => u.id === l.user_id)
+          : null;
+        const userMatch = userObj
+          ? userObj.name.toLowerCase().includes(term) ||
+            userObj.email.toLowerCase().includes(term)
+          : false;
+        return actionMatch || entityMatch || ipMatch || metaMatch || userMatch;
+      });
+    }
+
+    // Sort newest first
+    results.sort(
+      (a, b) =>
+        new Date(b.created_at || 0) - new Date(a.created_at || 0) || b.id - a.id
+    );
+
+    // Attach user information to each log entry
+    const enrichedResults = results.map((log) => {
+      const user = log.user_id
+        ? this.users.find((u) => u.id === log.user_id)
+        : null;
+      return {
+        ...log,
+        user: user ? sanitizeUser(user) : null,
+      };
+    });
+
+    const meta = createPaginationMeta(enrichedResults.length, page, per_page);
     const offset = (meta.current_page - 1) * meta.per_page;
 
     return {
-      data: results.slice(offset, offset + meta.per_page),
+      data: enrichedResults.slice(offset, offset + meta.per_page),
       meta,
       links: {
         first: '?page=1',

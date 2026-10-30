@@ -346,7 +346,7 @@ export const adminService = {
   },
 
   /**
-   * Retrieve system audit logs with filters (ADM-07, NFR-OBS-01).
+   * Retrieve system audit logs with filters (ADM-09, NFR-OBS-01).
    * Endpoint: GET /admin/audit-logs
    *
    * @param {Object} [params={}]
