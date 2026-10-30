@@ -3,12 +3,36 @@ import { isMockMode } from './mockSwitch.js';
 import { mockStore } from '../data/mockStore.js';
 
 /**
+ * Normalizes single item response from Laravel API.
+ * Supports { data: {...} } envelope and direct object {...}.
+ *
+ * @param {any} response
+ * @returns {any}
+ */
+function normalizeItem(response) {
+  if (!response) return null;
+  const data = response.data !== undefined ? response.data : response;
+  if (
+    data &&
+    typeof data === 'object' &&
+    !Array.isArray(data) &&
+    'data' in data &&
+    data.data &&
+    typeof data.data === 'object' &&
+    !Array.isArray(data.data)
+  ) {
+    return data.data;
+  }
+  return data;
+}
+
+/**
  * Category Management Service
- * Conforms to SRS 4.4, ADM-05, BR-09, and NFR-MAIN-02 (Mock/API Switch).
+ * Conforms to SRS Section 4.4, ADM-05, BR-09, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const categoryService = {
   /**
-   * List active product categories.
+   * List active product categories (Public) or all categories (Admin).
    * Endpoint: GET /categories
    *
    * @param {Object} [params={}]
@@ -20,7 +44,16 @@ export const categoryService = {
     }
 
     const response = await apiClient.get('/categories', { params });
-    return response.data || [];
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (response.data && Array.isArray(response.data.data)) {
+      return response.data.data;
+    }
+    if (response.raw && Array.isArray(response.raw.data)) {
+      return response.raw.data;
+    }
+    return Array.isArray(response) ? response : [];
   },
 
   /**
@@ -36,7 +69,7 @@ export const categoryService = {
     }
 
     const response = await apiClient.get(`/categories/${id}`);
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -52,7 +85,7 @@ export const categoryService = {
     }
 
     const response = await apiClient.post('/categories', categoryData);
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -69,7 +102,7 @@ export const categoryService = {
     }
 
     const response = await apiClient.put(`/categories/${id}`, categoryData);
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -78,15 +111,24 @@ export const categoryService = {
    * Endpoint: DELETE /categories/{id}
    *
    * @param {string|number} id
-   * @returns {Promise<void>}
+   * @returns {Promise<{ message: string, success?: boolean }>}
    */
   async deleteCategory(id) {
     if (isMockMode()) {
-      return mockStore.deleteCategory(id);
+      const result = mockStore.deleteCategory(id);
+      return {
+        success: true,
+        message: result?.message || 'Category deleted successfully.',
+      };
     }
 
     const response = await apiClient.delete(`/categories/${id}`);
-    return response.data;
+    return (
+      response.data || {
+        success: true,
+        message: 'Category deleted successfully.',
+      }
+    );
   },
 
   /**
