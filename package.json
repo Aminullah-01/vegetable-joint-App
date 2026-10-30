@@ -13,6 +13,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:schema": "node scripts/verify-openapi-drift.js",
     "prepare": "husky"
   },
   "lint-staged": {

@@ -2023,7 +2023,10 @@ class MockStore {
       from_status: oldStatus,
       to_status: newStatus,
       changed_by: this.currentUser?.id || 1,
-      note: note || `Status changed from ${oldStatus} to ${newStatus}`,
+      note:
+        typeof note === 'string'
+          ? note || `Status changed from ${oldStatus} to ${newStatus}`
+          : note?.note || `Status changed from ${oldStatus} to ${newStatus}`,
       created_at: new Date().toISOString(),
     });
 

@@ -1,0 +1,2155 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Vegetable Joint REST API",
+    "version": "1.0.0",
+    "description": "API specification for Vegetable Joint marketplace, connecting vegetable sellers with buyers in Nigeria. Conforms to SRS Section 4.4, Section 5, IF-01 to IF-06, and NFR-MAIN-05."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000/api/v1",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://staging-api.vegetablejoint.ng/api/v1",
+      "description": "Staging Server"
+    },
+    {
+      "url": "https://api.vegetablejoint.ng/api/v1",
+      "description": "Production Server"
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new buyer or seller account",
+        "description": "Registers a new user (buyer or seller). Admin role cannot be self-registered (SRS AUTH-01, AUTH-02, 4.4).",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate user with email and password",
+        "description": "Authenticates user credentials and returns session token and profile (SRS AUTH-04, 4.4).",
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests / rate limited (SRS NFR-SEC-07)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Invalidate current session token",
+        "description": "Logs out user and invalidates current authentication token (SRS AUTH-05, NFR-SEC-03).",
+        "operationId": "logoutUser",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Logged out successfully (no content)"
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "summary": "Send password reset link",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset link sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "Reset password using reset token",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "token", "password", "password_confirmation"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "token": { "type": "string" },
+                  "password": { "type": "string", "minLength": 8 },
+                  "password_confirmation": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "summary": "Change password for authenticated user",
+        "operationId": "changePassword",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["current_password", "password", "password_confirmation"],
+                "properties": {
+                  "current_password": { "type": "string" },
+                  "password": { "type": "string", "minLength": 8 },
+                  "password_confirmation": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profile": {
+      "get": {
+        "summary": "Get authenticated user profile",
+        "operationId": "getProfile",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Authenticated user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update authenticated user profile",
+        "operationId": "updateProfile",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "business_name": { "type": "string" },
+                  "location": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "summary": "List public products catalogue with filters and pagination",
+        "operationId": "getProducts",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "min_price", "in": "query", "schema": { "type": "number" } },
+          { "name": "max_price", "in": "query", "schema": { "type": "number" } },
+          { "name": "availability", "in": "query", "schema": { "type": "string" } },
+          { "name": "seller", "in": "query", "schema": { "type": "string" } },
+          { "name": "location", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create new product listing",
+        "operationId": "createProduct",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCreateRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "summary": "Get product details by ID",
+        "operationId": "getProductById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update product listing",
+        "operationId": "updateProduct",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft-delete product listing",
+        "operationId": "deleteProduct",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "success": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}/stock": {
+      "patch": {
+        "summary": "Quick stock & availability update",
+        "operationId": "updateProductStock",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quantity": { "type": "integer", "minimum": 0 },
+                  "stock_quantity": { "type": "integer", "minimum": 0 },
+                  "availability": {
+                    "oneOf": [{ "type": "boolean" }, { "type": "string" }]
+                  },
+                  "is_available": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stock updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/products": {
+      "get": {
+        "summary": "List seller own products (inventory)",
+        "operationId": "getSellerProducts",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Seller inventory list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/products/upload-image": {
+      "post": {
+        "summary": "Upload product image",
+        "operationId": "uploadProductImage",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["image"],
+                "properties": {
+                  "image": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Image uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "format": "uri" },
+                    "filename": { "type": "string" },
+                    "size": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List active vegetable categories",
+        "operationId": "getCategories",
+        "responses": {
+          "200": {
+            "description": "List of categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create category (Admin)",
+        "operationId": "createCategory",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "summary": "Get category details",
+        "operationId": "getCategoryById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update category (Admin)",
+        "operationId": "updateCategory",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete or deactivate category (Admin)",
+        "operationId": "deleteCategory",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category removed or deactivated"
+          }
+        }
+      }
+    },
+    "/sellers": {
+      "get": {
+        "summary": "List public verified sellers",
+        "operationId": "getSellers",
+        "responses": {
+          "200": {
+            "description": "List of sellers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sellers/{id}": {
+      "get": {
+        "summary": "Get public seller profile and listed produce",
+        "operationId": "getSellerById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Seller profile details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/dashboard": {
+      "get": {
+        "summary": "Get seller dashboard metrics overview",
+        "operationId": "getSellerDashboard",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Seller dashboard statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerDashboardEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/sales": {
+      "get": {
+        "summary": "Get seller sales metrics for selectable periods",
+        "operationId": "getSellerSales",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Seller sales performance data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerSalesEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/orders": {
+      "get": {
+        "summary": "Get orders scoped to authenticated seller",
+        "operationId": "getSellerOrders",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of seller orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/orders/{id}": {
+      "get": {
+        "summary": "Get seller order detail by ID",
+        "operationId": "getSellerOrderById",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details with items and history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/profile": {
+      "get": {
+        "summary": "Get authenticated seller profile",
+        "operationId": "getSellerProfile",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Seller profile details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update authenticated seller profile",
+        "operationId": "updateSellerProfile",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Updated seller profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "summary": "List orders scoped to authenticated role",
+        "operationId": "getOrders",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create order(s) from checkout payload",
+        "operationId": "createOrder",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order placed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCreationResponseEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stock conflict / insufficient availability (SRS CHK-04)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "summary": "Get order details by ID",
+        "operationId": "getOrderById",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}/status": {
+      "patch": {
+        "summary": "Update order status per lifecycle",
+        "operationId": "updateOrderStatus",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "confirmed", "processing", "ready", "completed", "cancelled"]
+                  },
+                  "note": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}/cancel": {
+      "post": {
+        "summary": "Cancel order with mandatory reason",
+        "operationId": "cancelOrder",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart/validate": {
+      "post": {
+        "summary": "Validate cart items against current price and stock",
+        "operationId": "validateCart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["items"],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["product_id", "quantity"],
+                      "properties": {
+                        "product_id": { "type": "integer" },
+                        "quantity": { "type": "integer", "minimum": 1 },
+                        "price": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart validation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartValidationResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "List platform users (Admin)",
+        "operationId": "adminGetUsers",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/status": {
+      "patch": {
+        "summary": "Update user account status (Admin)",
+        "operationId": "adminUpdateUserStatus",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "suspended"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/sellers": {
+      "get": {
+        "summary": "List sellers for moderation (Admin)",
+        "operationId": "adminGetSellers",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of sellers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/sellers/{id}/status": {
+      "patch": {
+        "summary": "Update seller approval status (Admin)",
+        "operationId": "adminUpdateSellerStatus",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["approval_status"],
+                "properties": {
+                  "approval_status": {
+                    "type": "string",
+                    "enum": ["pending", "approved", "rejected", "suspended"]
+                  },
+                  "rejection_reason": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Seller status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/products": {
+      "get": {
+        "summary": "List products for moderation (Admin)",
+        "operationId": "adminGetProducts",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of all products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/products/{id}/unpublish": {
+      "patch": {
+        "summary": "Unpublish product listing (Admin)",
+        "operationId": "adminUnpublishProduct",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product unpublished",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/products/{id}/publish": {
+      "patch": {
+        "summary": "Publish product listing (Admin)",
+        "operationId": "adminPublishProduct",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/products/{id}": {
+      "delete": {
+        "summary": "Remove product permanently from listings (Admin)",
+        "operationId": "adminRemoveProduct",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product removed"
+          }
+        }
+      }
+    },
+    "/admin/orders": {
+      "get": {
+        "summary": "List all orders across marketplace (Admin)",
+        "operationId": "adminGetOrders",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "All orders list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}": {
+      "get": {
+        "summary": "Get order details by ID (Admin)",
+        "operationId": "adminGetOrderById",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/override-status": {
+      "post": {
+        "summary": "Override order status with audit log (Admin)",
+        "operationId": "adminOverrideOrderStatus",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status", "reason"],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "confirmed", "processing", "ready", "completed", "cancelled"]
+                  },
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status overridden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings": {
+      "get": {
+        "summary": "Get public platform settings",
+        "operationId": "getPublicSettings",
+        "responses": {
+          "200": {
+            "description": "Public site settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteSettingsEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settings": {
+      "get": {
+        "summary": "Get platform settings (Admin)",
+        "operationId": "adminGetSettings",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Site settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteSettingsEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update platform settings (Admin)",
+        "operationId": "adminUpdateSettings",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settings updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteSettingsEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/audit-logs": {
+      "get": {
+        "summary": "List audit logs with filtering and pagination (Admin)",
+        "operationId": "adminGetAuditLogs",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Audit log entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/stats": {
+      "get": {
+        "summary": "Get platform overview counts and totals (Admin)",
+        "operationId": "adminGetStats",
+        "security": [{ "bearerAuth": [] }, { "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Platform overview metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStatsEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Service health check",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["status"],
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sanctum/csrf-cookie": {
+      "get": {
+        "summary": "Initialize Laravel Sanctum CSRF protection cookie",
+        "operationId": "getSanctumCsrfCookie",
+        "responses": {
+          "204": {
+            "description": "CSRF cookie set successfully (XSRF-TOKEN)"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "vegetable_joint_session"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "required": ["id", "name", "email", "phone", "role", "status", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string", "maxLength": 120 },
+          "email": { "type": "string", "format": "email", "maxLength": 190 },
+          "phone": { "type": "string", "maxLength": 20 },
+          "role": {
+            "type": "string",
+            "enum": ["buyer", "seller", "admin"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "suspended", "deactivated"]
+          },
+          "email_verified_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "seller_profile": {
+            "allOf": [{ "$ref": "#/components/schemas/SellerProfile" }],
+            "nullable": true
+          }
+        }
+      },
+      "SellerProfile": {
+        "type": "object",
+        "required": [
+          "id",
+          "business_name",
+          "location",
+          "approval_status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "business_name": { "type": "string", "maxLength": 150 },
+          "description": { "type": "string", "nullable": true },
+          "location": { "type": "string", "maxLength": 150 },
+          "phone": { "type": "string", "nullable": true },
+          "approval_status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected", "suspended"]
+          },
+          "rejection_reason": { "type": "string", "nullable": true },
+          "reviewed_by": { "type": "integer", "nullable": true },
+          "reviewed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "average_rating": { "type": "number", "nullable": true },
+          "rating_count": { "type": "integer", "nullable": true },
+          "total_products": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "user": {
+            "allOf": [{ "$ref": "#/components/schemas/User" }],
+            "nullable": true
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "required": ["id", "name", "slug", "is_active", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string", "maxLength": 80 },
+          "slug": { "type": "string", "maxLength": 80 },
+          "description": { "type": "string", "nullable": true },
+          "is_active": { "type": "boolean" },
+          "products_count": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": [
+          "id",
+          "seller_id",
+          "category_id",
+          "name",
+          "price",
+          "unit",
+          "quantity",
+          "low_stock_threshold",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": { "type": "integer" },
+          "seller_id": { "type": "integer" },
+          "category_id": { "type": "integer" },
+          "name": { "type": "string", "maxLength": 150 },
+          "description": { "type": "string", "nullable": true },
+          "price": { "type": "number", "minimum": 0.01 },
+          "unit": {
+            "type": "string",
+            "enum": ["kg", "basket", "bag", "bunch", "piece", "crate"]
+          },
+          "quantity": { "type": "integer", "minimum": 0 },
+          "low_stock_threshold": { "type": "integer", "minimum": 0 },
+          "image": { "type": "string", "nullable": true },
+          "availability": {
+            "oneOf": [
+              { "type": "boolean" },
+              { "type": "string", "enum": ["in_stock", "low_stock", "out_of_stock", "available", "unavailable"] }
+            ]
+          },
+          "average_rating": { "type": "number", "nullable": true },
+          "rating_count": { "type": "integer", "nullable": true },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "category": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "slug": { "type": "string" }
+            }
+          },
+          "seller": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "business_name": { "type": "string" },
+              "location": { "type": "string" },
+              "phone": { "type": "string" }
+            }
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_number",
+          "checkout_ref",
+          "buyer_id",
+          "seller_id",
+          "total_amount",
+          "status",
+          "payment_method",
+          "delivery_name",
+          "delivery_phone",
+          "delivery_address",
+          "created_at",
+          "updated_at",
+          "items"
+        ],
+        "properties": {
+          "id": { "type": "integer" },
+          "order_number": { "type": "string", "maxLength": 20 },
+          "checkout_ref": { "type": "string" },
+          "buyer_id": { "type": "integer" },
+          "seller_id": { "type": "integer" },
+          "total_amount": { "type": "number", "minimum": 0 },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "processing", "ready", "completed", "cancelled"]
+          },
+          "payment_method": {
+            "type": "string",
+            "enum": ["pay_on_delivery", "cash_on_delivery", "card", "bank_transfer", "wallet"]
+          },
+          "delivery_name": { "type": "string" },
+          "delivery_phone": { "type": "string" },
+          "delivery_address": { "type": "string" },
+          "notes": { "type": "string", "nullable": true },
+          "cancel_reason": { "type": "string", "nullable": true },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderItem" }
+          },
+          "status_history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderStatusHistory" }
+          },
+          "buyer": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "phone": { "type": "string" }
+            }
+          },
+          "seller": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "business_name": { "type": "string" },
+              "location": { "type": "string" }
+            }
+          }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "product_id",
+          "product_name",
+          "unit",
+          "quantity",
+          "price",
+          "subtotal"
+        ],
+        "properties": {
+          "id": { "type": "integer" },
+          "order_id": { "type": "integer" },
+          "product_id": { "type": "integer" },
+          "product_name": { "type": "string" },
+          "unit": { "type": "string" },
+          "quantity": { "type": "integer", "minimum": 1 },
+          "price": { "type": "number", "minimum": 0.01 },
+          "subtotal": { "type": "number", "minimum": 0.01 },
+          "image": { "type": "string", "nullable": true }
+        }
+      },
+      "OrderStatusHistory": {
+        "type": "object",
+        "required": ["id", "order_id", "to_status", "changed_by", "created_at"],
+        "properties": {
+          "id": { "type": "integer" },
+          "order_id": { "type": "integer" },
+          "from_status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "processing", "ready", "completed", "cancelled"],
+            "nullable": true
+          },
+          "to_status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "processing", "ready", "completed", "cancelled"]
+          },
+          "changed_by": { "type": "integer" },
+          "note": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "required": ["id", "action", "entity_type", "created_at"],
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer", "nullable": true },
+          "action": { "type": "string" },
+          "entity_type": { "type": "string" },
+          "entity_id": { "type": "integer", "nullable": true },
+          "ip_address": { "type": "string", "nullable": true },
+          "metadata": { "type": "object", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "user": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "email": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          }
+        }
+      },
+      "SiteSettings": {
+        "type": "object",
+        "required": [
+          "site_name",
+          "contact_email",
+          "default_currency",
+          "currency_symbol",
+          "order_cancellation_window_hours",
+          "max_image_upload_size_mb",
+          "pagination_per_page_cap"
+        ],
+        "properties": {
+          "site_name": { "type": "string" },
+          "site_tagline": { "type": "string", "nullable": true },
+          "contact_email": { "type": "string", "format": "email" },
+          "contact_phone": { "type": "string", "nullable": true },
+          "support_text": { "type": "string", "nullable": true },
+          "footer_text": { "type": "string", "nullable": true },
+          "default_currency": { "type": "string" },
+          "currency_symbol": { "type": "string" },
+          "order_cancellation_window_hours": { "type": "integer" },
+          "max_image_upload_size_mb": { "type": "integer" },
+          "pagination_per_page_cap": { "type": "integer" },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "SellerDashboardStats": {
+        "type": "object",
+        "required": [
+          "seller_id",
+          "active_listings_count",
+          "total_revenue",
+          "low_stock_count",
+          "pending_orders"
+        ],
+        "properties": {
+          "seller_id": { "type": "integer" },
+          "seller_name": { "type": "string" },
+          "active_listings_count": { "type": "integer" },
+          "total_products_count": { "type": "integer" },
+          "pending_orders_count": { "type": "integer" },
+          "completed_orders_count": { "type": "integer" },
+          "total_revenue": { "type": "number" },
+          "total_products_sold": { "type": "integer" },
+          "low_stock_count": { "type": "integer" },
+          "low_stock_threshold": { "type": "integer" },
+          "pending_orders": { "type": "array" },
+          "recent_orders": { "type": "array" },
+          "low_stock_products": { "type": "array" },
+          "latest_sales": { "type": "array" }
+        }
+      },
+      "SellerSalesMetrics": {
+        "type": "object",
+        "required": [
+          "seller_id",
+          "seller_name",
+          "period",
+          "total_sales",
+          "completed_orders_count",
+          "total_orders_count",
+          "order_count",
+          "total_products_sold",
+          "average_order_value",
+          "products_sold",
+          "recent_orders"
+        ],
+        "properties": {
+          "seller_id": { "type": "integer" },
+          "seller_name": { "type": "string" },
+          "period": { "type": "string" },
+          "date_from": { "type": "string", "format": "date-time", "nullable": true },
+          "date_to": { "type": "string", "format": "date-time", "nullable": true },
+          "total_sales": { "type": "number" },
+          "completed_orders_count": { "type": "integer" },
+          "total_orders_count": { "type": "integer" },
+          "order_count": { "type": "integer" },
+          "total_products_sold": { "type": "integer" },
+          "average_order_value": { "type": "number" },
+          "products_sold": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "product_name", "quantity_sold", "total_revenue"],
+              "properties": {
+                "product_id": { "type": "integer" },
+                "product_name": { "type": "string" },
+                "unit": { "type": "string" },
+                "quantity_sold": { "type": "integer" },
+                "total_revenue": { "type": "number" },
+                "order_count": { "type": "integer" }
+              }
+            }
+          },
+          "recent_orders": { "type": "array" }
+        }
+      },
+      "AdminStats": {
+        "type": "object",
+        "required": [
+          "total_users",
+          "total_sellers",
+          "pending_seller_approvals",
+          "active_products",
+          "total_products",
+          "total_orders"
+        ],
+        "properties": {
+          "total_users": { "type": "integer" },
+          "total_sellers": { "type": "integer" },
+          "pending_seller_approvals": { "type": "integer" },
+          "active_products": { "type": "integer" },
+          "total_products": { "type": "integer" },
+          "total_orders": { "type": "integer" },
+          "total_sales_value": { "type": "number" },
+          "platform_gmv": { "type": "number" }
+        }
+      },
+      "CartValidationResult": {
+        "type": "object",
+        "required": ["is_valid", "items", "changes"],
+        "properties": {
+          "is_valid": { "type": "boolean" },
+          "valid": { "type": "boolean" },
+          "items": { "type": "array" },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "type", "message"],
+              "properties": {
+                "product_id": { "type": "integer" },
+                "name": { "type": "string" },
+                "type": { "type": "string" },
+                "old_price": { "type": "number" },
+                "new_price": { "type": "number" },
+                "old_quantity": { "type": "integer" },
+                "new_quantity": { "type": "integer" },
+                "message": { "type": "string" }
+              }
+            }
+          },
+          "has_price_changes": { "type": "boolean" },
+          "has_stock_issues": { "type": "boolean" },
+          "has_unavailable": { "type": "boolean" }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "required": ["current_page", "per_page", "total", "last_page"],
+        "properties": {
+          "current_page": { "type": "integer", "minimum": 1 },
+          "per_page": { "type": "integer", "minimum": 1, "maximum": 50 },
+          "total": { "type": "integer", "minimum": 0 },
+          "last_page": { "type": "integer", "minimum": 1 },
+          "from": { "type": "integer", "nullable": true },
+          "to": { "type": "integer", "nullable": true }
+        }
+      },
+      "PaginationLinks": {
+        "type": "object",
+        "properties": {
+          "first": { "type": "string", "nullable": true },
+          "last": { "type": "string", "nullable": true },
+          "prev": { "type": "string", "nullable": true },
+          "next": { "type": "string", "nullable": true }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["name", "email", "phone", "password", "password_confirmation", "role"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 120 },
+          "email": { "type": "string", "format": "email", "maxLength": 190 },
+          "phone": { "type": "string", "maxLength": 20 },
+          "password": { "type": "string", "minLength": 8 },
+          "password_confirmation": { "type": "string", "minLength": 8 },
+          "role": { "type": "string", "enum": ["buyer", "seller"] },
+          "business_name": { "type": "string" },
+          "location": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "ProductCreateRequest": {
+        "type": "object",
+        "required": ["name", "category_id", "price", "unit", "quantity"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 150 },
+          "category_id": { "type": "integer" },
+          "description": { "type": "string" },
+          "price": { "type": "number", "minimum": 0.01 },
+          "unit": {
+            "type": "string",
+            "enum": ["kg", "basket", "bag", "bunch", "piece", "crate"]
+          },
+          "quantity": { "type": "integer", "minimum": 0 },
+          "low_stock_threshold": { "type": "integer", "minimum": 0 },
+          "image": { "type": "string" },
+          "availability": {
+            "oneOf": [
+              { "type": "boolean" },
+              { "type": "string" }
+            ]
+          }
+        }
+      },
+      "OrderCreateRequest": {
+        "type": "object",
+        "required": [
+          "checkout_ref",
+          "delivery_name",
+          "delivery_phone",
+          "delivery_address",
+          "payment_method",
+          "items"
+        ],
+        "properties": {
+          "checkout_ref": { "type": "string" },
+          "delivery_name": { "type": "string" },
+          "delivery_phone": { "type": "string" },
+          "delivery_address": { "type": "string" },
+          "payment_method": {
+            "type": "string",
+            "enum": ["pay_on_delivery", "cash_on_delivery", "card", "bank_transfer", "wallet"]
+          },
+          "notes": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "quantity", "price"],
+              "properties": {
+                "product_id": { "type": "integer" },
+                "quantity": { "type": "integer", "minimum": 1 },
+                "price": { "type": "number", "minimum": 0.01 }
+              }
+            }
+          }
+        }
+      },
+      "AuthResponseEnvelope": {
+        "type": "object",
+        "required": ["user"],
+        "properties": {
+          "user": { "$ref": "#/components/schemas/User" },
+          "token": { "type": "string" },
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string", "example": "Bearer" },
+          "message": { "type": "string" }
+        }
+      },
+      "UserEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/User" }
+            }
+          },
+          { "$ref": "#/components/schemas/User" }
+        ]
+      },
+      "ProductEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/Product" }
+            }
+          },
+          { "$ref": "#/components/schemas/Product" }
+        ]
+      },
+      "SellerEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/SellerProfile" }
+            }
+          },
+          { "$ref": "#/components/schemas/SellerProfile" }
+        ]
+      },
+      "CategoryEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/Category" }
+            }
+          },
+          { "$ref": "#/components/schemas/Category" }
+        ]
+      },
+      "OrderEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/Order" }
+            }
+          },
+          { "$ref": "#/components/schemas/Order" }
+        ]
+      },
+      "SiteSettingsEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/SiteSettings" }
+            }
+          },
+          { "$ref": "#/components/schemas/SiteSettings" }
+        ]
+      },
+      "SellerDashboardEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/SellerDashboardStats" }
+            }
+          },
+          { "$ref": "#/components/schemas/SellerDashboardStats" }
+        ]
+      },
+      "SellerSalesEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/SellerSalesMetrics" }
+            }
+          },
+          { "$ref": "#/components/schemas/SellerSalesMetrics" }
+        ]
+      },
+      "AdminStatsEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": { "$ref": "#/components/schemas/AdminStats" }
+            }
+          },
+          { "$ref": "#/components/schemas/AdminStats" }
+        ]
+      },
+      "ProductListEnvelope": {
+        "type": "object",
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Product" }
+          },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "OrderListEnvelope": {
+        "type": "object",
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Order" }
+          },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "CategoryListEnvelope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Category" }
+              },
+              "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+              "links": { "$ref": "#/components/schemas/PaginationLinks" }
+            }
+          },
+          {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Category" }
+          }
+        ]
+      },
+      "SellerListEnvelope": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SellerProfile" }
+          },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "UserListEnvelope": {
+        "type": "object",
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/User" }
+          },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "AuditLogListEnvelope": {
+        "type": "object",
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AuditLog" }
+          },
+          "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+          "links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "OrderCreationResponseEnvelope": {
+        "type": "object",
+        "required": ["checkout_ref", "orders"],
+        "properties": {
+          "checkout_ref": { "type": "string" },
+          "orders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Order" }
+          },
+          "message": { "type": "string" }
+        }
+      },
+      "ApiErrorEnvelope": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string" },
+          "code": { "type": "string" },
+          "status": { "type": "integer" }
+        }
+      },
+      "ValidationErrorEnvelope": {
+        "type": "object",
+        "required": ["message", "errors"],
+        "properties": {
+          "message": { "type": "string" },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
