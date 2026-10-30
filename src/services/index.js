@@ -6,6 +6,9 @@ export { default as apiClient } from './apiClient.js';
 export * from './mockSwitch.js';
 export { default as mockSwitch } from './mockSwitch.js';
 
+export * from './tokenStorage.js';
+export { default as tokenStorage } from './tokenStorage.js';
+
 export * from './authService.js';
 export { default as authService } from './authService.js';
 

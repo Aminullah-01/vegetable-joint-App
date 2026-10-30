@@ -1,6 +1,7 @@
 import { apiClient } from './apiClient.js';
 import { isMockMode } from './mockSwitch.js';
 import { mockStore } from '../data/mockStore.js';
+import { tokenStorage } from './tokenStorage.js';
 
 /**
  * Normalizes authentication response payloads from Laravel Sanctum.
@@ -61,9 +62,14 @@ export const authService = {
     if (isMockMode()) {
       const result = mockStore.registerUser(payload);
       if (result?.token) {
+        tokenStorage.setToken(result.token);
         apiClient.setToken(result.token);
       }
       return result;
+    }
+
+    if (apiClient.isCookieAuth()) {
+      await apiClient.ensureCsrfCookie();
     }
 
     const response = await apiClient.post('/auth/register', payload, {
@@ -72,6 +78,7 @@ export const authService = {
 
     const result = normalizeAuthResponse(response);
     if (result?.token) {
+      tokenStorage.setToken(result.token);
       apiClient.setToken(result.token);
     }
     return result;
@@ -88,9 +95,14 @@ export const authService = {
     if (isMockMode()) {
       const result = mockStore.loginUser(credentials);
       if (result?.token) {
+        tokenStorage.setToken(result.token);
         apiClient.setToken(result.token);
       }
       return result;
+    }
+
+    if (apiClient.isCookieAuth()) {
+      await apiClient.ensureCsrfCookie();
     }
 
     const response = await apiClient.post('/auth/login', credentials, {
@@ -99,6 +111,7 @@ export const authService = {
 
     const result = normalizeAuthResponse(response);
     if (result?.token) {
+      tokenStorage.setToken(result.token);
       apiClient.setToken(result.token);
     }
     return result;
@@ -106,6 +119,7 @@ export const authService = {
 
   /**
    * Invalidate the current session token on the server and clear local token.
+   * Conforms to SRS AUTH-05 and NFR-SEC-03.
    * Endpoint: POST /auth/logout
    *
    * @returns {Promise<void>}
@@ -113,6 +127,7 @@ export const authService = {
   async logout() {
     if (isMockMode()) {
       mockStore.logoutUser();
+      tokenStorage.revokeOnLogout();
       apiClient.clearToken();
       return;
     }
@@ -120,6 +135,7 @@ export const authService = {
     try {
       await apiClient.post('/auth/logout', {});
     } finally {
+      tokenStorage.revokeOnLogout();
       apiClient.clearToken();
     }
   },
@@ -163,12 +179,17 @@ export const authService = {
    */
   async resetPassword(data) {
     if (isMockMode()) {
-      return mockStore.resetPassword(data);
+      const res = mockStore.resetPassword(data);
+      tokenStorage.revokeOnPasswordChange();
+      apiClient.clearToken();
+      return res;
     }
 
     const response = await apiClient.post('/auth/reset-password', data, {
       skipAuth: true,
     });
+    tokenStorage.revokeOnPasswordChange();
+    apiClient.clearToken();
     return response.data?.message
       ? response.data
       : {
@@ -211,7 +232,7 @@ export const authService = {
   },
 
   /**
-   * Change the authenticated user's password (SRS AUTH-11).
+   * Change the authenticated user's password (SRS AUTH-11, NFR-SEC-03).
    * Endpoint: POST /auth/change-password
    *
    * @param {{ current_password: string, password: string, password_confirmation: string }} payload
@@ -234,34 +255,36 @@ export const authService = {
   },
 
   /**
-   * Retrieve active authentication bearer token from ApiClient.
+   * Retrieve active authentication token from tokenStorage or ApiClient.
    * @returns {string|null}
    */
   getToken() {
-    return apiClient.getToken();
+    return tokenStorage.getToken() || apiClient.getToken();
   },
 
   /**
-   * Set active authentication bearer token in ApiClient and localStorage.
+   * Set active authentication token in tokenStorage and ApiClient.
    * @param {string|null} token
    */
   setToken(token) {
+    tokenStorage.setToken(token);
     apiClient.setToken(token);
   },
 
   /**
-   * Clear active bearer token from ApiClient and localStorage.
+   * Clear active token and session markers from tokenStorage and ApiClient.
    */
   clearToken() {
+    tokenStorage.clearToken();
     apiClient.clearToken();
   },
 
   /**
-   * Check if a token currently exists.
+   * Check if an active authenticated session exists (via token or cookie session marker).
    * @returns {boolean}
    */
   isAuthenticated() {
-    return Boolean(apiClient.getToken());
+    return tokenStorage.hasToken() || Boolean(apiClient.getToken());
   },
 };
 

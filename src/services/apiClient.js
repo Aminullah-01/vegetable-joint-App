@@ -4,6 +4,7 @@ import {
   createApiErrorFromResponse,
   createNetworkError,
 } from './apiErrors.js';
+import { tokenStorage, TOKEN_STRATEGIES } from './tokenStorage.js';
 
 const STORAGE_TOKEN_KEY = 'vegetable_joint_token';
 
@@ -82,24 +83,43 @@ export class ApiClient {
    * @param {Object} [config={}]
    * @param {string} [config.baseUrl] - Base API URL (defaults to env.apiBaseUrl).
    * @param {number} [config.timeout=30000] - Default request timeout in milliseconds.
+   * @param {string} [config.authStrategy] - 'cookie' (HttpOnly cookie preferred) or 'bearer'.
+   * @param {boolean} [config.withCredentials] - Whether to include credentials across CORS origins.
+   * @param {string} [config.sanctumCsrfUrl] - Laravel Sanctum CSRF cookie initialization endpoint.
+   * @param {Object} [config.storage] - TokenStorage driver instance.
    */
-
-  constructor({ baseUrl = env.apiBaseUrl, timeout = 30000 } = {}) {
+  constructor({
+    baseUrl = env.apiBaseUrl,
+    timeout = 30000,
+    authStrategy = env.authStrategy || TOKEN_STRATEGIES.COOKIE,
+    withCredentials = env.withCredentials !== undefined
+      ? env.withCredentials
+      : true,
+    sanctumCsrfUrl = env.sanctumCsrfUrl,
+    storage = tokenStorage,
+  } = {}) {
     this.baseUrl = baseUrl;
     this.timeout = timeout;
+    this.authStrategy = authStrategy;
+    this.withCredentials = withCredentials;
+    this.sanctumCsrfUrl = sanctumCsrfUrl;
+    this.tokenStorage = storage;
     this.token = null;
     this.tokenProvider = null;
     this.unauthorizedListeners = new Set();
-    // Initialize token from localStorage if in a browser environment
+    // Initialize token from storage
     this.initTokenFromStorage();
   }
 
   /**
-   * Reads persisted auth token from localStorage if available.
+   * Reads persisted auth token from tokenStorage or localStorage if available.
    * @private
    */
   initTokenFromStorage() {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (this.tokenStorage) {
+      this.token = this.tokenStorage.getToken();
+    }
+    if (!this.token && typeof window !== 'undefined' && window.localStorage) {
       try {
         const stored = window.localStorage.getItem(STORAGE_TOKEN_KEY);
         if (stored) {
@@ -128,14 +148,22 @@ export class ApiClient {
   }
 
   /**
-   * Set authentication bearer token and persist to localStorage.
+   * Set authentication bearer token and persist appropriately per strategy.
+   * In cookie mode, localStorage persistence is avoided to minimize XSS exposure (NFR-SEC-03).
    * @param {string|null} token
    */
   setToken(token) {
     this.token = token || null;
+    if (this.tokenStorage) {
+      this.tokenStorage.setToken(token);
+    }
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        if (token) {
+        if (
+          token &&
+          (this.authStrategy === TOKEN_STRATEGIES.BEARER ||
+            !this.tokenStorage?.isCookieStrategy())
+        ) {
           window.localStorage.setItem(STORAGE_TOKEN_KEY, token);
         } else {
           window.localStorage.removeItem(STORAGE_TOKEN_KEY);
@@ -148,7 +176,7 @@ export class ApiClient {
 
   /**
    * Retrieve active authentication token.
-   * Priority: custom tokenProvider -> in-memory token -> localStorage.
+   * Priority: custom tokenProvider -> in-memory token -> tokenStorage -> localStorage.
    * @returns {string|null}
    */
   getToken() {
@@ -157,6 +185,11 @@ export class ApiClient {
       if (provided) return provided;
     }
     if (this.token) return this.token;
+
+    if (this.tokenStorage) {
+      const stored = this.tokenStorage.getToken();
+      if (stored) return stored;
+    }
 
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
@@ -172,7 +205,70 @@ export class ApiClient {
    * Clears stored authentication token.
    */
   clearToken() {
-    this.setToken(null);
+    this.token = null;
+    if (this.tokenStorage) {
+      this.tokenStorage.clearToken();
+    }
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.removeItem(STORAGE_TOKEN_KEY);
+      } catch {
+        // Storage restricted
+      }
+    }
+  }
+
+  /**
+   * Switch authentication strategy ('cookie' | 'bearer').
+   * @param {'cookie'|'bearer'} strategy
+   */
+  setAuthStrategy(strategy) {
+    this.authStrategy = strategy;
+    if (this.tokenStorage) {
+      this.tokenStorage.setStrategy(strategy);
+    }
+  }
+
+  /**
+   * Get currently active authentication strategy.
+   * @returns {'cookie'|'bearer'}
+   */
+  getAuthStrategy() {
+    return this.authStrategy;
+  }
+
+  /**
+   * Set whether credentials (cookies) are sent with cross-origin requests.
+   * @param {boolean} value
+   */
+  setWithCredentials(value) {
+    this.withCredentials = Boolean(value);
+  }
+
+  /**
+   * Checks whether cookie authentication strategy is active.
+   * @returns {boolean}
+   */
+  isCookieAuth() {
+    return this.authStrategy === TOKEN_STRATEGIES.COOKIE;
+  }
+
+  /**
+   * Initializes Laravel Sanctum CSRF protection cookie (NFR-SEC-03, NFR-SEC-06).
+   * Safe to call prior to login or register requests in SPA cookie mode.
+   *
+   * @returns {Promise<void>}
+   */
+  async ensureCsrfCookie() {
+    if (this.authStrategy === TOKEN_STRATEGIES.COOKIE || this.withCredentials) {
+      try {
+        await this.get(this.sanctumCsrfUrl || '/sanctum/csrf-cookie', {
+          skipAuth: true,
+        });
+      } catch {
+        // Sanctum endpoint may return 204 No Content with set-cookie header
+      }
+    }
   }
 
   /**
@@ -250,6 +346,18 @@ export class ApiClient {
       headers.set('Accept', 'application/json');
     }
 
+    // Attach CSRF protection header for state-changing requests (NFR-SEC-06)
+    const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+    if (!SAFE_METHODS.includes(method.toUpperCase())) {
+      const csrfToken =
+        customHeaders['X-XSRF-TOKEN'] ||
+        customHeaders['x-xsrf-token'] ||
+        (this.tokenStorage ? this.tokenStorage.getCsrfToken() : null);
+      if (csrfToken && !headers.has('X-XSRF-TOKEN')) {
+        headers.set('X-XSRF-TOKEN', csrfToken);
+      }
+    }
+
     // Set Authorization header if token exists and not skipped (IF-05)
     if (!skipAuth) {
       const activeToken = tokenOverride || this.getToken();
@@ -290,6 +398,13 @@ export class ApiClient {
       });
     }
 
+    const shouldIncludeCredentials =
+      credentials !== undefined
+        ? credentials
+        : this.withCredentials || this.authStrategy === TOKEN_STRATEGIES.COOKIE
+          ? 'include'
+          : 'same-origin';
+
     let response;
     try {
       response = await fetch(url, {
@@ -297,7 +412,7 @@ export class ApiClient {
         headers,
         body: serializedBody,
         signal: controller.signal,
-        credentials: credentials || 'same-origin',
+        credentials: shouldIncludeCredentials,
         ...extraFetchOptions,
       });
     } catch (err) {
@@ -477,6 +592,21 @@ export class ApiClient {
       xhr.open(method, url);
 
       xhr.setRequestHeader('Accept', 'application/json');
+
+      const shouldIncludeCredentials =
+        this.withCredentials || this.authStrategy === TOKEN_STRATEGIES.COOKIE;
+      xhr.withCredentials = shouldIncludeCredentials;
+
+      const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+      if (!SAFE_METHODS.includes(method.toUpperCase())) {
+        const csrfToken =
+          customHeaders['X-XSRF-TOKEN'] ||
+          customHeaders['x-xsrf-token'] ||
+          (this.tokenStorage ? this.tokenStorage.getCsrfToken() : null);
+        if (csrfToken && !customHeaders['X-XSRF-TOKEN']) {
+          xhr.setRequestHeader('X-XSRF-TOKEN', csrfToken);
+        }
+      }
 
       if (!skipAuth) {
         const activeToken = tokenOverride || this.getToken();

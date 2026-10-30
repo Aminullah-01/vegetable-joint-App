@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { AuthContext } from './authContextDef.js';
-import { authService, apiClient } from '../services';
+import { authService, apiClient, tokenStorage } from '../services';
 
 const STORAGE_TOKEN_KEY = 'vegetable_joint_token';
 const STORAGE_USER_KEY = 'vegetable_joint_user';
@@ -13,6 +13,8 @@ const STORAGE_USER_KEY = 'vegetable_joint_user';
  */
 export function AuthProvider({ children }) {
   const [token, setTokenState] = useState(() => {
+    const stored = tokenStorage.getToken();
+    if (stored) return stored;
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         return window.localStorage.getItem(STORAGE_TOKEN_KEY) || null;
@@ -63,9 +65,10 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Safely persist token to localStorage and apiClient
+  // Safely persist token to tokenStorage, localStorage, and apiClient
   const persistToken = useCallback((newToken) => {
     setTokenState(newToken);
+    tokenStorage.setToken(newToken);
     apiClient.setToken(newToken);
   }, []);
 
@@ -74,6 +77,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const triggerSessionExpired = useCallback(() => {
+    tokenStorage.revokeOnLogout();
     persistToken(null);
     persistUser(null);
     setIsSessionExpired(true);
@@ -88,6 +92,7 @@ export function AuthProvider({ children }) {
     } catch {
       // Ignore network errors on logout
     } finally {
+      tokenStorage.revokeOnLogout();
       persistToken(null);
       persistUser(null);
       setIsSessionExpired(false);
@@ -102,11 +107,18 @@ export function AuthProvider({ children }) {
     async function restoreSession() {
       const activeToken =
         token ||
+        tokenStorage.getToken() ||
         (typeof window !== 'undefined' && window.localStorage
           ? window.localStorage.getItem(STORAGE_TOKEN_KEY)
           : null);
 
-      if (!activeToken) {
+      const isCookieActive =
+        tokenStorage.isCookieStrategy() &&
+        typeof window !== 'undefined' &&
+        window.sessionStorage?.getItem('vegetable_joint_session_active') ===
+          'true';
+
+      if (!activeToken && !isCookieActive) {
         if (isMounted) {
           setIsLoading(false);
         }
@@ -114,11 +126,13 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        apiClient.setToken(activeToken);
+        if (activeToken) {
+          apiClient.setToken(activeToken);
+        }
         const profile = await authService.getProfile();
         if (isMounted && profile) {
           persistUser(profile);
-          if (!token) {
+          if (!token && activeToken) {
             persistToken(activeToken);
           }
         }
@@ -126,6 +140,7 @@ export function AuthProvider({ children }) {
         // Token was invalid or expired (401)
         if (isMounted) {
           if (err?.status === 401 || err?.isAuthError) {
+            tokenStorage.revokeOnLogout();
             persistToken(null);
             persistUser(null);
           }
@@ -141,14 +156,22 @@ export function AuthProvider({ children }) {
 
     // Register 401 interceptor (ERR-04 session expired prompt)
     const unsubscribeUnauthorized = apiClient.onUnauthorized(() => {
+      tokenStorage.revokeOnLogout();
       persistToken(null);
       persistUser(null);
       setIsSessionExpired(true);
     });
 
+    const unsubscribeRevoke = tokenStorage.onRevoke(() => {
+      if (isMounted) {
+        setTokenState(null);
+      }
+    });
+
     return () => {
       isMounted = false;
       unsubscribeUnauthorized();
+      unsubscribeRevoke();
     };
   }, [persistToken, persistUser, token]);
 
@@ -252,7 +275,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const role = user?.role || null;
-  const isAuthenticated = Boolean(user && token);
+  const isAuthenticated = Boolean(user && (token || tokenStorage.hasToken()));
 
   const value = useMemo(
     () => ({

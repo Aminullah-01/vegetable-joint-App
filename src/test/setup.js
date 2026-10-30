@@ -1,10 +1,22 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { tokenStorage } from '../services/tokenStorage.js';
+import { apiClient } from '../services/apiClient.js';
 
-// Automatically clean up DOM after each test
+// Automatically clean up DOM and auth state after each test
 afterEach(() => {
   cleanup();
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.clear();
+      window.localStorage.clear();
+    } catch {
+      // Storage unavailable
+    }
+    tokenStorage.clearToken();
+    apiClient.clearToken();
+  }
 });
 
 // Polyfill window.matchMedia for responsive components
