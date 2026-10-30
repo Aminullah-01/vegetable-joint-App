@@ -54,6 +54,7 @@ export function ErrorState({
           <button
             type="button"
             onClick={onRetry}
+            data-testid="error-state-retry-btn"
             style={{
               backgroundColor: '#dc2626',
               color: '#ffffff',
@@ -147,6 +148,7 @@ export function ErrorState({
             <button
               type="button"
               onClick={onRetry}
+              data-testid="error-state-retry-btn"
               style={{
                 backgroundColor: '#15803d',
                 color: '#ffffff',

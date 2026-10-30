@@ -1,6 +1,7 @@
 import { env } from '../utils/index.js';
 import {
   HTTP_STATUS,
+  ERROR_CODES,
   createApiErrorFromResponse,
   createNetworkError,
 } from './apiErrors.js';
@@ -97,6 +98,10 @@ export class ApiClient {
       : true,
     sanctumCsrfUrl = env.sanctumCsrfUrl,
     storage = tokenStorage,
+    maxRetries = 2,
+    retryDelay = 300,
+    backoffMultiplier = 2,
+    retryCondition = null,
   } = {}) {
     this.baseUrl = baseUrl;
     this.timeout = timeout;
@@ -104,6 +109,10 @@ export class ApiClient {
     this.withCredentials = withCredentials;
     this.sanctumCsrfUrl = sanctumCsrfUrl;
     this.tokenStorage = storage;
+    this.maxRetries = maxRetries;
+    this.retryDelay = retryDelay;
+    this.backoffMultiplier = backoffMultiplier;
+    this.retryCondition = retryCondition;
     this.token = null;
     this.tokenProvider = null;
     this.unauthorizedListeners = new Set();
@@ -306,7 +315,94 @@ export class ApiClient {
   }
 
   /**
-   * Core request dispatcher.
+   * Determines whether an error is transient and eligible for automatic retry.
+   * Conforms to NFR-REL-04, NFR-REL-05, and idempotency standards.
+   *
+   * @param {ApiError|Error} error
+   * @param {string} [method='GET']
+   * @param {Object} [options={}]
+   * @returns {boolean}
+   */
+  isRetryable(error, method = 'GET', options = {}) {
+    if (typeof this.retryCondition === 'function') {
+      return Boolean(this.retryCondition(error, method, options));
+    }
+
+    // Never retry client validation or auth errors (400, 401, 403, 404, 409, 422)
+    const status = error?.status;
+    if (
+      status &&
+      status >= 400 &&
+      status < 500 &&
+      status !== HTTP_STATUS.TOO_MANY_REQUESTS
+    ) {
+      return false;
+    }
+
+    const isTransient =
+      error?.isNetworkError ||
+      error?.code === ERROR_CODES.NETWORK_ERROR ||
+      error?.code === ERROR_CODES.TIMEOUT_ERROR ||
+      status === 0 ||
+      status === HTTP_STATUS.BAD_GATEWAY ||
+      status === HTTP_STATUS.SERVICE_UNAVAILABLE ||
+      status === HTTP_STATUS.GATEWAY_TIMEOUT ||
+      status === HTTP_STATUS.TOO_MANY_REQUESTS;
+
+    if (!isTransient) {
+      return false;
+    }
+
+    // Safe/idempotent methods are always retryable on transient error
+    const upperMethod = String(method).toUpperCase();
+    const isIdempotentMethod = ['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(
+      upperMethod
+    );
+
+    if (isIdempotentMethod) {
+      return true;
+    }
+
+    // For mutations, retry only if explicitly enabled or flagged idempotent (NFR-REL-04)
+    return Boolean(
+      options.retries > 0 ||
+      options.idempotent === true ||
+      options.retryOnNetworkError === true ||
+      options.headers?.['X-Checkout-Ref'] ||
+      options.headers?.['x-checkout-ref'] ||
+      options.headers?.['X-Idempotency-Key'] ||
+      options.headers?.['x-idempotency-key']
+    );
+  }
+
+  /**
+   * Helper checking whether an error is a network or connectivity failure.
+   * @param {any} error
+   * @returns {boolean}
+   */
+  isNetworkError(error) {
+    return Boolean(
+      error?.isNetworkError ||
+      error?.code === ERROR_CODES.NETWORK_ERROR ||
+      error?.status === 0
+    );
+  }
+
+  /**
+   * Helper checking whether an error occurred while offline.
+   * @param {any} error
+   * @returns {boolean}
+   */
+  isOffline(error) {
+    return Boolean(
+      error?.isOffline ||
+      (typeof navigator !== 'undefined' && navigator.onLine === false)
+    );
+  }
+
+  /**
+   * Core request dispatcher with automatic retry for transient network errors.
+   * Satisfies NFR-REL-05 and MKT-10.
    *
    * @param {string} endpoint - Relative API endpoint or absolute URL.
    * @param {Object} [options={}]
@@ -318,10 +414,66 @@ export class ApiClient {
    * @param {string} [options.token] - Explicit token override.
    * @param {AbortSignal} [options.signal] - External AbortSignal.
    * @param {number} [options.timeout] - Custom timeout in ms.
+   * @param {number} [options.retries] - Number of retry attempts.
+   * @param {number} [options.retryDelay] - Base delay between retries.
+   * @param {boolean} [options.idempotent] - Flag indicating request is safe to retry.
    * @param {boolean} [options.raw=false] - If true, returns raw Fetch Response.
    * @returns {Promise<{ data: any, meta: any, links: any, status: number, headers: Headers, raw: any }>}
    */
   async request(endpoint, options = {}) {
+    const method = String(options.method || 'GET').toUpperCase();
+    const isSafeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(method);
+    const configuredRetries =
+      options.retries !== undefined
+        ? Number(options.retries)
+        : isSafeMethod || options.idempotent
+          ? this.maxRetries
+          : 0;
+
+    let attempt = 0;
+    while (true) {
+      try {
+        return await this.executeRequest(endpoint, options, attempt + 1);
+      } catch (err) {
+        attempt += 1;
+        const shouldRetry =
+          attempt <= configuredRetries &&
+          this.isRetryable(err, method, options);
+
+        if (!shouldRetry) {
+          if (err && typeof err === 'object') {
+            err.attempts = attempt;
+          }
+          throw err;
+        }
+
+        // Calculate backoff with jitter
+        const baseDelay =
+          options.retryDelay !== undefined
+            ? options.retryDelay
+            : this.retryDelay;
+        const multiplier =
+          options.backoffMultiplier !== undefined
+            ? options.backoffMultiplier
+            : this.backoffMultiplier;
+
+        let delayMs = baseDelay * Math.pow(multiplier, attempt - 1);
+        if (err.retryAfter && Number.isFinite(err.retryAfter)) {
+          delayMs = Math.max(delayMs, Math.min(err.retryAfter * 1000, 10000));
+        } else {
+          delayMs += Math.random() * 50;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  /**
+   * Executes a single HTTP request attempt.
+   * @private
+   */
+  async executeRequest(endpoint, options = {}, attempt = 1) {
     const {
       method = 'GET',
       params = {},
@@ -390,7 +542,10 @@ export class ApiClient {
     if (externalSignal) {
       if (externalSignal.aborted) {
         clearTimeout(timerId);
-        throw createNetworkError(externalSignal.reason || new Error('Aborted'));
+        throw createNetworkError(
+          externalSignal.reason || new Error('Aborted'),
+          attempt
+        );
       }
       externalSignal.addEventListener('abort', () => {
         clearTimeout(timerId);
@@ -417,7 +572,7 @@ export class ApiClient {
       });
     } catch (err) {
       clearTimeout(timerId);
-      throw createNetworkError(err);
+      throw createNetworkError(err, attempt);
     } finally {
       clearTimeout(timerId);
     }
@@ -492,6 +647,21 @@ export class ApiClient {
       headers: response.headers,
       raw: parsedBody,
     };
+  }
+
+  /**
+   * Convenience method to dispatch a request with explicit retries.
+   *
+   * @param {string} endpoint
+   * @param {Object} [options={}]
+   * @returns {Promise<any>}
+   */
+  requestWithRetry(endpoint, options = {}) {
+    const retries =
+      options.retries !== undefined
+        ? options.retries
+        : Math.max(1, this.maxRetries);
+    return this.request(endpoint, { ...options, retries });
   }
 
   /**

@@ -54,17 +54,26 @@ export function OrderFailureNotice({
     statusCode === 422 ||
     error?.isValidationError ||
     error?.code === 'VALIDATION_ERROR';
+  const isNetwork =
+    statusCode === 0 ||
+    Boolean(error?.isNetworkError) ||
+    Boolean(error?.isNetwork) ||
+    error?.code === 'NETWORK_ERROR' ||
+    error?.code === 'TIMEOUT_ERROR' ||
+    Boolean(error?.isOffline);
 
   const summaryMessage =
     error?.message ||
     error?.data?.message ||
     (typeof error === 'string'
       ? error
-      : isConflict
-        ? 'Your order could not be completed because some items have stock or price conflicts (HTTP 409).'
-        : isValidation
-          ? 'Your order could not be processed due to validation errors (HTTP 422).'
-          : 'Unable to place order. Please review your cart and try again.');
+      : isNetwork
+        ? 'Unable to reach the server. Your cart and order details are safely preserved. Please check your internet connection and try again.'
+        : isConflict
+          ? 'Your order could not be completed because some items have stock or price conflicts (HTTP 409).'
+          : isValidation
+            ? 'Your order could not be processed due to validation errors (HTTP 422).'
+            : 'Unable to place order. Please review your cart and try again.');
 
   const handleGoToCart = () => {
     if (onReviewCart) {
@@ -85,7 +94,9 @@ export function OrderFailureNotice({
     ? 'Inventory or Price Conflict (HTTP 409)'
     : isValidation
       ? 'Order Validation Error (HTTP 422)'
-      : 'Order Submission Failed';
+      : isNetwork
+        ? 'Connection Error — Cart Preserved'
+        : 'Order Submission Failed';
 
   return (
     <div

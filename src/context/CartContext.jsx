@@ -478,6 +478,22 @@ export function CartProvider({ children }) {
     [isAuthenticated, isBuyer, userId, items]
   );
 
+  // Auto-retry server sync when coming back online (NFR-REL-05)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleBackOnline = () => {
+      if (isAuthenticated && isBuyer && userId && items.length > 0) {
+        syncServerCart(items).catch(() => {});
+      }
+    };
+
+    window.addEventListener('online', handleBackOnline);
+    return () => {
+      window.removeEventListener('online', handleBackOnline);
+    };
+  }, [isAuthenticated, isBuyer, userId, items, syncServerCart]);
+
   // Derived calculations (BR-02: subtotal = price × qty, grand total = sum of subtotals)
   const cartTotals = useMemo(() => calculateCartTotals(items), [items]);
   const itemCount = cartTotals.itemCount;
@@ -503,6 +519,7 @@ export function CartProvider({ children }) {
       lastSyncedAt,
       syncError,
       syncServerCart,
+      retrySync: syncServerCart,
       addItem,
       updateQuantity,
       removeItem,

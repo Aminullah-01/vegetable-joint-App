@@ -242,21 +242,33 @@ export function createApiErrorFromResponse(response, body) {
 
 /**
  * Creates a normalized network error when fetch fails completely (offline, DNS, timeout).
+ * Conforms to NFR-REL-05 and ERR-01.
  *
  * @param {Error} originalError
+ * @param {number} [attempts=1]
  * @returns {ApiError}
  */
-export function createNetworkError(originalError) {
+export function createNetworkError(originalError, attempts = 1) {
   const isTimeout =
     originalError?.name === 'AbortError' ||
     originalError?.message?.toLowerCase().includes('timeout');
+  const isOffline =
+    typeof navigator !== 'undefined' && navigator.onLine === false;
 
-  return new ApiError({
-    message: isTimeout
+  const message = isOffline
+    ? 'You appear to be offline. Please check your internet connection and try again.'
+    : isTimeout
       ? 'Request timed out. Please check your connection and try again.'
-      : STRINGS.ERRORS.NETWORK_ERROR,
+      : STRINGS.ERRORS.NETWORK_ERROR;
+
+  const error = new ApiError({
+    message,
     status: 0,
     code: isTimeout ? ERROR_CODES.TIMEOUT_ERROR : ERROR_CODES.NETWORK_ERROR,
     originalError,
   });
+
+  error.isOffline = isOffline;
+  error.attempts = attempts;
+  return error;
 }

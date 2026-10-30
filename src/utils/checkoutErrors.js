@@ -63,11 +63,15 @@ export function parseCheckoutError(err, cartItems = []) {
       rawMessage
     );
 
-  if (isTechnicalError || !rawMessage) {
-    rawMessage =
-      STRINGS.ERRORS.SERVER_ERROR_500_MESSAGE ||
-      'Something unexpected happened while communicating with the service. Please try again shortly.';
-  }
+  const isNetwork =
+    !isTechnicalError &&
+    (Boolean(err.isNetworkError) ||
+      err.code === 'NETWORK_ERROR' ||
+      err.code === 'TIMEOUT_ERROR' ||
+      Boolean(err.isOffline) ||
+      (err.name === 'TypeError' && /fetch|network/i.test(err.message)) ||
+      err.name === 'AbortError' ||
+      (err.status === 0 && !err.response));
 
   // Derive contextual title
   let title = 'Order Placement Error';
@@ -75,6 +79,17 @@ export function parseCheckoutError(err, cartItems = []) {
     title = 'Stock Conflict — Order Cannot Be Placed';
   } else if (is422) {
     title = 'Order Validation Issue';
+  } else if (isNetwork) {
+    title = 'Connection Error — Cart Preserved';
+  }
+
+  if (isTechnicalError || !rawMessage) {
+    rawMessage =
+      STRINGS.ERRORS.SERVER_ERROR_500_MESSAGE ||
+      'Something unexpected happened while communicating with the service. Please try again shortly.';
+  } else if (isNetwork) {
+    rawMessage =
+      'Unable to reach the server. Your cart and order details are safely preserved. Please check your internet connection and try again.';
   }
 
   const itemErrors = [];
@@ -332,6 +347,7 @@ export function parseCheckoutError(err, cartItems = []) {
     status,
     is409,
     is422,
+    isNetwork,
     message: rawMessage,
     title,
     itemErrors,
