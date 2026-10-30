@@ -3,8 +3,51 @@ import { isMockMode } from './mockSwitch.js';
 import { mockStore } from '../data/mockStore.js';
 
 /**
+ * Normalizes authentication response payloads from Laravel Sanctum.
+ * Supports envelopes:
+ * - Direct: { user: {...}, token: "..." }
+ * - Unwrapped Data: { data: { user: {...}, token: "..." } }
+ * - Separated Token: { data: { id: 1, ...user }, token: "..." }
+ * - OAuth style: { access_token: "...", token_type: "Bearer", user: {...} }
+ *
+ * @param {Object} response
+ * @returns {{ user: Object|null, token: string|null, message?: string }}
+ */
+function normalizeAuthResponse(response) {
+  if (!response) return { user: null, token: null };
+
+  const data = response.data !== undefined ? response.data : response;
+  const raw = response.raw || response;
+
+  const token =
+    data?.token ||
+    raw?.token ||
+    data?.access_token ||
+    raw?.access_token ||
+    null;
+
+  let user = null;
+  if (data?.user) {
+    user = data.user;
+  } else if (raw?.user) {
+    user = raw.user;
+  } else if (data && typeof data === 'object' && (data.id || data.email)) {
+    user = data;
+  }
+
+  const message = data?.message || raw?.message || null;
+
+  return {
+    ...(typeof data === 'object' && data !== null ? data : {}),
+    user,
+    token,
+    ...(message ? { message } : {}),
+  };
+}
+
+/**
  * Authentication & Profile Service
- * Conforms to SRS 4.4, AUTH-01 through AUTH-13, and NFR-MAIN-02 (Mock/API Switch).
+ * Conforms to SRS Section 4.4, AUTH-01 through AUTH-13, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const authService = {
   /**
@@ -12,7 +55,7 @@ export const authService = {
    * Endpoint: POST /auth/register
    *
    * @param {Object} payload
-   * @returns {Promise<{ user: Object, token?: string }>}
+   * @returns {Promise<{ user: Object, token?: string, message?: string }>}
    */
   async register(payload) {
     if (isMockMode()) {
@@ -27,10 +70,11 @@ export const authService = {
       skipAuth: true,
     });
 
-    if (response.data?.token) {
-      apiClient.setToken(response.data.token);
+    const result = normalizeAuthResponse(response);
+    if (result?.token) {
+      apiClient.setToken(result.token);
     }
-    return response.data;
+    return result;
   },
 
   /**
@@ -38,7 +82,7 @@ export const authService = {
    * Endpoint: POST /auth/login
    *
    * @param {Object} credentials
-   * @returns {Promise<{ user: Object, token: string }>}
+   * @returns {Promise<{ user: Object, token: string, message?: string }>}
    */
   async login(credentials) {
     if (isMockMode()) {
@@ -52,10 +96,12 @@ export const authService = {
     const response = await apiClient.post('/auth/login', credentials, {
       skipAuth: true,
     });
-    if (response.data?.token) {
-      apiClient.setToken(response.data.token);
+
+    const result = normalizeAuthResponse(response);
+    if (result?.token) {
+      apiClient.setToken(result.token);
     }
-    return response.data;
+    return result;
   },
 
   /**
@@ -83,6 +129,7 @@ export const authService = {
    * Endpoint: POST /auth/forgot-password
    *
    * @param {Object} data
+   * @param {string} data.email
    * @returns {Promise<{ message: string }>}
    */
   async forgotPassword(data) {
@@ -93,7 +140,14 @@ export const authService = {
     const response = await apiClient.post('/auth/forgot-password', data, {
       skipAuth: true,
     });
-    return response.data;
+    return response.data?.message
+      ? response.data
+      : {
+          message:
+            response.data?.message ||
+            response.raw?.message ||
+            'Password reset link sent.',
+        };
   },
 
   /**
@@ -101,6 +155,10 @@ export const authService = {
    * Endpoint: POST /auth/reset-password
    *
    * @param {Object} data
+   * @param {string} data.email
+   * @param {string} data.token
+   * @param {string} data.password
+   * @param {string} data.password_confirmation
    * @returns {Promise<{ message: string }>}
    */
   async resetPassword(data) {
@@ -111,7 +169,14 @@ export const authService = {
     const response = await apiClient.post('/auth/reset-password', data, {
       skipAuth: true,
     });
-    return response.data;
+    return response.data?.message
+      ? response.data
+      : {
+          message:
+            response.data?.message ||
+            response.raw?.message ||
+            'Password has been reset successfully.',
+        };
   },
 
   /**
@@ -126,7 +191,7 @@ export const authService = {
     }
 
     const response = await apiClient.get('/profile');
-    return response.data;
+    return response.data?.user || response.data;
   },
 
   /**
@@ -142,7 +207,7 @@ export const authService = {
     }
 
     const response = await apiClient.put('/profile', data);
-    return response.data;
+    return response.data?.user || response.data;
   },
 
   /**
@@ -158,7 +223,45 @@ export const authService = {
     }
 
     const response = await apiClient.post('/auth/change-password', payload);
-    return response.data;
+    return response.data?.message
+      ? response.data
+      : {
+          message:
+            response.data?.message ||
+            response.raw?.message ||
+            'Password updated successfully.',
+        };
+  },
+
+  /**
+   * Retrieve active authentication bearer token from ApiClient.
+   * @returns {string|null}
+   */
+  getToken() {
+    return apiClient.getToken();
+  },
+
+  /**
+   * Set active authentication bearer token in ApiClient and localStorage.
+   * @param {string|null} token
+   */
+  setToken(token) {
+    apiClient.setToken(token);
+  },
+
+  /**
+   * Clear active bearer token from ApiClient and localStorage.
+   */
+  clearToken() {
+    apiClient.clearToken();
+  },
+
+  /**
+   * Check if a token currently exists.
+   * @returns {boolean}
+   */
+  isAuthenticated() {
+    return Boolean(apiClient.getToken());
   },
 };
 
