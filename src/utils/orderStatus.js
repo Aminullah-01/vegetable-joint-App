@@ -153,8 +153,9 @@ export function isCancelledStatus(status) {
  * @returns {number}
  */
 export function getOrderStepIndex(status) {
-  const norm = normalizeOrderStatus(status);
-  return ORDER_LIFECYCLE_STEPS.indexOf(norm);
+  if (!status || typeof status !== 'string') return -1;
+  const clean = status.trim().toLowerCase();
+  return ORDER_LIFECYCLE_STEPS.indexOf(clean);
 }
 
 /**

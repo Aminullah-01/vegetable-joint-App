@@ -40,5 +40,17 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     css: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary', 'lcov'],
+      include: [
+        'src/utils/**',
+        'src/services/cartService.js',
+        'src/routes/navigationHelpers.js',
+      ],
+      thresholds: {
+        lines: 70,
+      },
+    },
   },
 });

@@ -4,6 +4,7 @@ import {
   calculateCartTotals,
   reconcileWithServerTotals,
   calculateSellerSubtotals,
+  mergeCartItems,
 } from '../cartCalculations';
 
 describe('Cart Totals Calculation Utility (FE-056 / CART-04, BR-02)', () => {
@@ -259,6 +260,110 @@ describe('Cart Totals Calculation Utility (FE-056 / CART-04, BR-02)', () => {
       expect(calculateSellerSubtotals([])).toEqual([]);
       expect(calculateSellerSubtotals(null)).toEqual([]);
       expect(calculateSellerSubtotals(undefined)).toEqual([]);
+    });
+  });
+
+  describe('mergeCartItems (CART-10, Server-Device Sync)', () => {
+    it('returns copy of local items when server cart is empty', () => {
+      const local = [
+        { id: 1, product_id: 1, name: 'Tomato', price: 1000, quantity: 2 },
+      ];
+      expect(mergeCartItems(local, [])).toEqual(local);
+      expect(mergeCartItems(local, null)).toEqual(local);
+    });
+
+    it('returns copy of server items when local cart is empty', () => {
+      const server = [
+        { id: 2, product_id: 2, name: 'Pepper', price: 800, quantity: 3 },
+      ];
+      expect(mergeCartItems([], server)).toEqual(server);
+      expect(mergeCartItems(null, server)).toEqual(server);
+    });
+
+    it('combines disjoint items from local and server carts', () => {
+      const local = [
+        {
+          id: 1,
+          product_id: 1,
+          name: 'Tomato',
+          price: 1000,
+          quantity: 2,
+          available_stock: 10,
+        },
+      ];
+      const server = [
+        {
+          id: 2,
+          product_id: 2,
+          name: 'Pepper',
+          price: 800,
+          quantity: 3,
+          available_stock: 10,
+        },
+      ];
+
+      const merged = mergeCartItems(local, server);
+      expect(merged).toHaveLength(2);
+      expect(merged.find((i) => i.product_id === 1)).toBeDefined();
+      expect(merged.find((i) => i.product_id === 2)).toBeDefined();
+    });
+
+    it('merges identical product IDs by summing quantities clamped by stock', () => {
+      const server = [
+        {
+          id: 1,
+          product_id: 1,
+          name: 'Tomato',
+          price: 1200,
+          quantity: 3,
+          available_stock: 8,
+        },
+      ];
+      const local = [
+        {
+          id: 1,
+          product_id: 1,
+          name: 'Tomato',
+          price: 1000,
+          quantity: 4,
+          available_stock: 8,
+        },
+      ];
+
+      const merged = mergeCartItems(local, server);
+      expect(merged).toHaveLength(1);
+      // 3 + 4 = 7 <= 8
+      expect(merged[0].quantity).toBe(7);
+      expect(merged[0].subtotal).toBe(7 * 1200);
+    });
+
+    it('clamps combined quantity to available stock limit when sum exceeds stock', () => {
+      const server = [
+        {
+          id: 1,
+          product_id: 1,
+          name: 'Tomato',
+          price: 1000,
+          quantity: 5,
+          available_stock: 6,
+        },
+      ];
+      const local = [
+        {
+          id: 1,
+          product_id: 1,
+          name: 'Tomato',
+          price: 1000,
+          quantity: 4,
+          available_stock: 6,
+        },
+      ];
+
+      const merged = mergeCartItems(local, server);
+      expect(merged).toHaveLength(1);
+      // 5 + 4 = 9, clamped to 6
+      expect(merged[0].quantity).toBe(6);
+      expect(merged[0].subtotal).toBe(6 * 1000);
     });
   });
 });
