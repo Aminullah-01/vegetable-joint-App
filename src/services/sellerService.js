@@ -1,10 +1,69 @@
 import { apiClient } from './apiClient.js';
 import { isMockMode } from './mockSwitch.js';
 import { mockStore } from '../data/mockStore.js';
+import { productService } from './productService.js';
+import { orderService } from './orderService.js';
+
+/**
+ * Normalizes single item response from Laravel API.
+ * Supports { data: {...} } envelope and direct object {...}.
+ *
+ * @param {any} response
+ * @returns {any}
+ */
+function normalizeItem(response) {
+  if (!response) return null;
+  const data = response.data !== undefined ? response.data : response;
+  if (
+    data &&
+    typeof data === 'object' &&
+    !Array.isArray(data) &&
+    'data' in data &&
+    data.data &&
+    typeof data.data === 'object' &&
+    !Array.isArray(data.data)
+  ) {
+    return data.data;
+  }
+  return data;
+}
+
+/**
+ * Normalizes paginated or list collection response from Laravel API.
+ * Supports { data: [...], meta: {...}, links: {...} }, raw arrays, and nested envelopes.
+ *
+ * @param {any} response
+ * @returns {{ data: Array, meta: Object|null, links: Object|null }}
+ */
+function normalizeCollection(response) {
+  if (!response) return { data: [], meta: null, links: null };
+
+  const raw = response.raw || response;
+  let items = [];
+
+  if (Array.isArray(response.data)) {
+    items = response.data;
+  } else if (response.data && Array.isArray(response.data.data)) {
+    items = response.data.data;
+  } else if (Array.isArray(raw)) {
+    items = raw;
+  } else if (raw && Array.isArray(raw.data)) {
+    items = raw.data;
+  }
+
+  const meta = response.meta || response.data?.meta || raw?.meta || null;
+  const links = response.links || response.data?.links || raw?.links || null;
+
+  return {
+    data: items,
+    meta,
+    links,
+  };
+}
 
 /**
  * Seller Management & Portal Service
- * Conforms to SRS 4.4, SEL-01 through SEL-14, and NFR-MAIN-02 (Mock/API Switch).
+ * Conforms to SRS Section 4.4, SEL-01 through SEL-14, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const sellerService = {
   /**
@@ -12,7 +71,7 @@ export const sellerService = {
    * Endpoint: GET /sellers
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getPublicSellers(params = {}) {
     if (isMockMode()) {
@@ -20,11 +79,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.get('/sellers', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
@@ -40,7 +95,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.get(`/sellers/${id}`);
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -48,7 +103,7 @@ export const sellerService = {
    * Endpoint: GET /seller/products
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getSellerProducts(params = {}) {
     if (isMockMode()) {
@@ -56,48 +111,30 @@ export const sellerService = {
     }
 
     const response = await apiClient.get('/seller/products', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
    * Soft-delete a product (SEL-04, BR-10).
-   * Endpoint: DELETE /seller/products/{id} or DELETE /products/{id}
+   * Endpoint: DELETE /products/{id}
    *
    * @param {string|number} id - Product ID.
-   * @returns {Promise<{ message: string }>}
+   * @returns {Promise<{ message: string, success?: boolean }>}
    */
   async deleteProduct(id) {
-    if (isMockMode()) {
-      return mockStore.deleteProduct(id);
-    }
-
-    const response = await apiClient.delete(`/seller/products/${id}`);
-    return response.data;
+    return productService.deleteProduct(id);
   },
 
   /**
    * Create a new vegetable listing (SEL-02).
-   * Endpoint: POST /seller/products or POST /products
+   * Supports JSON or FormData multipart payload.
+   * Endpoint: POST /products
    *
    * @param {FormData|Object} productData
    * @returns {Promise<Object>}
    */
   async createProduct(productData) {
-    if (isMockMode()) {
-      return mockStore.createProduct(productData);
-    }
-
-    let response;
-    if (typeof FormData !== 'undefined' && productData instanceof FormData) {
-      response = await apiClient.upload('/seller/products', productData);
-    } else {
-      response = await apiClient.post('/seller/products', productData);
-    }
-    return response.data;
+    return productService.createProduct(productData);
   },
 
   /**
@@ -108,60 +145,33 @@ export const sellerService = {
    * @returns {Promise<Object>}
    */
   async getProductById(id) {
-    if (isMockMode()) {
-      return mockStore.getProductById(id);
-    }
-
-    const response = await apiClient.get(`/products/${id}`);
-    return response.data;
+    return productService.getProductById(id);
   },
 
   /**
    * Update an existing product listing (SEL-03).
-   * Endpoint: PUT /seller/products/{id} or PUT /products/{id}
+   * Supports JSON or FormData multipart payload.
+   * Endpoint: PUT /products/{id}
    *
    * @param {string|number} id
    * @param {FormData|Object} productData
    * @returns {Promise<Object>}
    */
   async updateProduct(id, productData) {
-    if (isMockMode()) {
-      return mockStore.updateProduct(id, productData);
-    }
-
-    let response;
-    if (typeof FormData !== 'undefined' && productData instanceof FormData) {
-      response = await apiClient.upload(`/seller/products/${id}`, productData, {
-        method: 'PUT',
-      });
-    } else {
-      response = await apiClient.put(`/seller/products/${id}`, productData);
-    }
-    return response.data;
+    return productService.updateProduct(id, productData);
   },
 
   /**
-   * Upload a product image file with progress callback (SEL-05).
-   * Endpoint: POST /seller/products/upload-image or mockStore simulation
+   * Upload a product image file with progress callback (SEL-05, IF-01).
+   * Allowed types: JPEG, PNG, WebP. Max size: 2 MB.
+   * Endpoint: POST /seller/products/upload-image
    *
    * @param {File|Blob} file - Image file (JPEG, PNG, WebP, ≤ 2 MB)
    * @param {Function} [onProgress] - Progress callback ({ loaded, total, percent })
    * @returns {Promise<{ url: string, filename: string, size: number, type: string }>}
    */
   async uploadProductImage(file, onProgress) {
-    if (isMockMode()) {
-      return mockStore.uploadImage(file, onProgress);
-    }
-
-    const formData = new FormData();
-    formData.append('image', file);
-    return apiClient.uploadWithProgress(
-      '/seller/products/upload-image',
-      formData,
-      {
-        onProgress,
-      }
-    );
+    return productService.uploadProductImage(file, onProgress);
   },
 
   /**
@@ -173,12 +183,7 @@ export const sellerService = {
    * @returns {Promise<Object>}
    */
   async updateProductStock(id, stockData) {
-    if (isMockMode()) {
-      return mockStore.updateProduct(id, stockData);
-    }
-
-    const response = await apiClient.patch(`/products/${id}/stock`, stockData);
-    return response.data;
+    return productService.updateProductStock(id, stockData);
   },
 
   /**
@@ -209,7 +214,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.get('/seller/dashboard', { params });
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -217,7 +222,7 @@ export const sellerService = {
    * Endpoint: GET /seller/orders
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getSellerOrders(params = {}) {
     if (isMockMode()) {
@@ -225,11 +230,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.get('/seller/orders', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
@@ -246,7 +247,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.get(`/seller/orders/${id}`, { params });
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -259,15 +260,7 @@ export const sellerService = {
    * @returns {Promise<Object>}
    */
   async updateOrderStatus(id, status, note = '') {
-    if (isMockMode()) {
-      return mockStore.updateOrderStatus(id, status, note);
-    }
-
-    const response = await apiClient.patch(`/orders/${id}/status`, {
-      status,
-      note,
-    });
-    return response.data;
+    return orderService.updateOrderStatus(id, status, note);
   },
 
   /**
@@ -279,12 +272,7 @@ export const sellerService = {
    * @returns {Promise<Object>}
    */
   async cancelOrder(id, reason) {
-    if (isMockMode()) {
-      return mockStore.cancelOrder(id, reason);
-    }
-
-    const response = await apiClient.post(`/orders/${id}/cancel`, { reason });
-    return response.data;
+    return orderService.cancelOrder(id, reason);
   },
 
   /**
@@ -314,7 +302,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.get('/seller/sales', { params });
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -329,7 +317,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.get('/seller/profile');
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -345,7 +333,7 @@ export const sellerService = {
     }
 
     const response = await apiClient.put('/seller/profile', data);
-    return response.data;
+    return normalizeItem(response);
   },
 };
 

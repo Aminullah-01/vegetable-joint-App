@@ -1,10 +1,68 @@
 import { apiClient } from './apiClient.js';
 import { isMockMode } from './mockSwitch.js';
 import { mockStore } from '../data/mockStore.js';
+import { categoryService } from './categoryService.js';
+
+/**
+ * Normalizes single item response from Laravel API.
+ * Supports { data: {...} } envelope and direct object {...}.
+ *
+ * @param {any} response
+ * @returns {any}
+ */
+function normalizeItem(response) {
+  if (!response) return null;
+  const data = response.data !== undefined ? response.data : response;
+  if (
+    data &&
+    typeof data === 'object' &&
+    !Array.isArray(data) &&
+    'data' in data &&
+    data.data &&
+    typeof data.data === 'object' &&
+    !Array.isArray(data.data)
+  ) {
+    return data.data;
+  }
+  return data;
+}
+
+/**
+ * Normalizes paginated or list collection response from Laravel API.
+ * Supports { data: [...], meta: {...}, links: {...} }, raw arrays, and nested envelopes.
+ *
+ * @param {any} response
+ * @returns {{ data: Array, meta: Object|null, links: Object|null }}
+ */
+function normalizeCollection(response) {
+  if (!response) return { data: [], meta: null, links: null };
+
+  const raw = response.raw || response;
+  let items = [];
+
+  if (Array.isArray(response.data)) {
+    items = response.data;
+  } else if (response.data && Array.isArray(response.data.data)) {
+    items = response.data.data;
+  } else if (Array.isArray(raw)) {
+    items = raw;
+  } else if (raw && Array.isArray(raw.data)) {
+    items = raw.data;
+  }
+
+  const meta = response.meta || response.data?.meta || raw?.meta || null;
+  const links = response.links || response.data?.links || raw?.links || null;
+
+  return {
+    data: items,
+    meta,
+    links,
+  };
+}
 
 /**
  * Administrator Operations & Governance Service
- * Conforms to SRS 4.4, ADM-01 through ADM-13, and NFR-MAIN-02 (Mock/API Switch).
+ * Conforms to SRS Section 4.4, ADM-01 through ADM-13, and NFR-MAIN-02 (Mock/API Switch).
  */
 export const adminService = {
   /**
@@ -12,7 +70,7 @@ export const adminService = {
    * Endpoint: GET /admin/users
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getUsers(params = {}) {
     if (isMockMode()) {
@@ -20,11 +78,7 @@ export const adminService = {
     }
 
     const response = await apiClient.get('/admin/users', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
@@ -43,7 +97,7 @@ export const adminService = {
     const response = await apiClient.patch(`/admin/users/${id}/status`, {
       status,
     });
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -51,7 +105,7 @@ export const adminService = {
    * Endpoint: GET /admin/sellers
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getSellers(params = {}) {
     if (isMockMode()) {
@@ -59,11 +113,7 @@ export const adminService = {
     }
 
     const response = await apiClient.get('/admin/sellers', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
@@ -84,7 +134,7 @@ export const adminService = {
       approval_status: approvalStatus,
       rejection_reason: rejectionReason,
     });
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -92,7 +142,7 @@ export const adminService = {
    * Endpoint: GET /admin/products
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getProducts(params = {}) {
     if (isMockMode()) {
@@ -100,11 +150,7 @@ export const adminService = {
     }
 
     const response = await apiClient.get('/admin/products', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
@@ -123,7 +169,7 @@ export const adminService = {
     const response = await apiClient.patch(`/admin/products/${id}/unpublish`, {
       reason,
     });
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -139,7 +185,7 @@ export const adminService = {
     }
 
     const response = await apiClient.patch(`/admin/products/${id}/publish`);
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -158,7 +204,12 @@ export const adminService = {
     const response = await apiClient.delete(`/admin/products/${id}`, {
       data: { reason },
     });
-    return response.data;
+    return (
+      normalizeItem(response) || {
+        success: true,
+        message: 'Product removed successfully.',
+      }
+    );
   },
 
   /**
@@ -169,14 +220,7 @@ export const adminService = {
    * @returns {Promise<Array>}
    */
   async getCategories(params = {}) {
-    if (isMockMode()) {
-      return mockStore.getCategories({ all: true, ...params });
-    }
-
-    const response = await apiClient.get('/categories', {
-      params: { all: true, ...params },
-    });
-    return response.data || [];
+    return categoryService.getCategories({ all: true, ...params });
   },
 
   /**
@@ -187,12 +231,7 @@ export const adminService = {
    * @returns {Promise<Object>}
    */
   async createCategory(data) {
-    if (isMockMode()) {
-      return mockStore.createCategory(data);
-    }
-
-    const response = await apiClient.post('/categories', data);
-    return response.data;
+    return categoryService.createCategory(data);
   },
 
   /**
@@ -204,12 +243,7 @@ export const adminService = {
    * @returns {Promise<Object>}
    */
   async updateCategory(id, data) {
-    if (isMockMode()) {
-      return mockStore.updateCategory(id, data);
-    }
-
-    const response = await apiClient.put(`/categories/${id}`, data);
-    return response.data;
+    return categoryService.updateCategory(id, data);
   },
 
   /**
@@ -220,12 +254,7 @@ export const adminService = {
    * @returns {Promise<Object>}
    */
   async deleteCategory(id) {
-    if (isMockMode()) {
-      return mockStore.deleteCategory(id);
-    }
-
-    const response = await apiClient.delete(`/categories/${id}`);
-    return response.data;
+    return categoryService.deleteCategory(id);
   },
 
   /**
@@ -235,7 +264,7 @@ export const adminService = {
    * @returns {Promise<Object>}
    */
   async deactivateCategory(id) {
-    return this.updateCategory(id, { is_active: false });
+    return categoryService.deactivateCategory(id);
   },
 
   /**
@@ -245,7 +274,7 @@ export const adminService = {
    * @returns {Promise<Object>}
    */
   async reactivateCategory(id) {
-    return this.updateCategory(id, { is_active: true });
+    return categoryService.reactivateCategory(id);
   },
 
   /**
@@ -253,7 +282,7 @@ export const adminService = {
    * Endpoint: GET /admin/orders
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getOrders(params = {}) {
     if (isMockMode()) {
@@ -261,11 +290,7 @@ export const adminService = {
     }
 
     const response = await apiClient.get('/admin/orders', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
@@ -281,7 +306,7 @@ export const adminService = {
     }
 
     const response = await apiClient.get(`/admin/orders/${id}`);
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -311,7 +336,7 @@ export const adminService = {
         reason,
       }
     );
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -326,11 +351,11 @@ export const adminService = {
     }
 
     const response = await apiClient.get('/admin/settings');
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
-   * Update platform configuration settings.
+   * Update platform configuration settings (ADM-08).
    * Endpoint: PUT /admin/settings
    *
    * @param {Record<string, any>} settings
@@ -342,7 +367,7 @@ export const adminService = {
     }
 
     const response = await apiClient.put('/admin/settings', settings);
-    return response.data;
+    return normalizeItem(response);
   },
 
   /**
@@ -350,7 +375,7 @@ export const adminService = {
    * Endpoint: GET /admin/audit-logs
    *
    * @param {Object} [params={}]
-   * @returns {Promise<{ data: Array, meta: Object, links: Object }>}
+   * @returns {Promise<{ data: Array, meta: Object|null, links: Object|null }>}
    */
   async getAuditLogs(params = {}) {
     if (isMockMode()) {
@@ -358,11 +383,7 @@ export const adminService = {
     }
 
     const response = await apiClient.get('/admin/audit-logs', { params });
-    return {
-      data: response.data || [],
-      meta: response.meta,
-      links: response.links,
-    };
+    return normalizeCollection(response);
   },
 
   /**
@@ -386,7 +407,14 @@ export const adminService = {
     }
 
     const response = await apiClient.get('/admin/stats');
-    return response.data;
+    return normalizeItem(response);
+  },
+
+  /**
+   * Convenience alias for getStats().
+   */
+  async getAdminStats() {
+    return this.getStats();
   },
 };
 
