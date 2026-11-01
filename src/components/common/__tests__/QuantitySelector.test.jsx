@@ -96,4 +96,68 @@ describe('QuantitySelector (FE-030, MKT-06, CART-02)', () => {
       minHeight: '44px',
     });
   });
+
+  it('respects the disabled prop and prevents interactions even when stock is available', () => {
+    render(<QuantitySelector availableStock={10} disabled />);
+
+    expect(screen.getByRole('spinbutton')).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Increase quantity' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Decrease quantity' })
+    ).toBeDisabled();
+  });
+
+  it('treats boolean availability=false as out of stock', () => {
+    render(<QuantitySelector availableStock={10} availability={false} />);
+
+    expect(screen.getByText('Out of Stock')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toBeDisabled();
+  });
+
+  it('hides stock counter when showStock is false', () => {
+    render(<QuantitySelector availableStock={5} showStock={false} />);
+
+    expect(screen.queryByText(/available/i)).not.toBeInTheDocument();
+    const group = screen.getByRole('group', { name: 'Quantity' });
+    expect(group).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('supports custom min bound and prevents decreasing below it', async () => {
+    const user = userEvent.setup();
+    render(<QuantitySelector min={3} defaultValue={3} availableStock={10} />);
+
+    const decBtn = screen.getByRole('button', { name: 'Decrease quantity' });
+    expect(decBtn).toBeDisabled();
+    expect(screen.getByRole('spinbutton')).toHaveValue(3);
+
+    const incBtn = screen.getByRole('button', { name: 'Increase quantity' });
+    await user.click(incBtn);
+    expect(screen.getByRole('spinbutton')).toHaveValue(4);
+    expect(decBtn).not.toBeDisabled();
+  });
+
+  it('falls back to max prop when availableStock is omitted', () => {
+    render(<QuantitySelector max={7} />);
+
+    expect(screen.getByText('7 available')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toHaveAttribute('max', '7');
+  });
+
+  it('renders custom label, className, and style props', () => {
+    render(
+      <QuantitySelector
+        label="Crate Count"
+        availableStock={5}
+        className="custom-qty"
+        style={{ margin: '10px' }}
+      />
+    );
+
+    expect(screen.getByText('Crate Count')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Crate Count' })
+    ).toBeInTheDocument();
+  });
 });

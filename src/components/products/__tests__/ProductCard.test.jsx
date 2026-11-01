@@ -186,4 +186,149 @@ describe('ProductCard Component (FE-026, MKT-02, REV-01, NFR-USAB-04)', () => {
     expect(screen.getByText('Jos')).toBeInTheDocument();
     expect(screen.getByText('4.5')).toBeInTheDocument();
   });
+
+  it('renders a link to the seller profile when seller ID is present', () => {
+    render(
+      <MemoryRouter>
+        <ProductCard product={sampleProduct} />
+      </MemoryRouter>
+    );
+
+    const sellerLink = screen.getByRole('link', { name: 'Arewa Fresh Farms' });
+    expect(sellerLink).toBeInTheDocument();
+    expect(sellerLink).toHaveAttribute('href', '/sellers/1');
+  });
+
+  it('renders non-link text when seller ID is absent', () => {
+    const productWithoutSellerId = {
+      ...sampleProduct,
+      seller: { business_name: 'Independent Farm' },
+      seller_id: null,
+    };
+
+    render(
+      <MemoryRouter>
+        <ProductCard product={productWithoutSellerId} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Independent Farm')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Independent Farm' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('supports string seller prop and defaults to "Verified Seller" when missing', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ProductCard id={12} name="Carrots" seller="Kano Organic Hub" />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Kano Organic Hub')).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter>
+        <ProductCard id={13} name="Spinach" />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Verified Seller')).toBeInTheDocument();
+  });
+
+  it('handles mouse enter and mouse leave hover state changes on the card and title', () => {
+    render(
+      <MemoryRouter>
+        <ProductCard product={sampleProduct} />
+      </MemoryRouter>
+    );
+
+    const card = screen.getByRole('article');
+    fireEvent.mouseEnter(card);
+    expect(card).toHaveStyle({ transform: 'translateY(-2px)' });
+
+    fireEvent.mouseLeave(card);
+    expect(card).toHaveStyle({ transform: 'none' });
+
+    const titleLink = screen.getByRole('link', { name: 'Fresh Roma Tomatoes' });
+    fireEvent.mouseEnter(titleLink);
+    expect(titleLink.style.color).toBe('rgb(21, 128, 61)'); // #15803d
+
+    fireEvent.mouseLeave(titleLink);
+    expect(titleLink.style.color).toBe('rgb(15, 23, 42)'); // #0f172a
+  });
+
+  it('renders single full-width View Product button when onAddToCart is not provided', () => {
+    render(
+      <MemoryRouter>
+        <ProductCard product={sampleProduct} />
+      </MemoryRouter>
+    );
+
+    const viewBtn = screen.getByRole('link', { name: 'View Product' });
+    expect(viewBtn).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Add to Cart/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('triggers onAddToCart with reconstructed payload when using flattened props', async () => {
+    const user = userEvent.setup();
+    const handleAddToCart = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <ProductCard
+          id={99}
+          name="Green Cabbage"
+          price={1200}
+          unit="head"
+          onAddToCart={handleAddToCart}
+        />
+      </MemoryRouter>
+    );
+
+    const addBtn = screen.getByRole('button', { name: /Add to Cart/i });
+    await user.click(addBtn);
+
+    expect(handleAddToCart).toHaveBeenCalledWith({
+      id: 99,
+      name: 'Green Cabbage',
+      price: 1200,
+      unit: 'head',
+    });
+  });
+
+  it('disables Add to Cart when availability is "unavailable"', () => {
+    render(
+      <MemoryRouter>
+        <ProductCard
+          id={101}
+          name="Seasonal Yam"
+          availability="unavailable"
+          onAddToCart={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    const addBtn = screen.getByRole('button', { name: /Add to Cart/i });
+    expect(addBtn).toBeDisabled();
+    expect(screen.getByText('Unavailable')).toBeInTheDocument();
+  });
+
+  it('applies custom className and custom style props to the article container', () => {
+    render(
+      <MemoryRouter>
+        <ProductCard
+          product={sampleProduct}
+          className="custom-product-card"
+          style={{ opacity: 0.95 }}
+        />
+      </MemoryRouter>
+    );
+
+    const card = screen.getByRole('article');
+    expect(card).toHaveClass('custom-product-card');
+    expect(card).toHaveStyle({ opacity: '0.95' });
+  });
 });

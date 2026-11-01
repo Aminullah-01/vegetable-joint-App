@@ -431,6 +431,36 @@ describe('FilterPanel Component (FE-034, SRCH-02, SRCH-03)', () => {
 
       expect(onClearFilters).toHaveBeenCalled();
     });
+
+    it('manages internal filter state in standalone mode when filters prop is omitted', async () => {
+      const user = userEvent.setup();
+      const handleFilterChange = vi.fn();
+      const handleClearFilters = vi.fn();
+
+      render(
+        <FilterPanel
+          tieToUrl={false}
+          categories={mockCustomCategories}
+          onFilterChange={handleFilterChange}
+          onClearFilters={handleClearFilters}
+        />
+      );
+
+      const catSelect = screen.getByRole('combobox', { name: /^Category$/i });
+      await user.selectOptions(catSelect, 'leafy');
+
+      expect(handleFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({ category: 'leafy' })
+      );
+
+      const clearBtn = screen.getByRole('button', { name: /Clear All/i });
+      await user.click(clearBtn);
+
+      expect(handleClearFilters).toHaveBeenCalled();
+      expect(handleFilterChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category: '' })
+      );
+    });
   });
 
   describe('Filter Helper Utilities', () => {
