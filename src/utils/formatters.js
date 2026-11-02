@@ -7,6 +7,8 @@
  * - Timestamps are stored in UTC and displayed in Africa/Lagos (West Africa Time, WAT / UTC+1).
  */
 
+import { safeParseDate } from './browserCompat.js';
+
 export const TIMEZONE_LAGOS = 'Africa/Lagos';
 
 /**
@@ -93,12 +95,9 @@ export function parsePrice(formattedString) {
 export function formatDate(dateInput, options = {}) {
   if (!dateInput) return '';
 
-  const date =
-    typeof dateInput === 'string' || typeof dateInput === 'number'
-      ? new Date(dateInput)
-      : dateInput;
+  const date = safeParseDate(dateInput);
 
-  if (isNaN(date.getTime())) {
+  if (!date) {
     return '';
   }
 

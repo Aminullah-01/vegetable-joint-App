@@ -50,5 +50,13 @@
     "prettier": "^3.9.9",
     "vite": "^5.4.11",
     "vitest": "^2.1.9"
-  }
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Edge versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 ChromeAndroid versions",
+    "last 2 Samsung versions"
+  ]
 }

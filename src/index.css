@@ -142,7 +142,12 @@
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  /* Cross-browser scrollbar support (Firefox & modern browsers - NFR-COMP-01) */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 body {
@@ -151,8 +156,43 @@ body {
   color: var(--color-text-primary);
   line-height: var(--line-height-normal);
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cross-browser WebKit/Blink scrollbars (Chrome, Edge, Safari, Samsung Internet) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Touch manipulation: removes 300ms tap delay on mobile WebKit/Blink */
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+/* Prevent auto-zooming on focus in iOS Safari (requires font-size >= 16px) */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 #root {
