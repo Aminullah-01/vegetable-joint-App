@@ -15,6 +15,7 @@
     "test:coverage": "vitest run --coverage src/utils src/services/__tests__/cartService.test.js src/routes/__tests__/navigationHelpers.test.js",
     "test:watch": "vitest",
     "verify:schema": "node scripts/verify-openapi-drift.js",
+    "audit:security": "node scripts/security-audit.js",
     "prepare": "husky"
   },
   "lint-staged": {
