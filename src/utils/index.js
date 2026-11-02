@@ -20,5 +20,6 @@ export * from './browserCompat.js';
 export * from './accessibility.js';
 export * from './performanceAudit.js';
 export * from './securityAudit.js';
+export * from './usabilityAudit.js';
 export * from './schemaValidator.js';
 export * from '../constants/index.js';
