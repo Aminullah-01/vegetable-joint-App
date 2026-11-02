@@ -92,6 +92,14 @@ export function DashboardLayout({ title, role, navItems }) {
           gap: '0.5rem',
         }}
       >
+        {/* Skip to Main Content Link (WCAG 2.4.1 Bypass Blocks) */}
+        <a
+          href="#main-content"
+          className="skip-to-content"
+          data-testid="skip-to-content-link"
+        >
+          Skip to main content
+        </a>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {/* Mobile/Tablet Sidebar Toggle Button */}
           <button
@@ -396,8 +404,10 @@ export function DashboardLayout({ title, role, navItems }) {
           </div>
         </aside>
 
-        {/* Dashboard Main Content Area */}
+        {/* Dashboard Main Content Area (WCAG 2.4.1 Target) */}
         <main
+          id="main-content"
+          tabIndex="-1"
           style={{
             flex: 1,
             padding: '1.5rem 1rem',
@@ -405,6 +415,7 @@ export function DashboardLayout({ title, role, navItems }) {
             width: '100%',
             maxWidth: '100%',
             boxSizing: 'border-box',
+            outline: 'none',
           }}
         >
           {role === 'seller' && <SellerApprovalNotice />}

@@ -24,8 +24,10 @@ export function MainLayout() {
       {/* Top Shared Navbar (FE-022 / UI-01, UI-07, CART-07) */}
       <Navbar />
 
-      {/* Main Content Shell */}
+      {/* Main Content Shell (WCAG 2.4.1 Target) */}
       <main
+        id="main-content"
+        tabIndex="-1"
         style={{
           flex: 1,
           maxWidth: '1280px',
@@ -33,6 +35,7 @@ export function MainLayout() {
           margin: '0 auto',
           padding: '1.5rem 1rem',
           boxSizing: 'border-box',
+          outline: 'none',
         }}
       >
         <Suspense

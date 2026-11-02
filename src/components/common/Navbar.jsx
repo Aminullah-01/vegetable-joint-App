@@ -180,6 +180,14 @@ export function Navbar({
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
       }}
     >
+      {/* Skip to Main Content Link (WCAG 2.1 AA - 2.4.1 Bypass Blocks) */}
+      <a
+        href="#main-content"
+        className="skip-to-content"
+        data-testid="skip-to-content-link"
+      >
+        Skip to main content
+      </a>
       <div
         style={{
           maxWidth: '1280px',

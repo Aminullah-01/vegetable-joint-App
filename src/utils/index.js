@@ -17,5 +17,6 @@ export * from './uuid.js';
 export * from './stock.js';
 export * from './checkoutErrors.js';
 export * from './browserCompat.js';
+export * from './accessibility.js';
 export * from './schemaValidator.js';
 export * from '../constants/index.js';
