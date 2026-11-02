@@ -1,0 +1,17 @@
+# ==============================================================================
+# Vegetable Joint — Robots & Search Engine Crawler Guidelines
+# ==============================================================================
+User-agent: *
+Allow: /
+Allow: /products
+Allow: /products/*
+Disallow: /admin/
+Disallow: /admin/*
+Disallow: /seller/
+Disallow: /seller/*
+Disallow: /account/
+Disallow: /account/*
+Disallow: /checkout/
+Disallow: /checkout/*
+
+Sitemap: https://vegetablejoint.ng/sitemap.xml

@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+.git
+.github
+.husky
+Vegetable-joint-all-document
+*.log
+.env.local

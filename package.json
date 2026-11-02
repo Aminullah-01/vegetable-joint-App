@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -15,6 +17,7 @@
     "test:coverage": "vitest run --coverage src/utils src/services/__tests__/cartService.test.js src/routes/__tests__/navigationHelpers.test.js",
     "test:watch": "vitest",
     "verify:schema": "node scripts/verify-openapi-drift.js",
+    "verify:deployment": "node scripts/verify-deployment.js",
     "audit:security": "node scripts/security-audit.js",
     "prepare": "husky"
   },

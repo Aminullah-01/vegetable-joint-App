@@ -339,12 +339,10 @@ describe('FE-105 / Section 4.4: AuthService API & Mock Integration', () => {
         apiClient.setToken('test_token_to_clear');
         expect(apiClient.getToken()).toBe('test_token_to_clear');
 
-        const postSpy = vi
-          .spyOn(apiClient, 'post')
-          .mockResolvedValueOnce({
-            data: { message: 'Logged out.' },
-            status: 200,
-          });
+        const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValueOnce({
+          data: { message: 'Logged out.' },
+          status: 200,
+        });
 
         await authService.logout();
 

@@ -1,4 +1,4 @@
-name: Frontend CI Pipeline
+name: Frontend CI/CD Pipeline
 
 on:
   push:
@@ -7,14 +7,20 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   ci:
-    name: Lint, Test, and Build
+    name: Lint, Test, and Verify
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -39,8 +45,74 @@ jobs:
       - name: Check code style and quality (ESLint)
         run: npm run lint
 
+      - name: Check API schema drift (OpenAPI)
+        run: npm run verify:schema
+
       - name: Run automated test suite (Vitest)
         run: npm test
 
-      - name: Run production build (Vite)
-        run: npm run build
+      - name: Run test coverage audit
+        run: npm run test:coverage
+
+      - name: Run security audit (NFR-SEC-09, NFR-SEC-13)
+        run: npm run audit:security
+
+  deploy:
+    name: Production Build and Static/CDN Deployment
+    needs: [ci]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://vegetablejoint.ng
+
+    env:
+      VITE_APP_NAME: 'Vegetable Joint'
+      VITE_APP_ENV: 'production'
+      VITE_APP_ORIGIN: 'https://vegetablejoint.ng'
+      VITE_ALLOWED_ORIGINS: 'https://vegetablejoint.ng,https://www.vegetablejoint.ng'
+      VITE_API_BASE_URL: 'https://api.vegetablejoint.ng/api/v1'
+      VITE_SANCTUM_CSRF_URL: 'https://api.vegetablejoint.ng/sanctum/csrf-cookie'
+      VITE_AUTH_TOKEN_STRATEGY: 'cookie'
+      VITE_API_WITH_CREDENTIALS: 'true'
+      VITE_USE_MOCK_DATA: 'false'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Production with Production Settings (Vite)
+        run: npm run build:prod
+
+      - name: Verify Production Deployment & Static CDN Rules (FE-124)
+        run: npm run verify:deployment
+
+      - name: Configure GitHub Pages Static Hosting
+        uses: actions/configure-pages@v5
+
+      - name: Upload Static/CDN Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+      - name: Deploy to Static/CDN Host
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Post-Deployment Summary
+        run: |
+          echo "### 🚀 Production Deployment Successful (Source §43)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Environment:** Production (${{ env.VITE_APP_ORIGIN }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **API Base URL:** ${{ env.VITE_API_BASE_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Auth Strategy:** HttpOnly Cookie (NFR-SEC-03)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Static/CDN Routing:** SPA Catch-All Rewrite (/index.html)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Headers:** Strict-Transport-Security, CSP, X-Frame-Options, X-Content-Type-Options" >> $GITHUB_STEP_SUMMARY

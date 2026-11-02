@@ -1,0 +1,22 @@
+# ==============================================================================
+# Vegetable Joint — Production CDN Security & Caching Headers (Source §43, NFR-SEC-06)
+# Supported by: Cloudflare Pages, Netlify
+# ==============================================================================
+
+# Global security headers for all paths
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://api.vegetablejoint.ng https://staging-api.vegetablejoint.ng http://localhost:8000; frame-ancestors 'self';
+
+# Immutable caching for content-hashed build assets
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Entrypoint must never be cached long-term to ensure immediate SPA version propagation
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate

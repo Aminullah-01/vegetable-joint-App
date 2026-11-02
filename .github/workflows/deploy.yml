@@ -1,0 +1,61 @@
+name: Manual Production Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Deployment target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build & Deploy to Static/CDN
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target_env }}
+      url: ${{ inputs.target_env == 'production' && 'https://vegetablejoint.ng' || 'https://staging.vegetablejoint.ng' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Selected Environment
+        run: |
+          if [ "${{ inputs.target_env }}" = "production" ]; then
+            npm run build:prod
+          else
+            npm run build:staging
+          fi
+
+      - name: Verify Deployment Artifacts
+        run: npm run verify:deployment
+
+      - name: Configure GitHub Pages Static Hosting
+        uses: actions/configure-pages@v5
+
+      - name: Upload Static/CDN Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+      - name: Deploy to Static/CDN Host
+        uses: actions/deploy-pages@v4
