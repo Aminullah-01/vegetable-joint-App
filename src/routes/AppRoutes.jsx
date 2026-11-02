@@ -6,24 +6,26 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { GuestRoute } from './GuestRoute';
 import { Spinner } from '../components/common';
 
-// Eagerly loaded Public Pages
+// Eagerly loaded Initial Landing Pages (NFR-PERF-01)
 import { Home } from '../pages/public/Home';
 import { Products } from '../pages/public/Products';
-import { ProductDetails } from '../pages/public/ProductDetails';
-import { SellerProfile } from '../pages/public/SellerProfile';
-import { Cart } from '../pages/public/Cart';
-import { TermsOfUse } from '../pages/public/TermsOfUse';
-import { PrivacyNotice } from '../pages/public/PrivacyNotice';
-import { RefundPolicy } from '../pages/public/RefundPolicy';
 
-// Eagerly loaded Auth Pages
-import { Login } from '../pages/auth/Login';
-import { Register } from '../pages/auth/Register';
+// Code-split Public Pages (FE-021 / NFR-PERF-01)
+const ProductDetails = lazy(() => import('../pages/public/ProductDetails'));
+const SellerProfile = lazy(() => import('../pages/public/SellerProfile'));
+const Cart = lazy(() => import('../pages/public/Cart'));
+const TermsOfUse = lazy(() => import('../pages/public/TermsOfUse'));
+const PrivacyNotice = lazy(() => import('../pages/public/PrivacyNotice'));
+const RefundPolicy = lazy(() => import('../pages/public/RefundPolicy'));
 
-// Eagerly loaded Error Pages
-import { Forbidden } from '../pages/errors/Forbidden';
-import { NotFound } from '../pages/errors/NotFound';
-import { ServerError } from '../pages/errors/ServerError';
+// Code-split Auth Pages (NFR-PERF-01)
+const Login = lazy(() => import('../pages/auth/Login'));
+const Register = lazy(() => import('../pages/auth/Register'));
+
+// Code-split Error Pages (NFR-PERF-01)
+const Forbidden = lazy(() => import('../pages/errors/Forbidden'));
+const NotFound = lazy(() => import('../pages/errors/NotFound'));
+const ServerError = lazy(() => import('../pages/errors/ServerError'));
 
 // Lazy-loaded Seller Dashboard Pages (FE-021 / NFR-PERF-01)
 const SellerOverview = lazy(() => import('../pages/seller/SellerOverview'));

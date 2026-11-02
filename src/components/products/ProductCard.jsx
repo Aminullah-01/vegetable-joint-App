@@ -48,7 +48,7 @@ export function ProductCard({
   const name = p.name ?? propName ?? 'Vegetable Product';
   const price = p.price ?? propPrice ?? 0;
   const unit = p.unit ?? propUnit ?? 'unit';
-  const image = p.image ?? propImage;
+  const image = p.image ?? p.image_url ?? propImage;
   const quantity = p.quantity ?? propQuantity;
   const availability = p.availability ?? propAvailability;
 
@@ -341,6 +341,7 @@ ProductCard.propTypes = {
     price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     unit: PropTypes.string,
     image: PropTypes.string,
+    image_url: PropTypes.string,
     quantity: PropTypes.number,
     availability: PropTypes.string,
     average_rating: PropTypes.number,
