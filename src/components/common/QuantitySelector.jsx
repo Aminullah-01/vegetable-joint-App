@@ -32,6 +32,10 @@ export function QuantitySelector({
   showStock = true,
   className = '',
   style = {},
+  id,
+  name,
+  'data-testid': testId,
+  ...rest
 }) {
   const minimum = Math.max(1, toWholeNumber(min, 1));
   const stock = Math.max(0, toWholeNumber(availableStock ?? max, 0));
@@ -66,12 +70,14 @@ export function QuantitySelector({
   return (
     <div
       className={`quantity-selector ${className}`.trim()}
+      data-testid={testId || 'quantity-selector'}
       style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '0.375rem',
         ...style,
       }}
+      {...rest}
     >
       <span style={{ color: '#334155', fontSize: '0.875rem', fontWeight: 600 }}>
         {label}
@@ -89,6 +95,7 @@ export function QuantitySelector({
         <button
           type="button"
           aria-label={STRINGS.PRODUCTS.DECREASE_QUANTITY}
+          data-testid="quantity-decrease"
           disabled={isDisabled || selectedValue <= minimum}
           onClick={() => updateQuantity(selectedValue - 1)}
           style={{
@@ -110,6 +117,8 @@ export function QuantitySelector({
           −
         </button>
         <input
+          id={id}
+          name={name}
           type="number"
           inputMode="numeric"
           min={minimum}
@@ -117,6 +126,7 @@ export function QuantitySelector({
           step="1"
           value={isOutOfStock ? 0 : selectedValue}
           aria-label={`${label} amount`}
+          data-testid="quantity-input"
           disabled={isDisabled}
           onChange={(event) => updateQuantity(event.target.value)}
           style={{
@@ -136,6 +146,7 @@ export function QuantitySelector({
         <button
           type="button"
           aria-label={STRINGS.PRODUCTS.INCREASE_QUANTITY}
+          data-testid="quantity-increase"
           disabled={isDisabled || selectedValue >= stock}
           onClick={() => updateQuantity(selectedValue + 1)}
           style={{
@@ -159,6 +170,7 @@ export function QuantitySelector({
         <span
           id={availabilityId}
           aria-live="polite"
+          data-testid="quantity-stock"
           style={{
             color: isOutOfStock ? '#b91c1c' : '#64748b',
             fontSize: '0.75rem',
@@ -187,6 +199,9 @@ QuantitySelector.propTypes = {
   showStock: PropTypes.bool,
   className: PropTypes.string,
   style: PropTypes.object,
+  id: PropTypes.string,
+  name: PropTypes.string,
+  'data-testid': PropTypes.string,
 };
 
 export default QuantitySelector;

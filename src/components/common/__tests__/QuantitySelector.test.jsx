@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QuantitySelector } from '../QuantitySelector';
 
@@ -159,5 +159,43 @@ describe('QuantitySelector (FE-030, MKT-06, CART-02)', () => {
     expect(
       screen.getByRole('group', { name: 'Crate Count' })
     ).toBeInTheDocument();
+  });
+
+  it('forwards id, name, and data-testid attributes properly', () => {
+    render(
+      <QuantitySelector
+        id="vegetable-qty-input"
+        name="quantity_field"
+        data-testid="custom-quantity-selector"
+        availableStock={5}
+      />
+    );
+
+    expect(screen.getByTestId('custom-quantity-selector')).toBeInTheDocument();
+    const input = screen.getByTestId('quantity-input');
+    expect(input).toHaveAttribute('id', 'vegetable-qty-input');
+    expect(input).toHaveAttribute('name', 'quantity_field');
+    expect(screen.getByTestId('quantity-decrease')).toBeInTheDocument();
+    expect(screen.getByTestId('quantity-increase')).toBeInTheDocument();
+  });
+
+  it('safely handles non-positive or negative min/stock values', () => {
+    // min <= 0 falls back to 1 (CART-02: min 1)
+    render(<QuantitySelector min={-5} availableStock={-10} />);
+    expect(screen.getByText('Out of Stock')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toHaveValue(0);
+    expect(screen.getByRole('spinbutton')).toBeDisabled();
+  });
+
+  it('clamps decimal input to floored integer', () => {
+    const onChange = vi.fn();
+    render(<QuantitySelector availableStock={10} onChange={onChange} />);
+
+    const input = screen.getByRole('spinbutton', { name: 'Quantity amount' });
+    fireEvent.change(input, { target: { value: '4.8' } });
+
+    // Floored integer clamped within [1, 10]
+    expect(onChange).toHaveBeenLastCalledWith(4);
+    expect(input).toHaveValue(4);
   });
 });
